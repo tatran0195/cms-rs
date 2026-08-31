@@ -29,6 +29,7 @@ impl AppState {
     /// Create AppState from full configuration
     pub async fn from_config(config: &Config) -> Result<Self, AppError> {
         let pool = cms_db::create_pool(&config.database.url).await?;
+        cms_db::run_migrations(&pool).await?;
         let storage_box = cms_storage::create_storage(&config.storage).await?;
         let storage: Arc<dyn Storage> = Arc::from(storage_box);
         let job_queue: Arc<dyn JobQueue> = Arc::new(cms_queue::MemoryJobQueue::new(4));
