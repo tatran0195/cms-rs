@@ -1,0 +1,40 @@
+[package]
+name = "nibleaf-server"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "nibleaf-server"
+path = "main.rs"
+
+[dependencies]
+nibleaf-api = { path = "../crates/nibleaf-api" }
+nibleaf-sites = { path = "../crates/nibleaf-sites" }
+nibleaf-middleware = { path = "../crates/nibleaf-middleware" }
+nibleaf-config = { path = "../crates/nibleaf-config" }
+nibleaf-error = { path = "../crates/nibleaf-error" }
+nibleaf-queue = { path = "../crates/nibleaf-queue" }
+nibleaf-worker = { path = "../crates/nibleaf-worker", optional = true }
+
+# HTTP
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+hyper = { workspace = true }
+
+# Async
+tokio = { workspace = true, features = ["full"] }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Configuration
+config = { workspace = true }
+
+[features]
+default = []
+worker = ["dep:nibleaf-worker"]
+
+[lints]
+workspace = true

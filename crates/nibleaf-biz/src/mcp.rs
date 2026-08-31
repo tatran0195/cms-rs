@@ -1,0 +1,341 @@
+//! MCP Server Business Logic
+//!
+//! This module contains business logic for the Model Context Protocol (MCP) server.
+//! MCP allows AI agents to query Nibleaf's documentation programmatically.
+
+use crate::{BizContext, AppError};
+use nibleaf_db::mcp::McpAuditEventQueries;
+use nibleaf_db::project::ProjectQueries;
+use nibleaf_db::page::PageQueries;
+use nibleaf_entity::mcp::{
+    McpRequest, McpResponse, McpCapabilities, McpTool, McpPrompt, McpResource,
+};
+use nibleaf_entity::common::MemberRole;
+
+/// MCP service
+pub struct McpService;
+
+impl McpService {
+    /// Get MCP capabilities
+    pub async fn get_capabilities(
+        ctx: &BizContext,
+        user_id: Option<&str>,
+        _org_id: Option<&str>,
+        project_id: Option<&str>,
+    ) -> Result<McpCapabilities, AppError> {
+        if let Some(pid) = project_id {
+            if let Some(uid) = user_id {
+                ctx.access_control.require_project_role(
+                    uid,
+                    pid,
+                    MemberRole::Viewer,
+                ).await?;
+            }
+        }
+        
+        Ok(McpCapabilities {
+            tools: vec![
+                McpTool {
+                    name: "search".to_string(),
+                    description: "Search project documentation".to_string(),
+                    input_schema: serde_json::json!({
+                        "type": "object",
+                        "properties": {
+                            "query": { "type": "string" },
+                            "project_id": { "type": "string" },
+                            "limit": { "type": "integer", "default": 10 }
+                        },
+                        "required": ["query"]
+                    }),
+                },
+                McpTool {
+                    name: "get_page".to_string(),
+                    description: "Get a specific page by path".to_string(),
+                    input_schema: serde_json::json!({
+                        "type": "object",
+                        "properties": {
+                            "project_id": { "type": "string" },
+                            "path": { "type": "string" }
+                        },
+                        "required": ["project_id", "path"]
+                    }),
+                },
+                McpTool {
+                    name: "list_pages".to_string(),
+                    description: "List all pages in a project".to_string(),
+                    input_schema: serde_json::json!({
+                        "type": "object",
+                        "properties": {
+                            "project_id": { "type": "string" },
+                            "branch_id": { "type": "string" },
+                            "limit": { "type": "integer", "default": 100 }
+                        },
+                        "required": ["project_id"]
+                    }),
+                },
+                McpTool {
+                    name: "get_project".to_string(),
+                    description: "Get project information".to_string(),
+                    input_schema: serde_json::json!({
+                        "type": "object",
+                        "properties": {
+                            "project_id": { "type": "string" }
+                        },
+                        "required": ["project_id"]
+                    }),
+                },
+            ],
+            prompts: vec![],
+            resources: vec![],
+        })
+    }
+    
+    /// Execute an MCP tool
+    pub async fn execute_tool(
+        ctx: &BizContext,
+        user_id: Option<&str>,
+        org_id: Option<&str>,
+        request: McpRequest,
+    ) -> Result<McpResponse, AppError> {
+        if let Some(uid) = user_id {
+            McpAuditEventQueries::create(
+                &ctx.pool,
+                org_id,
+                None,
+                Some(uid),
+                &request.tool_name,
+                None,
+                None,
+                None,
+            ).await?;
+        }
+        
+        match request.tool_name.as_str() {
+            "search" => Self::execute_search(ctx, &request.tool_name, &request.arguments).await,
+            "get_page" => Self::execute_get_page(ctx, &request.tool_name, user_id, &request.arguments).await,
+            "list_pages" => Self::execute_list_pages(ctx, &request.tool_name, user_id, &request.arguments).await,
+            "get_project" => Self::execute_get_project(ctx, &request.tool_name, user_id, &request.arguments).await,
+            _ => Ok(McpResponse {
+                tool_name: request.tool_name.clone(),
+                result: serde_json::Value::Null,
+                is_error: true,
+                error_message: Some(format!("Unknown MCP tool: {}", request.tool_name)),
+            }),
+        }
+    }
+    
+    async fn execute_search(
+        ctx: &BizContext,
+        tool_name: &str,
+        arguments: &serde_json::Value,
+    ) -> Result<McpResponse, AppError> {
+        let query = arguments.get("query").and_then(|v| v.as_str())
+            .ok_or_else(|| AppError::InvalidInput("Missing query parameter".to_string()))?;
+        let project_id = arguments.get("project_id").and_then(|v| v.as_str());
+        
+        if let Some(pid) = project_id {
+            let _project = ProjectQueries::get_by_id(&ctx.pool, pid)
+                .await?
+                .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
+        }
+        
+        Ok(McpResponse {
+            tool_name: tool_name.to_string(),
+            result: serde_json::json!({ "content": format!("Search results for: {}", query), "content_type": "text/markdown" }),
+            is_error: false,
+            error_message: None,
+        })
+    }
+    
+    async fn execute_get_page(
+        ctx: &BizContext,
+        tool_name: &str,
+        user_id: Option<&str>,
+        arguments: &serde_json::Value,
+    ) -> Result<McpResponse, AppError> {
+        let project_id = arguments.get("project_id").and_then(|v| v.as_str())
+            .ok_or_else(|| AppError::InvalidInput("Missing project_id parameter".to_string()))?;
+        let path = arguments.get("path").and_then(|v| v.as_str())
+            .ok_or_else(|| AppError::InvalidInput("Missing path parameter".to_string()))?;
+        
+        let _project = ProjectQueries::get_by_id(&ctx.pool, project_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
+        
+        if let Some(uid) = user_id {
+            ctx.access_control.require_project_role(uid, project_id, MemberRole::Viewer).await?;
+        }
+        
+        Ok(McpResponse {
+            tool_name: tool_name.to_string(),
+            result: serde_json::json!({ "content": format!("Page content for: {}", path), "content_type": "text/markdown" }),
+            is_error: false,
+            error_message: None,
+        })
+    }
+    
+    /// Execute list_pages MCP tool
+    async fn execute_list_pages(
+        ctx: &BizContext,
+        tool_name: &str,
+        user_id: Option<&str>,
+        args: &serde_json::Value,
+    ) -> Result<McpResponse, AppError> {
+        let project_id = args.get("project_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| AppError::BadRequest("project_id argument is required".to_string()))?;
+        
+        let branch_id = args.get("branch_id").and_then(|v| v.as_str());
+        let limit = args.get("limit").and_then(|v| v.as_i64()).unwrap_or(20);
+        
+        let _project = ProjectQueries::get_by_id(&ctx.pool, project_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
+        
+        if let Some(uid) = user_id {
+            ctx.access_control.require_project_role(uid, project_id, MemberRole::Viewer).await?;
+        }
+        
+        let pages: Vec<(String, String)> = if let Some(bid) = branch_id {
+            PageQueries::get_by_project_and_branch(
+                &ctx.pool,
+                project_id,
+                bid,
+                None,
+                None,
+                None,
+                Some(limit),
+                None,
+            ).await?.into_iter().map(|p| (p.title, p.path)).collect()
+        } else {
+            PageQueries::get_by_project(&ctx.pool, project_id).await?.into_iter().map(|p| (p.title, p.path)).collect()
+        };
+        
+        let mut content = String::from("# Pages\n\n");
+        for (title, path) in pages {
+            content.push_str(&format!("- [{}]({})\n", title, path));
+        }
+        
+        Ok(McpResponse {
+            tool_name: tool_name.to_string(),
+            result: serde_json::json!({ "content": content, "content_type": "text/markdown" }),
+            is_error: false,
+            error_message: None,
+        })
+    }
+    
+    async fn execute_get_project(
+        ctx: &BizContext,
+        tool_name: &str,
+        user_id: Option<&str>,
+        arguments: &serde_json::Value,
+    ) -> Result<McpResponse, AppError> {
+        let project_id = arguments.get("project_id").and_then(|v| v.as_str())
+            .ok_or_else(|| AppError::InvalidInput("Missing project_id parameter".to_string()))?;
+        
+        let project = ProjectQueries::get_by_id(&ctx.pool, project_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
+        
+        if let Some(uid) = user_id {
+            ctx.access_control.require_project_role(uid, project_id, MemberRole::Viewer).await?;
+        }
+        
+        let content = format!(
+            "# {}\n\n{}\n\n---\n\n*Created: {}*\n*Updated: {}*",
+            project.name,
+            project.description.as_deref().unwrap_or(""),
+            project.created_at,
+            project.updated_at
+        );
+        
+        Ok(McpResponse {
+            tool_name: tool_name.to_string(),
+            result: serde_json::json!({ "content": content, "content_type": "text/markdown" }),
+            is_error: false,
+            error_message: None,
+        })
+    }
+
+    /// List audit events
+    pub async fn list_audit_events(
+        ctx: &BizContext,
+        _user_id: &str,
+        organization_id: Option<&str>,
+        _project_id: Option<&str>,
+        _user_id_filter: Option<&str>,
+        _operation: Option<&str>,
+        _start_date: Option<chrono::DateTime<chrono::Utc>>,
+        _end_date: Option<chrono::DateTime<chrono::Utc>>,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> Result<nibleaf_entity::common::PaginatedResponse<nibleaf_entity::mcp::McpAuditEventResponse>, AppError> {
+        let events = McpAuditEventQueries::get_by_organization(
+            &ctx.pool,
+            organization_id.unwrap_or(""),
+            limit,
+            offset,
+        ).await?;
+        let total = events.len() as u64;
+        Ok(nibleaf_entity::common::PaginatedResponse::new(
+            events.into_iter().map(|e| e.into()).collect(),
+            total,
+            1,
+            20,
+        ))
+    }
+
+    /// Get server info
+    pub async fn get_server_info(_ctx: &BizContext) -> Result<serde_json::Value, AppError> {
+        Ok(serde_json::json!({
+            "name": "nibleaf-mcp",
+            "version": "1.0.0",
+            "protocol_version": "2024-11-05",
+        }))
+    }
+
+    /// List tools
+    pub async fn list_tools(ctx: &BizContext) -> Result<serde_json::Value, AppError> {
+        let caps = Self::get_capabilities(ctx, None, None, None).await?;
+        Ok(serde_json::json!(caps.tools))
+    }
+
+    /// Call tool
+    pub async fn call_tool(
+        ctx: &BizContext,
+        user_id: &str,
+        tool_name: &str,
+        request: serde_json::Value,
+    ) -> Result<serde_json::Value, AppError> {
+        let response = Self::execute_tool(
+            ctx,
+            Some(user_id),
+            None,
+            McpRequest {
+                tool_name: tool_name.to_string(),
+                arguments: request,
+            },
+        ).await?;
+        Ok(serde_json::json!(response))
+    }
+
+    /// List resources
+    pub async fn list_resources(
+        _ctx: &BizContext,
+        _user_id: &str,
+    ) -> Result<serde_json::Value, AppError> {
+        Ok(serde_json::json!([]))
+    }
+
+    /// Read resource
+    pub async fn read_resource(
+        _ctx: &BizContext,
+        _user_id: &str,
+        uri: &str,
+    ) -> Result<serde_json::Value, AppError> {
+        Ok(serde_json::json!({
+            "uri": uri,
+            "contents": []
+        }))
+    }
+}

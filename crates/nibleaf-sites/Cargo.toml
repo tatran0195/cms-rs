@@ -1,0 +1,36 @@
+[package]
+name = "nibleaf-sites"
+version = "0.1.0"
+edition = "2021"
+description = "Published site and marketing serving for Nibleaf"
+
+[dependencies]
+# Internal crates
+nibleaf-biz = { path = "../nibleaf-biz" }
+nibleaf-db = { path = "../nibleaf-db" }
+nibleaf-entity = { path = "../nibleaf-entity" }
+nibleaf-error = { path = "../nibleaf-error" }
+nibleaf-storage = { path = "../nibleaf-storage" }
+nibleaf-config = { path = "../nibleaf-config" }
+nibleaf-middleware = { path = "../nibleaf-middleware" }
+
+# External dependencies
+axum = { workspace = true, features = ["json", "multipart"] }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+sqlx = { workspace = true }
+tracing = { workspace = true }
+
+# Markdown rendering
+pulldown-cmark = "0.13"
+
+# HTML sanitization
+ammonia = { workspace = true }
+
+[lints]
+workspace = true

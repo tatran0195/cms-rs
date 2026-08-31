@@ -1,0 +1,49 @@
+[package]
+name = "nibleaf-api"
+version = "0.1.0"
+edition = "2021"
+description = "Nibleaf API layer with Axum routers and handlers"
+
+[dependencies]
+# Internal crates
+nibleaf-biz = { path = "../nibleaf-biz" }
+nibleaf-db = { path = "../nibleaf-db" }
+nibleaf-entity = { path = "../nibleaf-entity" }
+nibleaf-error = { path = "../nibleaf-error" }
+nibleaf-auth = { path = "../nibleaf-auth" }
+nibleaf-access-control = { path = "../nibleaf-access-control" }
+nibleaf-middleware = { path = "../nibleaf-middleware" }
+nibleaf-config = { path = "../nibleaf-config" }
+nibleaf-storage = { path = "../nibleaf-storage" }
+nibleaf-search = { path = "../nibleaf-search" }
+nibleaf-queue = { path = "../nibleaf-queue" }
+
+# External dependencies
+axum = { workspace = true, features = ["json", "multipart"] }
+axum-extra = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+validator = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+sqlx = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+utoipa = { workspace = true }
+schemars = { workspace = true }
+base64 = { workspace = true }
+serde_urlencoded = { workspace = true }
+async-trait = { workspace = true }
+
+[dev-dependencies]
+tower = { workspace = true, features = ["util"] }
+http = "1.0"
+hyper = { workspace = true }
+
+[lints]
+workspace = true
