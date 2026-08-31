@@ -1,11 +1,12 @@
 //! Asset entity types
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::common::{Id, Timestamp};
 
 /// Asset entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Asset {
     pub id: Id,
     pub project_id: Id,
@@ -17,12 +18,12 @@ pub struct Asset {
     pub width: Option<i32>,
     pub height: Option<i32>,
     pub alt_text: Option<String>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Asset response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AssetResponse {
     pub id: Id,
     pub project_id: Id,
@@ -34,8 +35,8 @@ pub struct AssetResponse {
     pub height: Option<i32>,
     pub alt_text: Option<String>,
     pub download_url: String,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<Asset> for AssetResponse {
@@ -58,7 +59,7 @@ impl From<Asset> for AssetResponse {
 }
 
 /// Upload asset request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UploadAssetRequest {
     pub project_id: Id,
     #[serde(default)]
@@ -79,7 +80,7 @@ pub struct UploadAssetRequest {
 }
 
 /// Update asset request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UpdateAssetRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub file_name: Option<String>,
@@ -88,7 +89,7 @@ pub struct UpdateAssetRequest {
 }
 
 /// Asset upload response (with presigned URL for direct upload)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AssetUploadResponse {
     pub asset_id: Id,
     pub storage_key: String,
@@ -97,7 +98,7 @@ pub struct AssetUploadResponse {
 }
 
 /// List assets query
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListAssetsQuery {
     #[serde(default)]
     pub project_id: Option<Id>,
@@ -110,7 +111,7 @@ pub struct ListAssetsQuery {
 }
 
 /// Delete asset response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct DeleteAssetResponse {
     pub success: bool,
     pub asset_id: Id,

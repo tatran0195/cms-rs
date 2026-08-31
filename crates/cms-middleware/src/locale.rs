@@ -104,7 +104,6 @@ impl Locale {
 #[derive(Debug, Clone)]
 pub struct LocaleExtractor(pub Locale);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Locale
 where
     S: Send + Sync,

@@ -7,7 +7,7 @@ use validator::Validate;
 use crate::common::{Id, Timestamp};
 
 /// Domain entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Domain {
     pub id: Id,
     pub deployment_id: Id,
@@ -16,12 +16,12 @@ pub struct Domain {
     pub ssl_certificate: Option<String>,
     pub ssl_certificate_expires_at: Option<DateTime<Utc>>,
     pub verified_at: Option<DateTime<Utc>>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Domain response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct DomainResponse {
     pub id: Id,
     pub deployment_id: Id,
@@ -31,8 +31,8 @@ pub struct DomainResponse {
     pub ssl_certificate_expires_at: Option<DateTime<Utc>>,
     pub verified_at: Option<DateTime<Utc>>,
     pub is_verified: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<Domain> for DomainResponse {
@@ -53,7 +53,7 @@ impl From<Domain> for DomainResponse {
 }
 
 /// Create domain request
-#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate, utoipa::ToSchema)]
 pub struct CreateDomainRequest {
     #[validate(length(min = 1, message = "Deployment ID is required"))]
     pub deployment_id: String,
@@ -68,7 +68,7 @@ pub struct CreateDomainRequest {
 }
 
 /// Update domain request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UpdateDomainRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hostname: Option<String>,
@@ -81,13 +81,13 @@ pub struct UpdateDomainRequest {
 }
 
 /// Verify domain request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct VerifyDomainRequest {
     pub verification_token: String,
 }
 
 /// List domains query
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListDomainsQuery {
     #[serde(default)]
     pub deployment_id: Option<Id>,
@@ -98,7 +98,7 @@ pub struct ListDomainsQuery {
 }
 
 /// Domain verification result
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct DomainVerificationResult {
     pub domain_id: Id,
     pub hostname: String,

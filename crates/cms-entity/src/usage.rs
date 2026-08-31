@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::common::{Id, Timestamp};
 
 /// Usage plan entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct UsagePlan {
     pub id: Id,
     pub name: String,
@@ -14,12 +14,12 @@ pub struct UsagePlan {
     pub price: i64,
     pub billing_period: String,
     pub is_active: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Usage plan response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct UsagePlanResponse {
     pub id: Id,
     pub name: String,
@@ -27,8 +27,8 @@ pub struct UsagePlanResponse {
     pub price: i64,
     pub billing_period: String,
     pub is_active: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<UsagePlan> for UsagePlanResponse {
@@ -47,27 +47,27 @@ impl From<UsagePlan> for UsagePlanResponse {
 }
 
 /// Usage meter entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct UsageMeter {
     pub id: Id,
     pub code: String,
     pub name: String,
     pub description: Option<String>,
     pub unit: String,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Usage meter response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct UsageMeterResponse {
     pub id: Id,
     pub code: String,
     pub name: String,
     pub description: Option<String>,
     pub unit: String,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<UsageMeter> for UsageMeterResponse {
@@ -85,23 +85,23 @@ impl From<UsageMeter> for UsageMeterResponse {
 }
 
 /// Usage plan meter entity (junction table)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct UsagePlanMeter {
     pub id: Id,
     pub usage_plan_id: Id,
     pub usage_meter_id: Id,
     pub limit: i64,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Usage plan meter response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct UsagePlanMeterResponse {
     pub id: Id,
     pub usage_plan_id: Id,
     pub usage_meter_id: Id,
     pub limit: i64,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 impl From<UsagePlanMeter> for UsagePlanMeterResponse {
@@ -117,27 +117,27 @@ impl From<UsagePlanMeter> for UsagePlanMeterResponse {
 }
 
 /// Usage entitlement entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct UsageEntitlement {
     pub id: Id,
     pub usage_meter_id: Id,
     pub name: String,
     pub description: Option<String>,
     pub is_enabled: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Usage entitlement response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct UsageEntitlementResponse {
     pub id: Id,
     pub usage_meter_id: Id,
     pub name: String,
     pub description: Option<String>,
     pub is_enabled: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<UsageEntitlement> for UsageEntitlementResponse {
@@ -155,7 +155,7 @@ impl From<UsageEntitlement> for UsageEntitlementResponse {
 }
 
 /// Organization usage plan entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct OrganizationUsagePlan {
     pub id: Id,
     pub organization_id: Id,
@@ -163,12 +163,12 @@ pub struct OrganizationUsagePlan {
     pub starts_at: DateTime<Utc>,
     pub ends_at: Option<DateTime<Utc>>,
     pub status: String,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Organization usage plan response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct OrganizationUsagePlanResponse {
     pub id: Id,
     pub organization_id: Id,
@@ -176,8 +176,8 @@ pub struct OrganizationUsagePlanResponse {
     pub starts_at: DateTime<Utc>,
     pub ends_at: Option<DateTime<Utc>>,
     pub status: String,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<OrganizationUsagePlan> for OrganizationUsagePlanResponse {
@@ -196,7 +196,7 @@ impl From<OrganizationUsagePlan> for OrganizationUsagePlanResponse {
 }
 
 /// Analytics event entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AnalyticsEvent {
     pub id: Id,
     pub organization_id: Option<Id>,
@@ -206,11 +206,11 @@ pub struct AnalyticsEvent {
     pub metadata: serde_json::Value,
     pub ip_address: Option<String>,
     pub user_agent: Option<String>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Analytics event response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AnalyticsEventResponse {
     pub id: Id,
     pub organization_id: Option<Id>,
@@ -220,7 +220,7 @@ pub struct AnalyticsEventResponse {
     pub metadata: serde_json::Value,
     pub ip_address: Option<String>,
     pub user_agent: Option<String>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 impl From<AnalyticsEvent> for AnalyticsEventResponse {
@@ -240,17 +240,17 @@ impl From<AnalyticsEvent> for AnalyticsEventResponse {
 }
 
 /// Usage checkpoint entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct UsageCheckpoint {
     pub id: Id,
     pub event_type: String,
     pub entity_id: String,
     pub period_start: DateTime<Utc>,
-    pub processed_at: Timestamp,
+    pub processed_at: DateTime<Utc>,
 }
 
 /// Create usage plan request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreateUsagePlanRequest {
     pub name: String,
     #[serde(default)]
@@ -272,7 +272,7 @@ fn default_true() -> bool {
 }
 
 /// Create usage meter request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreateUsageMeterRequest {
     pub code: String,
     pub name: String,
@@ -282,7 +282,7 @@ pub struct CreateUsageMeterRequest {
 }
 
 /// Track analytics event request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct TrackAnalyticsEventRequest {
     pub event_type: String,
     #[serde(default)]
@@ -294,7 +294,7 @@ pub struct TrackAnalyticsEventRequest {
 }
 
 /// List analytics events query
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListAnalyticsEventsQuery {
     #[serde(default)]
     pub organization_id: Option<Id>,

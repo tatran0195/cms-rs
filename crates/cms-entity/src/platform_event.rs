@@ -6,25 +6,25 @@ use serde::{Deserialize, Serialize};
 use crate::common::{Id, Timestamp};
 
 /// Platform event entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct PlatformEvent {
     pub id: Id,
     pub organization_id: Option<Id>,
     pub user_id: Option<Id>,
     pub event_type: String,
     pub metadata: serde_json::Value,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Platform event response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct PlatformEventResponse {
     pub id: Id,
     pub organization_id: Option<Id>,
     pub user_id: Option<Id>,
     pub event_type: String,
     pub metadata: serde_json::Value,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 impl From<PlatformEvent> for PlatformEventResponse {
@@ -41,7 +41,7 @@ impl From<PlatformEvent> for PlatformEventResponse {
 }
 
 /// Create platform event request (internal use)
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreatePlatformEventRequest {
     #[serde(default)]
     pub organization_id: Option<Id>,
@@ -53,7 +53,7 @@ pub struct CreatePlatformEventRequest {
 }
 
 /// List platform events query
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListPlatformEventsQuery {
     #[serde(default)]
     pub organization_id: Option<Id>,

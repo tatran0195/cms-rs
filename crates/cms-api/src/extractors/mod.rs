@@ -13,7 +13,6 @@ pub struct UserId(pub String);
 
 use crate::auth::AuthExtractor;
 
-#[async_trait]
 impl<S> FromRequestParts<S> for UserId
 where
     S: Send + Sync,
@@ -34,7 +33,6 @@ where
 #[derive(Debug, Clone)]
 pub struct OrgId(pub String);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for OrgId
 where
     S: Send + Sync,
@@ -60,7 +58,6 @@ where
 #[derive(Debug, Clone)]
 pub struct ProjectId(pub String);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for ProjectId
 where
     S: Send + Sync,

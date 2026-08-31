@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::common::{Id, Timestamp};
 
 /// Integration provider types
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
 #[sqlx(type_name = "IntegrationProvider", rename_all = "lowercase")]
 pub enum IntegrationProvider {
     Slack,
@@ -18,7 +18,7 @@ pub enum IntegrationProvider {
 }
 
 /// Integration event status
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
 #[sqlx(type_name = "IntegrationEventStatus", rename_all = "lowercase")]
 pub enum IntegrationEventStatus {
     Pending,
@@ -28,7 +28,7 @@ pub enum IntegrationEventStatus {
 }
 
 /// Project integration entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectIntegration {
     pub id: Id,
     pub project_id: Id,
@@ -37,12 +37,12 @@ pub struct ProjectIntegration {
     pub config: serde_json::Value,
     pub webhook_url: Option<String>,
     pub is_active: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Project integration response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectIntegrationResponse {
     pub id: Id,
     pub project_id: Id,
@@ -51,8 +51,8 @@ pub struct ProjectIntegrationResponse {
     pub config: serde_json::Value,
     pub webhook_url: Option<String>,
     pub is_active: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<ProjectIntegration> for ProjectIntegrationResponse {
@@ -72,7 +72,7 @@ impl From<ProjectIntegration> for ProjectIntegrationResponse {
 }
 
 /// Create project integration request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreateProjectIntegrationRequest {
     pub project_id: Id,
     pub provider: IntegrationProvider,
@@ -90,7 +90,7 @@ fn default_true() -> bool {
 }
 
 /// Update project integration request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UpdateProjectIntegrationRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -103,7 +103,7 @@ pub struct UpdateProjectIntegrationRequest {
 }
 
 /// Integration audit event entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct IntegrationAuditEvent {
     pub id: Id,
     pub integration_id: Id,
@@ -111,11 +111,11 @@ pub struct IntegrationAuditEvent {
     pub payload: serde_json::Value,
     pub status: String,
     pub error_message: Option<String>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Integration audit event response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct IntegrationAuditEventResponse {
     pub id: Id,
     pub integration_id: Id,
@@ -123,7 +123,7 @@ pub struct IntegrationAuditEventResponse {
     pub payload: serde_json::Value,
     pub status: String,
     pub error_message: Option<String>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 impl From<IntegrationAuditEvent> for IntegrationAuditEventResponse {
@@ -141,22 +141,22 @@ impl From<IntegrationAuditEvent> for IntegrationAuditEventResponse {
 }
 
 /// Integration confirmation entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct IntegrationConfirmation {
     pub id: Id,
     pub integration_id: Id,
     pub confirmation_token: String,
     pub confirmed_at: Option<DateTime<Utc>>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Integration confirmation response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct IntegrationConfirmationResponse {
     pub id: Id,
     pub integration_id: Id,
     pub confirmed_at: Option<DateTime<Utc>>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 impl From<IntegrationConfirmation> for IntegrationConfirmationResponse {
@@ -171,7 +171,7 @@ impl From<IntegrationConfirmation> for IntegrationConfirmationResponse {
 }
 
 /// Integration webhook delivery entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct IntegrationWebhookDelivery {
     pub id: Id,
     pub integration_id: Id,
@@ -181,12 +181,12 @@ pub struct IntegrationWebhookDelivery {
     pub response_status: Option<i32>,
     pub error_message: Option<String>,
     pub attempts: i32,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Integration webhook delivery response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct IntegrationWebhookDeliveryResponse {
     pub id: Id,
     pub integration_id: Id,
@@ -196,8 +196,8 @@ pub struct IntegrationWebhookDeliveryResponse {
     pub response_status: Option<i32>,
     pub error_message: Option<String>,
     pub attempts: i32,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<IntegrationWebhookDelivery> for IntegrationWebhookDeliveryResponse {
@@ -218,21 +218,21 @@ impl From<IntegrationWebhookDelivery> for IntegrationWebhookDeliveryResponse {
 }
 
 /// Integration idempotency record entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct IntegrationIdempotencyRecord {
     pub id: Id,
     pub integration_id: Id,
     pub request_id: String,
-    pub processed_at: Timestamp,
+    pub processed_at: DateTime<Utc>,
 }
 
 /// Integration idempotency record response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct IntegrationIdempotencyRecordResponse {
     pub id: Id,
     pub integration_id: Id,
     pub request_id: String,
-    pub processed_at: Timestamp,
+    pub processed_at: DateTime<Utc>,
 }
 
 impl From<IntegrationIdempotencyRecord> for IntegrationIdempotencyRecordResponse {
@@ -247,7 +247,7 @@ impl From<IntegrationIdempotencyRecord> for IntegrationIdempotencyRecordResponse
 }
 
 /// List integrations query
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListIntegrationsQuery {
     #[serde(default)]
     pub project_id: Option<Id>,

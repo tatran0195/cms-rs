@@ -41,7 +41,6 @@ pub enum AuthMethod {
     None,
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for AuthExtractor
 where
     S: Send + Sync,
@@ -208,7 +207,6 @@ pub struct OptionalAuthExtractor {
     pub auth_method: Option<AuthMethod>,
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for OptionalAuthExtractor
 where
     S: Send + Sync,

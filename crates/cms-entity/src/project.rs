@@ -1,13 +1,13 @@
 //! Project entity types
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use crate::common::{Id, PaginatedResponse, Timestamp};
 
 /// Project entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Project {
     pub id: Id,
     pub organization_id: Id,
@@ -18,12 +18,12 @@ pub struct Project {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub icon: Option<String>,
     pub is_public: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Project create request
-#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate, utoipa::ToSchema)]
 pub struct CreateProjectRequest {
     #[serde(default)]
     pub organization_id: Option<Id>,
@@ -44,7 +44,7 @@ pub struct CreateProjectRequest {
 }
 
 /// Project update request
-#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate, utoipa::ToSchema)]
 pub struct UpdateProjectRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[validate(length(
@@ -64,7 +64,7 @@ pub struct UpdateProjectRequest {
 }
 
 /// Project response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectResponse {
     pub id: Id,
     pub organization_id: Id,
@@ -75,8 +75,8 @@ pub struct ProjectResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub icon: Option<String>,
     pub is_public: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<Project> for ProjectResponse {
@@ -96,7 +96,7 @@ impl From<Project> for ProjectResponse {
 }
 
 /// Project with organization information
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectWithOrgResponse {
     #[serde(flatten)]
     pub project: ProjectResponse,
@@ -104,7 +104,7 @@ pub struct ProjectWithOrgResponse {
 }
 
 /// Project settings (extended configuration)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectSettings {
     pub project_id: Id,
     #[serde(default)]
@@ -117,12 +117,12 @@ pub struct ProjectSettings {
     pub search_enabled: bool,
     #[serde(default)]
     pub comments_enabled: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Project settings update request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UpdateProjectSettingsRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub theme: Option<String>,
@@ -137,27 +137,27 @@ pub struct UpdateProjectSettingsRequest {
 }
 
 /// Project addon entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectAddon {
     pub id: Id,
     pub project_id: Id,
     pub addon_type: String,
     pub config: serde_json::Value,
     pub is_enabled: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Project addon response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectAddonResponse {
     pub id: Id,
     pub project_id: Id,
     pub addon_type: String,
     pub config: serde_json::Value,
     pub is_enabled: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<ProjectAddon> for ProjectAddonResponse {
@@ -175,7 +175,7 @@ impl From<ProjectAddon> for ProjectAddonResponse {
 }
 
 /// List projects query parameters
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListProjectsQuery {
     #[serde(default)]
     pub organization_id: Option<Id>,
@@ -193,14 +193,14 @@ pub struct ListProjectsQuery {
 pub type ListProjectsResponse = PaginatedResponse<ProjectResponse>;
 
 /// Project audit event
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectAuditEvent {
     pub id: Id,
     pub project_id: Id,
     pub action: String,
     pub user_id: Option<Id>,
     pub metadata: serde_json::Value,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 #[cfg(test)]

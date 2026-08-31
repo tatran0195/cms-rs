@@ -414,7 +414,7 @@ impl JobQueue for RedisJobQueue {
         redis::cmd("LPUSH")
             .arg("cms:queue:pending")
             .arg(serialized)
-            .query_async::<_, String>(&mut conn)
+            .query_async::<()>(&mut conn)
             .await
             .map_err(|e| AppError::Storage(e.to_string()))?;
 
@@ -431,7 +431,7 @@ impl JobQueue for RedisJobQueue {
             .arg(metadata.to_string())
             .arg("payload")
             .arg(serde_json::to_string(&job.payload)?)
-            .query_async::<_, String>(&mut conn)
+            .query_async::<()>(&mut conn)
             .await
             .map_err(|e| AppError::Storage(e.to_string()))?;
 
@@ -455,7 +455,7 @@ impl JobQueue for RedisJobQueue {
             .arg("cms:queue:delayed")
             .arg(score)
             .arg(serialized)
-            .query_async::<_, String>(&mut conn)
+            .query_async::<()>(&mut conn)
             .await
             .map_err(|e| AppError::Storage(e.to_string()))?;
 
@@ -473,7 +473,7 @@ impl JobQueue for RedisJobQueue {
             .arg(metadata.to_string())
             .arg("payload")
             .arg(serde_json::to_string(&job.payload)?)
-            .query_async::<_, String>(&mut conn)
+            .query_async::<()>(&mut conn)
             .await
             .map_err(|e| AppError::Storage(e.to_string()))?;
 
@@ -498,15 +498,15 @@ impl JobQueue for RedisJobQueue {
             .await
             .map_err(|e| AppError::Storage(e.to_string()))?;
 
-        // Blocking pop from the queue
-        let result: Option<String> = redis::cmd("BLPOP")
+        // Blocking pop from the queue: BLPOP returns Option<(String, String)> -> (key, element)
+        let result: Option<(String, String)> = redis::cmd("BLPOP")
             .arg("cms:queue:pending")
             .arg(30) // 30 second timeout
             .query_async(&mut conn)
             .await
             .map_err(|e| AppError::Storage(e.to_string()))?;
 
-        let serialized =
+        let (_, serialized) =
             result.ok_or_else(|| AppError::Storage("No jobs available".to_string()))?;
 
         let job: JobEnvelope = serde_json::from_str(&serialized)?;
@@ -521,7 +521,7 @@ impl JobQueue for RedisJobQueue {
             .arg(format!("cms:jobs:{}", job.id.0))
             .arg("metadata")
             .arg(metadata.to_string())
-            .query_async::<_, String>(&mut conn)
+            .query_async::<()>(&mut conn)
             .await
             .map_err(|e| AppError::Storage(e.to_string()))?;
 
@@ -544,7 +544,7 @@ impl JobQueue for RedisJobQueue {
             .arg(format!("cms:jobs:{}", job_id.0))
             .arg("metadata")
             .arg(metadata.to_string())
-            .query_async::<_, String>(&mut conn)
+            .query_async::<()>(&mut conn)
             .await
             .map_err(|e| AppError::Storage(e.to_string()))?;
 
@@ -553,7 +553,7 @@ impl JobQueue for RedisJobQueue {
             .arg("cms:queue:pending")
             .arg(0)
             .arg(job_id.0.clone())
-            .query_async::<_, String>(&mut conn)
+            .query_async::<()>(&mut conn)
             .await
             .map_err(|e| AppError::Storage(e.to_string()))?;
 
@@ -590,7 +590,7 @@ impl JobQueue for RedisJobQueue {
                 .arg(format!("cms:jobs:{}", job_id.0))
                 .arg("metadata")
                 .arg(metadata.to_string())
-                .query_async::<_, String>(&mut conn)
+                .query_async::<()>(&mut conn)
                 .await
                 .map_err(|e| AppError::Storage(e.to_string()))?;
 
@@ -598,7 +598,7 @@ impl JobQueue for RedisJobQueue {
             redis::cmd("LPUSH")
                 .arg("cms:queue:failed")
                 .arg(job_id.0.clone())
-                .query_async::<_, String>(&mut conn)
+                .query_async::<()>(&mut conn)
                 .await
                 .map_err(|e| AppError::Storage(e.to_string()))?;
         } else {
@@ -612,14 +612,14 @@ impl JobQueue for RedisJobQueue {
                 .arg(format!("cms:jobs:{}", job_id.0))
                 .arg("metadata")
                 .arg(metadata.to_string())
-                .query_async::<_, String>(&mut conn)
+                .query_async::<()>(&mut conn)
                 .await
                 .map_err(|e| AppError::Storage(e.to_string()))?;
 
             redis::cmd("LPUSH")
                 .arg("cms:queue:pending")
                 .arg(job_id.0.clone())
-                .query_async::<_, String>(&mut conn)
+                .query_async::<()>(&mut conn)
                 .await
                 .map_err(|e| AppError::Storage(e.to_string()))?;
         }
@@ -724,14 +724,14 @@ impl JobQueue for RedisJobQueue {
             .arg(format!("cms:jobs:{}", job_id.0))
             .arg("metadata")
             .arg(metadata.to_string())
-            .query_async::<_, String>(&mut conn)
+            .query_async::<()>(&mut conn)
             .await
             .map_err(|e| AppError::Storage(e.to_string()))?;
 
         redis::cmd("LPUSH")
             .arg("cms:queue:pending")
             .arg(job_id.0.clone())
-            .query_async::<_, String>(&mut conn)
+            .query_async::<()>(&mut conn)
             .await
             .map_err(|e| AppError::Storage(e.to_string()))?;
 

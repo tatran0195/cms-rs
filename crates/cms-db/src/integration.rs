@@ -534,22 +534,26 @@ impl IntegrationWebhookDeliveryQueries {
         Ok(row.map(|r| r.into()))
     }
 
-    pub async fn get_pending_deliveries(
+    pub async fn find_pending(
         pool: &PgPool,
         limit: Option<i64>,
     ) -> Result<Vec<IntegrationWebhookDelivery>, AppError> {
-        let mut query = "SELECT * FROM \"IntegrationWebhookDelivery\" WHERE status = 'PENDING' \
-                         ORDER BY created_at ASC"
-            .to_string();
-
-        if let Some(limit) = limit {
-            query.push_str(&format!(" LIMIT {}", limit));
-        }
-
-        let rows = sqlx::query_as::<_, IntegrationWebhookDeliveryRow>(&query)
+        let rows = if let Some(limit) = limit {
+            sqlx::query_as::<_, IntegrationWebhookDeliveryRow>(
+                r#"SELECT * FROM "IntegrationWebhookDelivery" WHERE status = 'PENDING' ORDER BY created_at ASC LIMIT $1"#
+            )
+            .bind(limit)
             .fetch_all(pool)
             .await
-            .map_err(|e| AppError::Database(e.into()))?;
+            .map_err(|e| AppError::Database(e.into()))?
+        } else {
+            sqlx::query_as::<_, IntegrationWebhookDeliveryRow>(
+                r#"SELECT * FROM "IntegrationWebhookDelivery" WHERE status = 'PENDING' ORDER BY created_at ASC"#
+            )
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?
+        };
 
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }

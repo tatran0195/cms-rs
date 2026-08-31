@@ -1,6 +1,6 @@
 //! Language entity types
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::common::{Id, PaginatedResponse, Timestamp};
@@ -10,7 +10,7 @@ use crate::common::{Id, PaginatedResponse, Timestamp};
 /// Note: Per the architecture decision (doc 04), the system is retargeted
 /// from Arabic to Japanese. The RTL layout requirement is dropped since
 /// Japanese is LTR.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Language {
     pub id: Id,
     pub project_id: Id,
@@ -18,12 +18,12 @@ pub struct Language {
     pub name: String, // Human-readable name (e.g., "English", "Japanese")
     pub is_default: bool,
     pub is_rtl: bool, // Retained for generality, but Japanese is LTR
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Language create request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreateLanguageRequest {
     pub project_id: Id,
     pub code: String,
@@ -33,7 +33,7 @@ pub struct CreateLanguageRequest {
 }
 
 /// Language update request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UpdateLanguageRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -42,7 +42,7 @@ pub struct UpdateLanguageRequest {
 }
 
 /// Language response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct LanguageResponse {
     pub id: Id,
     pub project_id: Id,
@@ -50,8 +50,8 @@ pub struct LanguageResponse {
     pub name: String,
     pub is_default: bool,
     pub is_rtl: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<Language> for LanguageResponse {
@@ -70,7 +70,7 @@ impl From<Language> for LanguageResponse {
 }
 
 /// Project translation entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectTranslation {
     pub id: Id,
     pub project_id: Id,
@@ -79,12 +79,12 @@ pub struct ProjectTranslation {
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Project translation response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectTranslationResponse {
     pub id: Id,
     pub project_id: Id,
@@ -93,8 +93,8 @@ pub struct ProjectTranslationResponse {
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<ProjectTranslation> for ProjectTranslationResponse {
@@ -112,7 +112,7 @@ impl From<ProjectTranslation> for ProjectTranslationResponse {
 }
 
 /// List languages query parameters
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListLanguagesQuery {
     pub project_id: Id,
 }
@@ -121,7 +121,7 @@ pub struct ListLanguagesQuery {
 pub type ListLanguagesResponse = PaginatedResponse<LanguageResponse>;
 
 /// Set default language request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct SetDefaultLanguageRequest {
     pub language_id: Id,
 }

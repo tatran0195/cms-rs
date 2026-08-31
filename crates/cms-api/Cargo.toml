@@ -42,7 +42,7 @@ async-trait = { workspace = true }
 
 [dev-dependencies]
 tower = { workspace = true, features = ["util"] }
-http = "1.0"
+http = { workspace = true }
 hyper = { workspace = true }
 
 [lints]

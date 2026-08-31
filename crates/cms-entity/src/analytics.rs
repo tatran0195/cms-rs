@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::common::{Id, Timestamp};
 
 /// Track analytics event request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct TrackAnalyticsEventRequest {
     pub organization_id: Option<Id>,
     pub project_id: Option<Id>,
@@ -23,7 +23,7 @@ pub type ListAnalyticsEventsQuery = AnalyticsQueryRequest;
 
 /// Analytics event entity (duplicated from usage.rs for clarity, but we'll keep it here)
 /// Note: This is a simplified version for the analytics crate
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AnalyticsEvent {
     pub id: Id,
     pub organization_id: Option<Id>,
@@ -33,11 +33,11 @@ pub struct AnalyticsEvent {
     pub metadata: serde_json::Value,
     pub ip_address: Option<String>,
     pub user_agent: Option<String>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Analytics event response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AnalyticsEventResponse {
     pub id: Id,
     pub organization_id: Option<Id>,
@@ -47,7 +47,7 @@ pub struct AnalyticsEventResponse {
     pub metadata: serde_json::Value,
     pub ip_address: Option<String>,
     pub user_agent: Option<String>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 impl From<AnalyticsEvent> for AnalyticsEventResponse {
@@ -67,7 +67,7 @@ impl From<AnalyticsEvent> for AnalyticsEventResponse {
 }
 
 /// Analytics query request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct AnalyticsQueryRequest {
     #[serde(default)]
     pub organization_id: Option<Id>,
@@ -92,7 +92,7 @@ pub struct AnalyticsQueryRequest {
 }
 
 /// Analytics result item
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AnalyticsResultItem {
     pub date: Option<String>,
     pub group_value: Option<String>,
@@ -101,7 +101,7 @@ pub struct AnalyticsResultItem {
 }
 
 /// Analytics query response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AnalyticsQueryResponse {
     pub query: AnalyticsQueryRequest,
     pub results: Vec<AnalyticsResultItem>,
@@ -118,7 +118,7 @@ pub struct AnalyticsQueryResponse {
 }
 
 /// Page view analytics
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct PageViewAnalytics {
     pub page_id: Id,
     pub project_id: Id,
@@ -128,7 +128,7 @@ pub struct PageViewAnalytics {
 }
 
 /// Project analytics summary
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectAnalyticsSummary {
     pub project_id: Id,
     pub total_views: i64,
@@ -139,7 +139,7 @@ pub struct ProjectAnalyticsSummary {
 }
 
 /// Track page view request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct TrackPageViewRequest {
     pub page_id: Id,
     pub project_id: Id,
@@ -152,14 +152,14 @@ pub struct TrackPageViewRequest {
 }
 
 /// Time series analytics
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct TimeSeriesAnalytics {
     pub date: String,
     pub count: i64,
 }
 
 /// Analytics dashboard response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AnalyticsDashboardResponse {
     pub total_events: i64,
     pub events_by_type: std::collections::HashMap<String, i64>,

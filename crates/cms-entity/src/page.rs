@@ -1,6 +1,6 @@
 //! Page entity types
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -10,7 +10,7 @@ use crate::common::{Id, PaginatedResponse, Timestamp};
 ///
 /// The page tree structure is maintained through parent/child relationships
 /// with materialized path for efficient querying.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Page {
     pub id: Id,
     pub project_id: Id,
@@ -28,12 +28,12 @@ pub struct Page {
     pub is_published: bool,
     #[serde(default)]
     pub is_indexed: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Page create request
-#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate, utoipa::ToSchema)]
 pub struct CreatePageRequest {
     #[validate(length(min = 1, message = "Project ID is required"))]
     pub project_id: String,
@@ -67,7 +67,7 @@ fn default_is_published() -> bool {
 }
 
 /// Page update request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UpdatePageRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_id: Option<Id>,
@@ -86,7 +86,7 @@ pub struct UpdatePageRequest {
 }
 
 /// Page response (full page with all fields)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct PageResponse {
     pub id: Id,
     pub project_id: Id,
@@ -102,8 +102,8 @@ pub struct PageResponse {
     pub position: i32,
     pub is_published: bool,
     pub is_indexed: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<Page> for PageResponse {
@@ -128,7 +128,7 @@ impl From<Page> for PageResponse {
 }
 
 /// Page tree node (for tree listing)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct PageTreeNode {
     pub id: Id,
     pub project_id: Id,
@@ -146,7 +146,7 @@ pub struct PageTreeNode {
 }
 
 /// Page list item (for flat listings)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct PageListItem {
     pub id: Id,
     pub project_id: Id,
@@ -162,18 +162,18 @@ pub struct PageListItem {
     pub content: Option<String>,
     pub position: i32,
     pub is_published: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Page reorder request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ReorderPagesRequest {
     pub page_ids: Vec<Id>,
 }
 
 /// List pages query parameters
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListPagesQuery {
     pub project_id: Id,
     pub branch_id: Id,
@@ -198,13 +198,13 @@ pub type ListPagesResponse = PaginatedResponse<PageListItem>;
 pub type GetPageTreeResponse = Vec<PageTreeNode>;
 
 /// Comment on a page
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct PageComment {
     pub id: Id,
     pub page_id: Id,
     pub content: String,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 #[cfg(test)]

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::common::{Id, Timestamp};
 
 /// Notification type
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
 #[sqlx(type_name = "NotificationType", rename_all = "lowercase")]
 pub enum NotificationType {
     Comment,
@@ -18,7 +18,7 @@ pub enum NotificationType {
 }
 
 /// Notification status
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
 #[sqlx(type_name = "NotificationStatus", rename_all = "lowercase")]
 pub enum NotificationStatus {
     Unread,
@@ -31,7 +31,7 @@ pub enum NotificationStatus {
 }
 
 /// Notification entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Notification {
     pub id: Id,
     pub user_id: Id,
@@ -41,12 +41,12 @@ pub struct Notification {
     pub data: serde_json::Value,
     pub status: NotificationStatus,
     pub read_at: Option<DateTime<Utc>>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Notification response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct NotificationResponse {
     pub id: Id,
     pub user_id: Id,
@@ -56,8 +56,8 @@ pub struct NotificationResponse {
     pub data: serde_json::Value,
     pub status: NotificationStatus,
     pub read_at: Option<DateTime<Utc>>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<Notification> for NotificationResponse {
@@ -78,7 +78,7 @@ impl From<Notification> for NotificationResponse {
 }
 
 /// Create notification request (internal use, not from API)
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreateNotificationRequest {
     pub user_id: Id,
     pub notification_type: NotificationType,
@@ -89,27 +89,27 @@ pub struct CreateNotificationRequest {
 }
 
 /// Mark notification as read request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct MarkNotificationReadRequest {
     #[serde(default)]
     pub notification_ids: Vec<Id>,
 }
 
 /// Mark all notifications as read request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct MarkAllNotificationsReadRequest {
     #[serde(default)]
     pub notification_type: Option<NotificationType>,
 }
 
 /// Archive notification request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ArchiveNotificationRequest {
     pub notification_id: Id,
 }
 
 /// List notifications query
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListNotificationsQuery {
     #[serde(default)]
     pub status: Option<NotificationStatus>,
@@ -122,7 +122,7 @@ pub struct ListNotificationsQuery {
 }
 
 /// Notification count response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct NotificationCountResponse {
     pub total: i64,
     pub unread: i64,

@@ -10,6 +10,7 @@ chrono = { workspace = true }
 uuid = { workspace = true }
 validator = { workspace = true }
 sqlx = { workspace = true }
+utoipa = { workspace = true, features = ["chrono", "uuid"] }
 
 [dev-dependencies]
 tokio = { workspace = true }

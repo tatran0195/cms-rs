@@ -1,18 +1,75 @@
 //! Markdown renderer
 //!
 //! This module provides Markdown to HTML rendering for published pages.
+//! Syntax highlighting is performed **server-side** using [`syntect`] — no
+//! client-side JavaScript is required. A `SyntaxSet` and `ThemeSet` are
+//! loaded once at program startup via [`lazy_static`] and reused across all
+//! requests.
 
 use std::collections::HashSet;
 
 use ammonia::Builder;
 use cms_entity::{page::Page, project::Project};
-use pulldown_cmark::{html, Options, Parser};
+use lazy_static::lazy_static;
+use pulldown_cmark::{html, CodeBlockKind, Event, Options, Parser, Tag, TagEnd};
+use syntect::{
+    highlighting::ThemeSet,
+    html::highlighted_html_for_string,
+    parsing::SyntaxSet,
+};
+
+// ---------------------------------------------------------------------------
+// Global, lazily-initialized syntax/theme sets (expensive to construct)
+// ---------------------------------------------------------------------------
+
+lazy_static! {
+    /// All bundled syntaxes shipped with syntect (TextMate `.tmLanguage` grammars).
+    static ref SYNTAX_SET: SyntaxSet = SyntaxSet::load_defaults_newlines();
+
+    /// All bundled colour themes shipped with syntect.
+    static ref THEME_SET: ThemeSet = ThemeSet::load_defaults();
+}
+
+// ---------------------------------------------------------------------------
+// Configuration
+// ---------------------------------------------------------------------------
+
+/// Which colour theme to use for server-side syntax highlighting.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum HighlightTheme {
+    /// Light theme — resembles GitHub's code view (default for light pages).
+    #[default]
+    InspiredGitHub,
+    /// Dark theme — base16-ocean dark palette.
+    OceanDark,
+    /// Monokai — the classic dark editor theme.
+    Monokai,
+    /// Solarized (light variant).
+    SolarizedLight,
+    /// Solarized (dark variant).
+    SolarizedDark,
+}
+
+impl HighlightTheme {
+    /// Returns the syntect theme key for this variant.
+    fn as_syntect_key(&self) -> &'static str {
+        match self {
+            HighlightTheme::InspiredGitHub => "InspiredGitHub",
+            HighlightTheme::OceanDark => "base16-ocean.dark",
+            HighlightTheme::Monokai => "Monokai",
+            HighlightTheme::SolarizedLight => "Solarized (light)",
+            HighlightTheme::SolarizedDark => "Solarized (dark)",
+        }
+    }
+}
 
 /// Markdown renderer configuration
 #[derive(Debug, Clone)]
 pub struct MarkdownRendererConfig {
     /// Enable syntax highlighting
     pub enable_syntax_highlighting: bool,
+    /// Colour theme used for syntax highlighting
+    pub highlight_theme: HighlightTheme,
     /// Enable table of contents
     pub enable_toc: bool,
     /// Enable footnotes
@@ -33,6 +90,7 @@ impl Default for MarkdownRendererConfig {
     fn default() -> Self {
         Self {
             enable_syntax_highlighting: true,
+            highlight_theme: HighlightTheme::default(),
             enable_toc: true,
             enable_footnotes: true,
             enable_task_lists: true,
@@ -44,6 +102,10 @@ impl Default for MarkdownRendererConfig {
     }
 }
 
+// ---------------------------------------------------------------------------
+// MarkdownRenderer
+// ---------------------------------------------------------------------------
+
 /// Markdown renderer
 pub struct MarkdownRenderer {
     config: MarkdownRendererConfig,
@@ -54,43 +116,56 @@ impl MarkdownRenderer {
         Self { config }
     }
 
+    // -----------------------------------------------------------------------
+    // Public API
+    // -----------------------------------------------------------------------
+
     /// Render page content to HTML
     pub fn render_page(&self, page: &Page, project: &Project) -> String {
-        // Build parser options
-        let mut options = Options::empty();
-
-        if self.config.enable_footnotes {
-            options.insert(Options::ENABLE_FOOTNOTES);
-        }
-        if self.config.enable_task_lists {
-            options.insert(Options::ENABLE_TASKLISTS);
-        }
-        if self.config.enable_strikethrough {
-            options.insert(Options::ENABLE_STRIKETHROUGH);
-        }
-        if self.config.enable_heading_ids {
-            options.insert(Options::ENABLE_HEADING_ATTRIBUTES);
-        }
-
-        // Parse markdown
-        let parser = Parser::new_ext(&page.content, options);
-
-        // Render to HTML
-        let mut html = String::new();
-        html::push_html(&mut html, parser);
-
-        // Sanitize HTML
-        let clean_html = self.sanitize_html(&html);
-
-        // Wrap in page template
+        let clean_html = self.render_markdown(&page.content);
         self.wrap_in_template(&clean_html, page, project)
     }
 
-    /// Render markdown string to HTML
+    /// Render a markdown string to sanitized HTML.
+    ///
+    /// When `enable_syntax_highlighting` is `true`, fenced code blocks are
+    /// highlighted server-side by syntect before the HTML sanitisation pass.
     pub fn render_markdown(&self, markdown: &str) -> String {
-        // Build parser options
-        let mut options = Options::empty();
+        let options = self.build_parser_options();
+        let parser = Parser::new_ext(markdown, options);
 
+        let html = if self.config.enable_syntax_highlighting {
+            self.render_with_highlighting(parser)
+        } else {
+            let mut output = String::new();
+            html::push_html(&mut output, parser);
+            output
+        };
+
+        self.sanitize_html(&html)
+    }
+
+    /// Highlight a code snippet and return an HTML `<pre>` block with inline
+    /// colour spans.  Falls back gracefully to an escaped plain `<pre>` if
+    /// the language is unknown or highlighting fails.
+    pub fn highlight_code(&self, code: &str, language: Option<&str>) -> String {
+        if !self.config.enable_syntax_highlighting {
+            return format!(
+                "<pre><code>{}</code></pre>",
+                self.escape_html(code)
+            );
+        }
+
+        self.do_highlight(code, language)
+    }
+
+    // -----------------------------------------------------------------------
+    // Internal helpers
+    // -----------------------------------------------------------------------
+
+    /// Build pulldown-cmark `Options` from renderer config.
+    fn build_parser_options(&self) -> Options {
+        let mut options = Options::empty();
         if self.config.enable_footnotes {
             options.insert(Options::ENABLE_FOOTNOTES);
         }
@@ -103,19 +178,113 @@ impl MarkdownRenderer {
         if self.config.enable_heading_ids {
             options.insert(Options::ENABLE_HEADING_ATTRIBUTES);
         }
-
-        // Parse markdown
-        let parser = Parser::new_ext(markdown, options);
-
-        // Render to HTML
-        let mut html = String::new();
-        html::push_html(&mut html, parser);
-
-        // Sanitize HTML
-        self.sanitize_html(&html)
+        options
     }
 
-    /// Sanitize HTML to prevent XSS
+    /// Walk the pulldown-cmark event stream, intercept `CodeBlock` events and
+    /// replace them with pre-highlighted raw HTML events.  All other events
+    /// are forwarded unchanged and rendered by `html::push_html`.
+    fn render_with_highlighting<'a, I>(&self, parser: I) -> String
+    where
+        I: Iterator<Item = Event<'a>>,
+    {
+        // We collect the transformed events into a Vec so we can feed them
+        // back into `html::push_html`.
+        let mut events: Vec<Event<'_>> = Vec::new();
+        let mut in_code_block = false;
+        let mut current_lang: Option<String> = None;
+        let mut code_buf = String::new();
+
+        for event in parser {
+            match event {
+                Event::Start(Tag::CodeBlock(ref kind)) => {
+                    in_code_block = true;
+                    current_lang = match kind {
+                        CodeBlockKind::Fenced(lang) => {
+                            let s = lang.as_ref().trim().to_owned();
+                            if s.is_empty() { None } else { Some(s) }
+                        }
+                        CodeBlockKind::Indented => None,
+                    };
+                    code_buf.clear();
+                    // Don't emit a Start event — we'll emit raw HTML instead.
+                }
+                Event::End(TagEnd::CodeBlock) => {
+                    in_code_block = false;
+                    let highlighted = self.do_highlight(&code_buf, current_lang.as_deref());
+                    // Inject pre-rendered HTML as a raw event.
+                    events.push(Event::Html(highlighted.into()));
+                    current_lang = None;
+                    code_buf.clear();
+                }
+                Event::Text(ref text) if in_code_block => {
+                    code_buf.push_str(text);
+                }
+                other => {
+                    events.push(other);
+                }
+            }
+        }
+
+        let mut output = String::new();
+        html::push_html(&mut output, events.into_iter());
+        output
+    }
+
+    /// Core syntect highlighting routine.
+    ///
+    /// Resolution order for the syntax:
+    /// 1. Exact token (e.g. `"rust"`, `"python"`)
+    /// 2. File-extension lookup (e.g. `"js"` → JavaScript)
+    /// 3. Plain text fallback
+    fn do_highlight(&self, code: &str, language: Option<&str>) -> String {
+        let ss = &*SYNTAX_SET;
+        let ts = &*THEME_SET;
+
+        let theme_key = self.config.highlight_theme.as_syntect_key();
+        let theme = ts
+            .themes
+            .get(theme_key)
+            .or_else(|| ts.themes.get("InspiredGitHub"))
+            .expect("bundled syntect themes are always present");
+
+        // Resolve syntax definition.
+        let syntax = language
+            .and_then(|lang| {
+                // Try the first word of the language tag (e.g. "rust ignore" → "rust").
+                let token = lang.split_whitespace().next().unwrap_or(lang);
+
+                // 1. Token match (case-insensitive name)
+                ss.find_syntax_by_token(token)
+                    // 2. Extension match
+                    .or_else(|| ss.find_syntax_by_extension(token))
+            })
+            .unwrap_or_else(|| ss.find_syntax_plain_text());
+
+        match highlighted_html_for_string(code, ss, syntax, theme) {
+            Ok(html) => {
+                // syntect wraps output in <pre style="..."><span...>, which is
+                // exactly what we want for inline styles.
+                html
+            }
+            Err(_) => {
+                // Graceful degradation: plain escaped block with language class.
+                let lang_class = language
+                    .map(|l| format!(" class=\"language-{}\"", l))
+                    .unwrap_or_default();
+                format!(
+                    "<pre{}><code>{}</code></pre>",
+                    lang_class,
+                    self.escape_html(code)
+                )
+            }
+        }
+    }
+
+    /// Sanitize HTML to prevent XSS.
+    ///
+    /// Note: inline `style` attributes **are** allowed so that syntect's
+    /// colour spans (`<span style="color:...">`) survive sanitisation.
     fn sanitize_html(&self, html: &str) -> String {
         let mut ammonia = Builder::default();
         ammonia
@@ -253,7 +422,7 @@ impl MarkdownRenderer {
         attrs.insert("td", td_attrs.clone());
         attrs.insert("th", td_attrs);
 
-        // Global attributes
+        // Global attributes — including `style` so syntect spans survive.
         let mut global_attrs = HashSet::new();
         global_attrs.insert("class");
         global_attrs.insert("id");
@@ -324,15 +493,20 @@ impl MarkdownRenderer {
             color: #333;
         }}
         pre {{
-            background: #f4f4f4;
-            padding: 10px;
-            border-radius: 5px;
+            border-radius: 6px;
             overflow-x: auto;
+            font-size: 0.9em;
+        }}
+        /* syntect emits inline styles; these rules set sensible defaults for
+           the <pre> wrapper it generates. */
+        pre[style] {{
+            padding: 1em;
         }}
         code {{
             background: #f4f4f4;
             padding: 2px 5px;
             border-radius: 3px;
+            font-size: 0.9em;
         }}
         table {{
             border-collapse: collapse;
@@ -399,7 +573,7 @@ impl MarkdownRenderer {
 
         for event in parser {
             match event {
-                pulldown_cmark::Event::Start(pulldown_cmark::Tag::Heading { level, .. }) => {
+                Event::Start(Tag::Heading { level, .. }) => {
                     let heading_level: usize = match level {
                         pulldown_cmark::HeadingLevel::H1 => 1,
                         pulldown_cmark::HeadingLevel::H2 => 2,
@@ -415,15 +589,15 @@ impl MarkdownRenderer {
                     let indent = (heading_level.saturating_sub(1)) * 4;
                     toc.push_str(&format!("{}<li>", " ".repeat(indent)));
                 }
-                pulldown_cmark::Event::Text(text) => {
+                Event::Text(text) => {
                     // Generate anchor from text
                     let anchor = self.generate_anchor(&text);
                     toc.push_str(&format!("<a href=\"#{}\">{}</a>", anchor, text));
                 }
-                pulldown_cmark::Event::End(pulldown_cmark::TagEnd::Heading(_)) => {
+                Event::End(TagEnd::Heading(_)) => {
                     toc.push_str("</li>\n");
                 }
-                pulldown_cmark::Event::End(pulldown_cmark::TagEnd::Paragraph) if in_list => {
+                Event::End(TagEnd::Paragraph) if in_list => {
                     toc.push_str("</ul>\n");
                     in_list = false;
                 }
@@ -449,68 +623,19 @@ impl MarkdownRenderer {
             .replace(|c: char| !c.is_ascii_alphanumeric() && c != '-', "")
     }
 
-    /// Highlight code blocks with syntax highlighting
-    pub fn highlight_code(&self, code: &str, language: Option<&str>) -> String {
-        if !self.config.enable_syntax_highlighting {
-            return format!("<pre><code>{}</code></pre>", self.escape_html(code));
-        }
-
-        // In a real implementation, this would use a syntax highlighting library
-        // For now, we'll just return the code in a pre block
-        match language {
-            Some("rust") => format!(
-                "<pre class=\"language-rust\"><code>{}</code></pre>",
-                self.escape_html(code)
-            ),
-            Some("javascript") | Some("js") => format!(
-                "<pre class=\"language-javascript\"><code>{}</code></pre>",
-                self.escape_html(code)
-            ),
-            Some("typescript") | Some("ts") => format!(
-                "<pre class=\"language-typescript\"><code>{}</code></pre>",
-                self.escape_html(code)
-            ),
-            Some("python") | Some("py") => format!(
-                "<pre class=\"language-python\"><code>{}</code></pre>",
-                self.escape_html(code)
-            ),
-            Some("html") => format!(
-                "<pre class=\"language-html\"><code>{}</code></pre>",
-                self.escape_html(code)
-            ),
-            Some("css") => format!(
-                "<pre class=\"language-css\"><code>{}</code></pre>",
-                self.escape_html(code)
-            ),
-            Some("bash") | Some("sh") => format!(
-                "<pre class=\"language-bash\"><code>{}</code></pre>",
-                self.escape_html(code)
-            ),
-            Some("json") => format!(
-                "<pre class=\"language-json\"><code>{}</code></pre>",
-                self.escape_html(code)
-            ),
-            Some("yaml") | Some("yml") => format!(
-                "<pre class=\"language-yaml\"><code>{}</code></pre>",
-                self.escape_html(code)
-            ),
-            Some("markdown") | Some("md") => format!(
-                "<pre class=\"language-markdown\"><code>{}</code></pre>",
-                self.escape_html(code)
-            ),
-            _ => format!("<pre><code>{}</code></pre>", self.escape_html(code)),
-        }
-    }
-
     /// Escape HTML special characters
     fn escape_html(&self, text: &str) -> String {
         text.replace('&', "&amp;")
             .replace('<', "&lt;")
             .replace('>', "&gt;")
             .replace('"', "&quot;")
-            .replace("'", "&#x27;")
+            .replace('\'', "&#x27;")
     }
 }
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
@@ -537,5 +662,57 @@ mod tests {
             renderer.generate_anchor("Special!@#$%Chars"),
             "specialchars"
         );
+    }
+
+    #[test]
+    fn test_rust_code_highlighting() {
+        let renderer = MarkdownRenderer::new(MarkdownRendererConfig::default());
+
+        let markdown = "```rust\nfn main() {\n    println!(\"hello\");\n}\n```";
+        let html = renderer.render_markdown(markdown);
+
+        // syntect emits a <pre> with inline style attributes
+        assert!(html.contains("<pre"), "expected a <pre> block");
+        // The word 'fn' should appear somewhere in the output (possibly as a span)
+        assert!(
+            html.contains("fn") || html.contains("&lt;"),
+            "expected code content"
+        );
+    }
+
+    #[test]
+    fn test_unknown_language_fallback() {
+        let renderer = MarkdownRenderer::new(MarkdownRendererConfig::default());
+
+        let html = renderer.highlight_code("hello world", Some("nonexistent-lang-xyz"));
+        // Should still produce a <pre> block without panicking
+        assert!(html.contains("<pre"));
+        assert!(html.contains("hello world") || html.contains("hello"));
+    }
+
+    #[test]
+    fn test_highlighting_disabled() {
+        let config = MarkdownRendererConfig {
+            enable_syntax_highlighting: false,
+            ..Default::default()
+        };
+        let renderer = MarkdownRenderer::new(config);
+
+        let html = renderer.highlight_code("let x = 1;", Some("rust"));
+        // Must not contain any syntect inline styles
+        assert!(!html.contains("style=\""));
+        assert!(html.contains("<pre><code>"));
+    }
+
+    #[test]
+    fn test_highlight_theme_selection() {
+        let config = MarkdownRendererConfig {
+            highlight_theme: HighlightTheme::OceanDark,
+            ..Default::default()
+        };
+        let renderer = MarkdownRenderer::new(config);
+
+        let html = renderer.highlight_code("let x = 1;", Some("rust"));
+        assert!(html.contains("<pre"), "expected a highlighted <pre> block");
     }
 }

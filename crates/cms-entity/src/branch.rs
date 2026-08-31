@@ -1,12 +1,12 @@
 //! Branch entity types
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::common::{Id, PaginatedResponse, Timestamp};
 
 /// Branch entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Branch {
     pub id: Id,
     pub project_id: Id,
@@ -16,12 +16,12 @@ pub struct Branch {
     pub description: Option<String>,
     pub is_default: bool,
     pub is_protected: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Branch create request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreateBranchRequest {
     pub project_id: Id,
     pub name: String,
@@ -32,7 +32,7 @@ pub struct CreateBranchRequest {
 }
 
 /// Branch update request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UpdateBranchRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -43,7 +43,7 @@ pub struct UpdateBranchRequest {
 }
 
 /// Branch response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct BranchResponse {
     pub id: Id,
     pub project_id: Id,
@@ -53,8 +53,8 @@ pub struct BranchResponse {
     pub description: Option<String>,
     pub is_default: bool,
     pub is_protected: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<Branch> for BranchResponse {
@@ -74,7 +74,7 @@ impl From<Branch> for BranchResponse {
 }
 
 /// Branch with project information
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct BranchWithProjectResponse {
     #[serde(flatten)]
     pub branch: BranchResponse,
@@ -82,7 +82,7 @@ pub struct BranchWithProjectResponse {
 }
 
 /// List branches query parameters
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListBranchesQuery {
     pub project_id: Id,
     #[serde(default)]
@@ -93,7 +93,7 @@ pub struct ListBranchesQuery {
 pub type ListBranchesResponse = PaginatedResponse<BranchResponse>;
 
 /// Set default branch request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct SetDefaultBranchRequest {
     pub branch_id: Id,
 }

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::common::{Id, Timestamp};
 
 /// Deployment status
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
 #[sqlx(type_name = "DeploymentStatus", rename_all = "lowercase")]
 pub enum DeploymentStatus {
     Pending,
@@ -18,7 +18,7 @@ pub enum DeploymentStatus {
 }
 
 /// Deployment entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Deployment {
     pub id: Id,
     pub project_id: Id,
@@ -27,12 +27,12 @@ pub struct Deployment {
     pub build_logs: Option<String>,
     pub error_message: Option<String>,
     pub deployed_at: Option<DateTime<Utc>>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Deployment response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct DeploymentResponse {
     pub id: Id,
     pub project_id: Id,
@@ -41,8 +41,8 @@ pub struct DeploymentResponse {
     pub build_logs: Option<String>,
     pub error_message: Option<String>,
     pub deployed_at: Option<DateTime<Utc>>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<Deployment> for DeploymentResponse {
@@ -62,7 +62,7 @@ impl From<Deployment> for DeploymentResponse {
 }
 
 /// Create deployment request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreateDeploymentRequest {
     pub project_id: Id,
     #[serde(default)]
@@ -70,7 +70,7 @@ pub struct CreateDeploymentRequest {
 }
 
 /// Update deployment request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UpdateDeploymentRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<DeploymentStatus>,
@@ -81,7 +81,7 @@ pub struct UpdateDeploymentRequest {
 }
 
 /// List deployments query
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListDeploymentsQuery {
     #[serde(default)]
     pub project_id: Option<Id>,

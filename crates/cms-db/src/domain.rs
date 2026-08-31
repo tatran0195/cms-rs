@@ -225,21 +225,15 @@ impl DomainQueries {
         hostname: &str,
         exclude_domain_id: Option<&str>,
     ) -> Result<bool, AppError> {
-        let mut query = "SELECT COUNT(*) FROM \"Domain\" WHERE hostname = $1".to_string();
-
-        if let Some(domain_id) = exclude_domain_id {
-            query.push_str(" AND id != $2");
-        }
-
         let count: i64 = if let Some(domain_id) = exclude_domain_id {
-            sqlx::query_scalar(&query)
+            sqlx::query_scalar(r#"SELECT COUNT(*) FROM "Domain" WHERE hostname = $1 AND id != $2"#)
                 .bind(hostname)
                 .bind(domain_id)
                 .fetch_one(pool)
                 .await
                 .map_err(|e| AppError::Database(e.into()))?
         } else {
-            sqlx::query_scalar(&query)
+            sqlx::query_scalar(r#"SELECT COUNT(*) FROM "Domain" WHERE hostname = $1"#)
                 .bind(hostname)
                 .fetch_one(pool)
                 .await

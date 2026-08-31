@@ -6,23 +6,23 @@ use serde::{Deserialize, Serialize};
 use crate::common::{Id, Timestamp};
 
 /// Reader entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Reader {
     pub id: Id,
     pub email: String,
     pub name: Option<String>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Reader response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ReaderResponse {
     pub id: Id,
     pub email: String,
     pub name: Option<String>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<Reader> for ReaderResponse {
@@ -38,7 +38,7 @@ impl From<Reader> for ReaderResponse {
 }
 
 /// Create reader request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreateReaderRequest {
     pub email: String,
     #[serde(default)]
@@ -46,32 +46,32 @@ pub struct CreateReaderRequest {
 }
 
 /// Update reader request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UpdateReaderRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 }
 
 /// Audience entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Audience {
     pub id: Id,
     pub project_id: Id,
     pub name: String,
     pub description: Option<String>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Audience response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AudienceResponse {
     pub id: Id,
     pub project_id: Id,
     pub name: String,
     pub description: Option<String>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<Audience> for AudienceResponse {
@@ -88,7 +88,7 @@ impl From<Audience> for AudienceResponse {
 }
 
 /// Create audience request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreateAudienceRequest {
     pub project_id: Id,
     pub name: String,
@@ -97,7 +97,7 @@ pub struct CreateAudienceRequest {
 }
 
 /// Update audience request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UpdateAudienceRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -106,21 +106,21 @@ pub struct UpdateAudienceRequest {
 }
 
 /// Reader audience entity (many-to-many between Reader and Audience)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ReaderAudience {
     pub id: Id,
     pub reader_id: Id,
     pub audience_id: Id,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Reader audience response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ReaderAudienceResponse {
     pub id: Id,
     pub reader_id: Id,
     pub audience_id: Id,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 impl From<ReaderAudience> for ReaderAudienceResponse {
@@ -135,25 +135,25 @@ impl From<ReaderAudience> for ReaderAudienceResponse {
 }
 
 /// Audience grant entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AudienceGrant {
     pub id: Id,
     pub audience_id: Id,
     pub project_id: Id,
     pub branch_id: Option<Id>,
     pub language_id: Option<Id>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Audience grant response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AudienceGrantResponse {
     pub id: Id,
     pub audience_id: Id,
     pub project_id: Id,
     pub branch_id: Option<Id>,
     pub language_id: Option<Id>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 impl From<AudienceGrant> for AudienceGrantResponse {
@@ -170,7 +170,7 @@ impl From<AudienceGrant> for AudienceGrantResponse {
 }
 
 /// Create audience grant request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreateAudienceGrantRequest {
     pub audience_id: Id,
     pub project_id: Id,
@@ -181,24 +181,24 @@ pub struct CreateAudienceGrantRequest {
 }
 
 /// Reader invitation entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ReaderInvitation {
     pub id: Id,
     pub audience_id: Id,
     pub email: String,
     pub token: String,
     pub expires_at: DateTime<Utc>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Reader invitation response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ReaderInvitationResponse {
     pub id: Id,
     pub audience_id: Id,
     pub email: String,
     pub expires_at: DateTime<Utc>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 impl From<ReaderInvitation> for ReaderInvitationResponse {
@@ -214,29 +214,29 @@ impl From<ReaderInvitation> for ReaderInvitationResponse {
 }
 
 /// Create reader invitation request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreateReaderInvitationRequest {
     pub audience_id: Id,
     pub email: String,
 }
 
 /// Reader session entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ReaderSession {
     pub id: Id,
     pub reader_id: Id,
     pub session_token: String,
     pub expires_at: DateTime<Utc>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Reader session response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ReaderSessionResponse {
     pub id: Id,
     pub reader_id: Id,
     pub expires_at: DateTime<Utc>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 impl From<ReaderSession> for ReaderSessionResponse {
@@ -251,25 +251,25 @@ impl From<ReaderSession> for ReaderSessionResponse {
 }
 
 /// JWT access provider entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct JwtAccessProvider {
     pub id: Id,
     pub name: String,
     pub issuer: String,
     pub audience: String,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// JWT access provider response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct JwtAccessProviderResponse {
     pub id: Id,
     pub name: String,
     pub issuer: String,
     pub audience: String,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<JwtAccessProvider> for JwtAccessProviderResponse {
@@ -286,35 +286,35 @@ impl From<JwtAccessProvider> for JwtAccessProviderResponse {
 }
 
 /// JWT replay entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct JwtReplay {
     pub id: Id,
     pub jwt_id: String,
     pub provider_id: Id,
-    pub used_at: Timestamp,
-    pub created_at: Timestamp,
+    pub used_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Reader audit log entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ReaderAuditLog {
     pub id: Id,
     pub reader_id: Id,
     pub project_id: Id,
     pub action: String,
     pub metadata: serde_json::Value,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Reader audit log response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ReaderAuditLogResponse {
     pub id: Id,
     pub reader_id: Id,
     pub project_id: Id,
     pub action: String,
     pub metadata: serde_json::Value,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 impl From<ReaderAuditLog> for ReaderAuditLogResponse {
@@ -331,7 +331,7 @@ impl From<ReaderAuditLog> for ReaderAuditLogResponse {
 }
 
 /// List readers query
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListReadersQuery {
     #[serde(default)]
     pub email: Option<String>,
@@ -342,7 +342,7 @@ pub struct ListReadersQuery {
 }
 
 /// List audiences query
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListAudiencesQuery {
     #[serde(default)]
     pub project_id: Option<Id>,
@@ -353,7 +353,7 @@ pub struct ListAudiencesQuery {
 }
 
 /// Create invitation request (invites a reader to access a project)
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreateInvitationRequest {
     pub email: String,
     pub project_id: Id,
@@ -363,7 +363,7 @@ pub struct CreateInvitationRequest {
 }
 
 /// Accept invitation request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct AcceptInvitationRequest {
     pub token: String,
     #[serde(default)]

@@ -1,11 +1,12 @@
 //! Theme entity types
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::common::{Id, Timestamp};
 
 /// Theme settings for a project
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Theme {
     pub id: Id,
     pub project_id: Id,
@@ -23,12 +24,12 @@ pub struct Theme {
     /// Whether this theme is globally applied (not project-specific)
     #[serde(default)]
     pub is_global: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Theme response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ThemeResponse {
     pub id: Id,
     pub project_id: Id,
@@ -40,8 +41,8 @@ pub struct ThemeResponse {
     pub font_family: Option<String>,
     pub logo_url: Option<String>,
     pub favicon_url: Option<String>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<Theme> for ThemeResponse {
@@ -64,7 +65,7 @@ impl From<Theme> for ThemeResponse {
 }
 
 /// Create theme request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreateThemeRequest {
     pub project_id: Id,
     pub name: String,
@@ -107,7 +108,7 @@ fn default_text() -> String {
 }
 
 /// Update theme request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UpdateThemeRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -134,7 +135,7 @@ pub struct UpdateThemeRequest {
 }
 
 /// Theme CSS variables
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ThemeCssVariables {
     pub primary_color: String,
     pub secondary_color: String,
@@ -156,7 +157,7 @@ impl From<Theme> for ThemeCssVariables {
 }
 
 /// List themes query
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListThemesQuery {
     #[serde(default)]
     pub project_id: Option<Id>,

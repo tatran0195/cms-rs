@@ -20,7 +20,7 @@ cms-error = { path = "../cms-error" }
 argon2 = { workspace = true }
 tracing = { workspace = true }
 anyhow = { workspace = true }
-axum-extra = { version = "0.9", features = ["cookie"] }
+axum-extra = { workspace = true, features = ["cookie"] }
 tower = { workspace = true }
 
 [dev-dependencies]

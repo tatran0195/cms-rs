@@ -213,26 +213,22 @@ impl SearchEngine for PgVectorSearchEngine {
 /// Qdrant-based search engine (optional)
 #[cfg(feature = "qdrant")]
 pub struct QdrantSearchEngine {
-    client: qdrant_client::client::QdrantClient,
+    client: qdrant_client::Qdrant,
     tokenizer: JapaneseTokenizer,
 }
 
 #[cfg(feature = "qdrant")]
 impl QdrantSearchEngine {
     pub async fn new(host: String, port: u16, api_key: Option<String>) -> Result<Self, AppError> {
-        use qdrant_client::client::QdrantClient;
+        use qdrant_client::Qdrant;
 
-        let mut config = qdrant_client::client::QdrantClientConfig::from_url(&format!(
-            "http://{}:{}",
-            host, port
-        ));
-
+        let mut builder = Qdrant::from_url(&format!("http://{}:{}", host, port));
         if let Some(key) = api_key {
-            config.api_key = Some(key);
+            builder = builder.api_key(key);
         }
 
-        let client = QdrantClient::new(Some(config))
-            .await
+        let client = builder
+            .build()
             .map_err(|e| AppError::SearchUnavailable(e.to_string()))?;
         let tokenizer = JapaneseTokenizer::new();
 

@@ -1,12 +1,13 @@
 //! Authentication and Authorization entity types
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use crate::common::{Id, Timestamp};
 
 /// User entity (simplified from Prisma User model)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct User {
     pub id: Id,
     pub email: String,
@@ -15,12 +16,12 @@ pub struct User {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub image: Option<String>,
     pub email_verified: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// User create request
-#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate, utoipa::ToSchema)]
 pub struct CreateUserRequest {
     #[validate(email(message = "Invalid email format"))]
     pub email: String,
@@ -38,7 +39,7 @@ pub struct CreateUserRequest {
 pub type RegisterRequest = CreateUserRequest;
 
 /// User update request
-#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate, utoipa::ToSchema)]
 pub struct UpdateUserRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[validate(length(max = 100, message = "Name must be at most 100 characters"))]
@@ -49,7 +50,7 @@ pub struct UpdateUserRequest {
 }
 
 /// User response (with sensitive fields removed)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct UserResponse {
     pub id: Id,
     pub email: String,
@@ -58,8 +59,8 @@ pub struct UserResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub image: Option<String>,
     pub email_verified: bool,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<User> for UserResponse {
@@ -77,27 +78,27 @@ impl From<User> for UserResponse {
 }
 
 /// Session entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Session {
     pub id: Id,
     pub user_id: Id,
     pub session_token: String,
-    pub expires_at: Timestamp,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub expires_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Session response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct SessionResponse {
     pub id: Id,
     pub user_id: Id,
-    pub expires_at: Timestamp,
-    pub created_at: Timestamp,
+    pub expires_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Account entity (for OAuth providers)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Account {
     pub id: Id,
     pub user_id: Id,
@@ -108,40 +109,40 @@ pub struct Account {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub refresh_token: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub expires_at: Option<Timestamp>,
+    pub expires_at: Option<DateTime<Utc>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scope: Option<String>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Verification token entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct VerificationToken {
     pub id: Id,
     pub identifier: String,
     pub token: String,
-    pub expires_at: Timestamp,
-    pub created_at: Timestamp,
+    pub expires_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
 }
 
 /// API Key entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ApiKey {
     pub id: Id,
     pub user_id: Id,
     pub name: String,
     pub key: String, // This is the hashed key, not the plaintext
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_used_at: Option<Timestamp>,
+    pub last_used_at: Option<DateTime<Utc>>,
 }
 
 /// API Key create request
-#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate, utoipa::ToSchema)]
 pub struct CreateApiKeyRequest {
     #[validate(length(
         min = 1,
@@ -152,15 +153,15 @@ pub struct CreateApiKeyRequest {
 }
 
 /// API Key response (without the actual key)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ApiKeyResponse {
     pub id: Id,
     pub user_id: Id,
     pub name: String,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_used_at: Option<Timestamp>,
+    pub last_used_at: Option<DateTime<Utc>>,
 }
 
 impl From<ApiKey> for ApiKeyResponse {
@@ -177,7 +178,7 @@ impl From<ApiKey> for ApiKeyResponse {
 }
 
 /// API Key with secret (only returned on creation)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ApiKeyWithSecretResponse {
     #[serde(flatten)]
     pub key: ApiKeyResponse,
@@ -185,7 +186,7 @@ pub struct ApiKeyWithSecretResponse {
 }
 
 /// Login request
-#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate, utoipa::ToSchema)]
 pub struct LoginRequest {
     #[validate(email(message = "Invalid email format"))]
     pub email: String,
@@ -194,14 +195,14 @@ pub struct LoginRequest {
 }
 
 /// Login response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct LoginResponse {
     pub user: UserResponse,
     pub session: SessionResponse,
 }
 
 /// OAuth login request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct OAuthLoginRequest {
     pub provider: String,
     pub code: String,
@@ -209,21 +210,21 @@ pub struct OAuthLoginRequest {
 }
 
 /// Token refresh request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct RefreshTokenRequest {
     pub refresh_token: String,
 }
 
 /// Token refresh response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct RefreshTokenResponse {
     pub access_token: String,
     pub refresh_token: String,
-    pub expires_at: Timestamp,
+    pub expires_at: DateTime<Utc>,
 }
 
 /// Authenticated user information (from session or API key)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AuthenticatedUser {
     pub user_id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -232,7 +233,7 @@ pub struct AuthenticatedUser {
 }
 
 /// Reader JWT claims
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ReaderJwtClaims {
     pub reader_id: Id,
     pub project_id: Id,
@@ -243,30 +244,29 @@ pub struct ReaderJwtClaims {
 }
 
 /// JWT access provider entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct JwtAccessProvider {
     pub id: Id,
     pub name: String,
     pub issuer: String,
     pub audience: String,
     pub secret: String,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// JWT replay tracking entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct JwtReplay {
     pub id: Id,
     pub jwt_id: String,
     pub provider_id: Id,
-    pub used_at: Timestamp,
-    pub created_at: Timestamp,
+    pub used_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[cfg(test)]
 mod tests {
-    use chrono::Utc;
 
     use super::*;
 

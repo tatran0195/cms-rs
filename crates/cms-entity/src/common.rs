@@ -13,7 +13,7 @@ pub type Timestamp = DateTime<Utc>;
 pub type UuidString = String;
 
 /// Pagination request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct PaginationRequest {
     #[serde(default = "default_page")]
     pub page: u64,
@@ -29,7 +29,7 @@ fn default_page_size() -> u64 {
 }
 
 /// Paginated response wrapper
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct PaginatedResponse<T> {
     pub data: Vec<T>,
     pub total: u64,
@@ -57,7 +57,7 @@ impl<T> PaginatedResponse<T> {
 }
 
 /// Sort order
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum SortOrder {
     #[default]
@@ -66,7 +66,7 @@ pub enum SortOrder {
 }
 
 /// Sort direction for queries
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct SortRequest {
     pub field: String,
     #[serde(default)]
@@ -74,10 +74,10 @@ pub struct SortRequest {
 }
 
 /// Health check response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct HealthResponse {
     pub status: String,
-    pub timestamp: Timestamp,
+    pub timestamp: DateTime<Utc>,
     pub version: String,
 }
 
@@ -92,7 +92,7 @@ impl HealthResponse {
 }
 
 /// API response envelope (for non-paginated responses)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ApiResponse<T> {
     pub data: T,
 }
@@ -104,11 +104,11 @@ impl<T> ApiResponse<T> {
 }
 
 /// Empty response for DELETE and other operations that don't return data
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct EmptyResponse;
 
 /// Success message response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct SuccessResponse {
     pub success: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -133,8 +133,7 @@ impl SuccessResponse {
 
 /// Member role in an organization
 #[derive(
-    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, sqlx::Type, Default,
-)]
+    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, sqlx::Type, Default, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 #[sqlx(type_name = "member_role", rename_all = "lowercase")]
 pub enum MemberRole {
@@ -150,7 +149,7 @@ pub enum MemberRole {
 }
 
 /// Project role
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum ProjectRole {
     Admin,
@@ -160,10 +159,10 @@ pub enum ProjectRole {
 }
 
 /// Entity audit information
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AuditInfo {
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_by: Option<Id>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -183,7 +182,7 @@ impl AuditInfo {
 }
 
 /// Filter operators for query parameters
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum FilterOperator {
     Eq,
@@ -202,7 +201,7 @@ pub enum FilterOperator {
 }
 
 /// Filter condition for queries
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct FilterCondition {
     pub field: String,
     pub operator: FilterOperator,

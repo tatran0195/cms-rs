@@ -27,10 +27,14 @@ sqlx = { workspace = true }
 tracing = { workspace = true }
 
 # Markdown rendering
-pulldown-cmark = "0.13"
+pulldown-cmark = { workspace = true }
 
 # HTML sanitization
 ammonia = { workspace = true }
+
+# Syntax highlighting (server-side, zero JS)
+syntect = { workspace = true }
+lazy_static = { workspace = true }
 
 [lints]
 workspace = true

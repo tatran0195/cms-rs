@@ -1,17 +1,16 @@
 //! Password hashing and verification
 
 use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    password_hash::{phc::PasswordHash, PasswordHasher, PasswordVerifier},
     Argon2,
 };
 use cms_error::AppError;
 
 /// Hash a password using Argon2
 pub fn hash_password(password: &str) -> Result<String, AppError> {
-    let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
     let hash = argon2
-        .hash_password(password.as_bytes(), &salt)
+        .hash_password(password.as_bytes())
         .map_err(|e| AppError::Internal(anyhow::anyhow!("Password hashing failed: {}", e)))?;
     Ok(hash.to_string())
 }

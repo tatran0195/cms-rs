@@ -20,7 +20,6 @@ use validator::Validate;
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ValidatedJson<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequest<S> for ValidatedJson<T>
 where
     T: DeserializeOwned + Validate + 'static,
@@ -61,7 +60,6 @@ impl<T> std::ops::Deref for ValidatedJson<T> {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ValidatedQuery<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequestParts<S> for ValidatedQuery<T>
 where
     T: DeserializeOwned + Validate + 'static,
@@ -116,7 +114,6 @@ pub fn validate<T: Validate>(value: &T) -> Result<(), AppError> {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ValidatedPath<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequestParts<S> for ValidatedPath<T>
 where
     T: DeserializeOwned + Validate + Send + 'static,

@@ -1,12 +1,13 @@
 //! Organization entity types
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use crate::common::{Id, MemberRole, PaginatedResponse, Timestamp};
 
 /// Organization entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Organization {
     pub id: Id,
     pub name: String,
@@ -15,12 +16,12 @@ pub struct Organization {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logo: Option<String>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Organization create request
-#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate, utoipa::ToSchema)]
 pub struct CreateOrganizationRequest {
     #[validate(length(
         min = 1,
@@ -34,7 +35,7 @@ pub struct CreateOrganizationRequest {
 }
 
 /// Organization update request
-#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate, utoipa::ToSchema)]
 pub struct UpdateOrganizationRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[validate(length(
@@ -52,7 +53,7 @@ pub struct UpdateOrganizationRequest {
 }
 
 /// Organization response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct OrganizationResponse {
     pub id: Id,
     pub name: String,
@@ -61,8 +62,8 @@ pub struct OrganizationResponse {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logo: Option<String>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<Organization> for OrganizationResponse {
@@ -80,25 +81,25 @@ impl From<Organization> for OrganizationResponse {
 }
 
 /// Member entity (user's membership in an organization)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Member {
     pub id: Id,
     pub user_id: Id,
     pub organization_id: Id,
     pub role: MemberRole,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Member response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct MemberResponse {
     pub id: Id,
     pub user_id: Id,
     pub organization_id: Id,
     pub role: MemberRole,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<Member> for MemberResponse {
@@ -115,7 +116,7 @@ impl From<Member> for MemberResponse {
 }
 
 /// Member with user information
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct MemberWithUserResponse {
     #[serde(flatten)]
     pub member: MemberResponse,
@@ -123,20 +124,20 @@ pub struct MemberWithUserResponse {
 }
 
 /// Invitation entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Invitation {
     pub id: Id,
     pub organization_id: Id,
     pub email: String,
     pub role: MemberRole,
     pub token: String,
-    pub expires_at: Timestamp,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub expires_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Invitation create request
-#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate, utoipa::ToSchema)]
 pub struct CreateInvitationRequest {
     #[validate(email(message = "Invalid email format"))]
     pub email: String,
@@ -149,14 +150,14 @@ fn default_invitation_role() -> MemberRole {
 }
 
 /// Invitation response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct InvitationResponse {
     pub id: Id,
     pub organization_id: Id,
     pub email: String,
     pub role: MemberRole,
-    pub expires_at: Timestamp,
-    pub created_at: Timestamp,
+    pub expires_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
 }
 
 impl From<Invitation> for InvitationResponse {
@@ -173,7 +174,7 @@ impl From<Invitation> for InvitationResponse {
 }
 
 /// Accept invitation request
-#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate, utoipa::ToSchema)]
 pub struct AcceptInvitationRequest {
     #[validate(length(min = 1, message = "Token is required"))]
     pub token: String,
@@ -182,7 +183,7 @@ pub struct AcceptInvitationRequest {
 }
 
 /// List members query parameters
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListMembersQuery {
     #[serde(default)]
     pub role: Option<MemberRole>,

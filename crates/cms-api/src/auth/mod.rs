@@ -1,14 +1,9 @@
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use axum::{
-    extract::FromRequestParts,
-    http::request::Parts,
     routing::{delete, get, post},
     Router,
 };
-use cms_entity::auth::UserResponse;
-use cms_error::AppError;
 use cms_middleware::app_state::AppState;
 
 pub mod handlers;
@@ -16,8 +11,6 @@ mod middleware;
 
 use handlers::*;
 use middleware::*;
-
-/// Deprecated: use crate::extractors::UserId instead.
 
 /// Create the auth router
 pub fn router(state: Arc<AppState>) -> Router {

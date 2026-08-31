@@ -25,7 +25,7 @@ use cms_db::{page::PageQueries, project::ProjectQueries};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
 use host_resolution::{HostResolutionResult, HostResolver};
-use markdown_renderer::{MarkdownRenderer, MarkdownRendererConfig};
+use markdown_renderer::{HighlightTheme, MarkdownRenderer, MarkdownRendererConfig};
 use security::SiteSecurityHeaders;
 use seo::{SeoGenerator, SitemapGenerator};
 use static_files::StaticFileServer;
@@ -86,6 +86,7 @@ fn get_markdown_renderer(_state: &Arc<SitesAppState>) -> MarkdownRenderer {
         enable_task_lists: true,
         enable_strikethrough: true,
         enable_emoji: true,
+        highlight_theme: HighlightTheme::default(),
         enable_heading_ids: true,
         base_url: "/".to_string(),
     };

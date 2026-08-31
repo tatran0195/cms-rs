@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::common::{Id, Timestamp};
 
 /// Export status
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
 #[sqlx(type_name = "ExportStatus", rename_all = "lowercase")]
 pub enum ExportStatus {
     Pending,
@@ -16,7 +16,7 @@ pub enum ExportStatus {
 }
 
 /// Export format
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
 #[sqlx(type_name = "ExportFormat", rename_all = "lowercase")]
 pub enum ExportFormat {
     Html,
@@ -35,23 +35,23 @@ pub enum ExportFormat {
 }
 
 /// Export snapshot entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ExportSnapshot {
     pub id: Id,
     pub project_id: Id,
     pub branch_id: Option<Id>,
     pub language_id: Option<Id>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Export snapshot response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ExportSnapshotResponse {
     pub id: Id,
     pub project_id: Id,
     pub branch_id: Option<Id>,
     pub language_id: Option<Id>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 impl From<ExportSnapshot> for ExportSnapshotResponse {
@@ -67,7 +67,7 @@ impl From<ExportSnapshot> for ExportSnapshotResponse {
 }
 
 /// Export job entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ExportJob {
     pub id: Id,
     pub snapshot_id: Id,
@@ -77,12 +77,12 @@ pub struct ExportJob {
     pub error_message: Option<String>,
     pub started_at: Option<DateTime<Utc>>,
     pub completed_at: Option<DateTime<Utc>>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Export job response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ExportJobResponse {
     pub id: Id,
     pub snapshot_id: Id,
@@ -93,8 +93,8 @@ pub struct ExportJobResponse {
     pub error_message: Option<String>,
     pub started_at: Option<DateTime<Utc>>,
     pub completed_at: Option<DateTime<Utc>>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<ExportJob> for ExportJobResponse {
@@ -119,14 +119,14 @@ impl From<ExportJob> for ExportJobResponse {
 }
 
 /// Create export job request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreateExportJobRequest {
     pub snapshot_id: Id,
     pub format: ExportFormat,
 }
 
 /// Export artifact entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ExportArtifact {
     pub id: Id,
     pub job_id: Id,
@@ -134,18 +134,18 @@ pub struct ExportArtifact {
     pub file_size: i64,
     pub storage_path: String,
     pub download_url: Option<String>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Export artifact response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ExportArtifactResponse {
     pub id: Id,
     pub job_id: Id,
     pub file_name: String,
     pub file_size: i64,
     pub download_url: Option<String>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 impl From<ExportArtifact> for ExportArtifactResponse {
@@ -162,7 +162,7 @@ impl From<ExportArtifact> for ExportArtifactResponse {
 }
 
 /// Export schedule entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ExportSchedule {
     pub id: Id,
     pub project_id: Id,
@@ -174,12 +174,12 @@ pub struct ExportSchedule {
     pub is_active: bool,
     pub last_run_at: Option<DateTime<Utc>>,
     pub next_run_at: Option<DateTime<Utc>>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Export schedule response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ExportScheduleResponse {
     pub id: Id,
     pub project_id: Id,
@@ -191,8 +191,8 @@ pub struct ExportScheduleResponse {
     pub is_active: bool,
     pub last_run_at: Option<DateTime<Utc>>,
     pub next_run_at: Option<DateTime<Utc>>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<ExportSchedule> for ExportScheduleResponse {
@@ -215,7 +215,7 @@ impl From<ExportSchedule> for ExportScheduleResponse {
 }
 
 /// Create export schedule request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreateExportScheduleRequest {
     pub project_id: Id,
     pub format: ExportFormat,
@@ -239,7 +239,7 @@ fn default_true() -> bool {
 }
 
 /// Update export schedule request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UpdateExportScheduleRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub format: Option<ExportFormat>,
@@ -256,7 +256,7 @@ pub struct UpdateExportScheduleRequest {
 }
 
 /// List export jobs query
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListExportJobsQuery {
     #[serde(default)]
     pub snapshot_id: Option<Id>,
@@ -271,7 +271,7 @@ pub struct ListExportJobsQuery {
 }
 
 /// Create export request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreateExportRequest {
     pub project_id: Id,
     #[serde(default)]

@@ -112,7 +112,6 @@ pub struct ReaderPrincipal {
 }
 
 /// Extract authenticated user from request
-#[async_trait]
 impl<S> FromRequestParts<S> for AuthenticatedUser
 where
     S: Send + Sync,
@@ -159,7 +158,6 @@ where
 }
 
 /// Extract API key principal from request
-#[async_trait]
 impl<S> FromRequestParts<S> for ApiKeyPrincipal
 where
     S: Send + Sync,

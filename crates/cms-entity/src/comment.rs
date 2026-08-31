@@ -7,7 +7,7 @@ use validator::Validate;
 use crate::common::{Id, Timestamp};
 
 /// Comment entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Comment {
     pub id: Id,
     pub page_id: Id,
@@ -18,12 +18,12 @@ pub struct Comment {
     pub resolved: bool,
     pub resolved_at: Option<DateTime<Utc>>,
     pub resolved_by: Option<Id>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Comment response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct CommentResponse {
     pub id: Id,
     pub page_id: Id,
@@ -34,8 +34,8 @@ pub struct CommentResponse {
     pub resolved: bool,
     pub resolved_at: Option<DateTime<Utc>>,
     pub resolved_by: Option<Id>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<Comment> for CommentResponse {
@@ -57,7 +57,7 @@ impl From<Comment> for CommentResponse {
 }
 
 /// Create comment request
-#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate, utoipa::ToSchema)]
 pub struct CreateCommentRequest {
     #[validate(length(min = 1, message = "Page ID is required"))]
     pub page_id: String,
@@ -72,7 +72,7 @@ pub struct CreateCommentRequest {
 }
 
 /// Update comment request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UpdateCommentRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
@@ -81,14 +81,14 @@ pub struct UpdateCommentRequest {
 }
 
 /// Resolve comment request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ResolveCommentRequest {
     #[serde(default)]
     pub resolved: bool,
 }
 
 /// List comments query
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListCommentsQuery {
     #[serde(default)]
     pub page_id: Option<Id>,
@@ -103,7 +103,7 @@ pub struct ListCommentsQuery {
 }
 
 /// Comment with replies
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct CommentWithReplies {
     #[serde(flatten)]
     pub comment: CommentResponse,

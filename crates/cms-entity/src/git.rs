@@ -7,7 +7,7 @@ use validator::Validate;
 use crate::common::{Id, Timestamp};
 
 /// Git provider types
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
 #[sqlx(type_name = "GitProvider", rename_all = "lowercase")]
 pub enum GitProvider {
     Github,
@@ -17,7 +17,7 @@ pub enum GitProvider {
 }
 
 /// Git sync operation type
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
 #[sqlx(type_name = "GitSyncOperationType", rename_all = "lowercase")]
 pub enum GitSyncOperationType {
     Full,
@@ -33,7 +33,7 @@ pub enum GitSyncOperationType {
 }
 
 /// Git sync operation status
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
 #[sqlx(type_name = "GitSyncOperationStatus", rename_all = "lowercase")]
 pub enum GitSyncOperationStatus {
     Pending,
@@ -44,7 +44,7 @@ pub enum GitSyncOperationStatus {
 }
 
 /// Git connection entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct GitConnection {
     pub id: Id,
     pub project_id: Id,
@@ -52,20 +52,20 @@ pub struct GitConnection {
     pub repository: String,
     pub branch: String,
     pub access_token: String,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Git connection response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct GitConnectionResponse {
     pub id: Id,
     pub project_id: Id,
     pub provider: GitProvider,
     pub repository: String,
     pub branch: String,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<GitConnection> for GitConnectionResponse {
@@ -83,7 +83,7 @@ impl From<GitConnection> for GitConnectionResponse {
 }
 
 /// Git connection create request
-#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate, utoipa::ToSchema)]
 pub struct CreateGitConnectionRequest {
     #[validate(length(min = 1, message = "Project ID is required"))]
     pub project_id: String,
@@ -102,7 +102,7 @@ fn default_branch() -> String {
 }
 
 /// Git connection update request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UpdateGitConnectionRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub repository: Option<String>,
@@ -113,7 +113,7 @@ pub struct UpdateGitConnectionRequest {
 }
 
 /// Git sync operation entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct GitSyncOperation {
     pub id: Id,
     pub connection_id: Id,
@@ -123,12 +123,12 @@ pub struct GitSyncOperation {
     pub error_message: Option<String>,
     pub started_at: Option<DateTime<Utc>>,
     pub completed_at: Option<DateTime<Utc>>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Git sync operation response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct GitSyncOperationResponse {
     pub id: Id,
     pub connection_id: Id,
@@ -138,8 +138,8 @@ pub struct GitSyncOperationResponse {
     pub error_message: Option<String>,
     pub started_at: Option<DateTime<Utc>>,
     pub completed_at: Option<DateTime<Utc>>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<GitSyncOperation> for GitSyncOperationResponse {
@@ -160,7 +160,7 @@ impl From<GitSyncOperation> for GitSyncOperationResponse {
 }
 
 /// Git file state entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct GitFileState {
     pub id: Id,
     pub project_id: Id,
@@ -168,12 +168,12 @@ pub struct GitFileState {
     pub git_path: String,
     pub last_commit_hash: Option<String>,
     pub last_sync_at: Option<DateTime<Utc>>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Git file state response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct GitFileStateResponse {
     pub id: Id,
     pub project_id: Id,
@@ -181,8 +181,8 @@ pub struct GitFileStateResponse {
     pub git_path: String,
     pub last_commit_hash: Option<String>,
     pub last_sync_at: Option<DateTime<Utc>>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<GitFileState> for GitFileStateResponse {
@@ -201,7 +201,7 @@ impl From<GitFileState> for GitFileStateResponse {
 }
 
 /// Git conflict entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct GitConflict {
     pub id: Id,
     pub project_id: Id,
@@ -212,12 +212,12 @@ pub struct GitConflict {
     pub resolved_content: Option<String>,
     pub resolved_at: Option<DateTime<Utc>>,
     pub resolved_by: Option<Id>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Git conflict response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct GitConflictResponse {
     pub id: Id,
     pub project_id: Id,
@@ -228,8 +228,8 @@ pub struct GitConflictResponse {
     pub resolved_content: Option<String>,
     pub resolved_at: Option<DateTime<Utc>>,
     pub resolved_by: Option<Id>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<GitConflict> for GitConflictResponse {
@@ -251,33 +251,33 @@ impl From<GitConflict> for GitConflictResponse {
 }
 
 /// Resolve conflict request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ResolveGitConflictRequest {
     pub resolved_content: String,
 }
 
 /// Git pull request entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct GitPullRequest {
     pub id: Id,
     pub connection_id: Id,
     pub pr_number: i32,
     pub title: String,
     pub state: String,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Git pull request response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct GitPullRequestResponse {
     pub id: Id,
     pub connection_id: Id,
     pub pr_number: i32,
     pub title: String,
     pub state: String,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<GitPullRequest> for GitPullRequestResponse {
@@ -295,23 +295,23 @@ impl From<GitPullRequest> for GitPullRequestResponse {
 }
 
 /// Git preview entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct GitPreview {
     pub id: Id,
     pub pull_request_id: Id,
     pub deployment_id: Option<Id>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Git preview response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct GitPreviewResponse {
     pub id: Id,
     pub pull_request_id: Id,
     pub deployment_id: Option<Id>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<GitPreview> for GitPreviewResponse {
@@ -327,7 +327,7 @@ impl From<GitPreview> for GitPreviewResponse {
 }
 
 /// Git webhook delivery entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct GitWebhookDelivery {
     pub id: Id,
     pub connection_id: Id,
@@ -336,22 +336,22 @@ pub struct GitWebhookDelivery {
     pub payload: serde_json::Value,
     pub status: String,
     pub error_message: Option<String>,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Git audit event entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct GitAuditEvent {
     pub id: Id,
     pub connection_id: Id,
     pub action: String,
     pub user_id: Option<Id>,
     pub metadata: serde_json::Value,
-    pub created_at: Timestamp,
+    pub created_at: DateTime<Utc>,
 }
 
 /// List git sync operations query
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListGitSyncOperationsQuery {
     #[serde(default)]
     pub connection_id: Option<Id>,

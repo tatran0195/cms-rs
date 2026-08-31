@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::common::{Id, Timestamp};
 
 /// OpenAPI document entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct OpenApiDocument {
     pub id: Id,
     pub project_id: Id,
@@ -15,12 +15,12 @@ pub struct OpenApiDocument {
     pub content: Option<String>,
     pub parsed_at: Option<DateTime<Utc>>,
     pub error_message: Option<String>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// OpenAPI document response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct OpenApiDocumentResponse {
     pub id: Id,
     pub project_id: Id,
@@ -29,8 +29,8 @@ pub struct OpenApiDocumentResponse {
     pub parsed_at: Option<DateTime<Utc>>,
     pub has_error: bool,
     pub error_message: Option<String>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<OpenApiDocument> for OpenApiDocumentResponse {
@@ -50,7 +50,7 @@ impl From<OpenApiDocument> for OpenApiDocumentResponse {
 }
 
 /// Create OpenAPI document request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct CreateOpenApiDocumentRequest {
     pub project_id: Id,
     pub name: String,
@@ -58,7 +58,7 @@ pub struct CreateOpenApiDocumentRequest {
 }
 
 /// Update OpenAPI document request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UpdateOpenApiDocumentRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -67,13 +67,13 @@ pub struct UpdateOpenApiDocumentRequest {
 }
 
 /// Parse OpenAPI document request
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ParseOpenApiDocumentRequest {
     pub id: Id,
 }
 
 /// OpenAPI parsing result
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct OpenApiParsingResult {
     pub document_id: Id,
     pub parsed_successfully: bool,
@@ -82,7 +82,7 @@ pub struct OpenApiParsingResult {
 }
 
 /// List OpenAPI documents query
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListOpenApiDocumentsQuery {
     #[serde(default)]
     pub project_id: Option<Id>,
@@ -95,7 +95,7 @@ pub struct ListOpenApiDocumentsQuery {
 }
 
 /// OpenAPI path info (simplified for responses)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct OpenApiPathInfo {
     pub path: String,
     pub method: String,
@@ -105,7 +105,7 @@ pub struct OpenApiPathInfo {
 }
 
 /// OpenAPI document with paths
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct OpenApiDocumentWithPaths {
     #[serde(flatten)]
     pub document: OpenApiDocumentResponse,

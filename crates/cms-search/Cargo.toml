@@ -11,16 +11,16 @@ cms-entity = { path = "../cms-entity" }
 cms-db = { path = "../cms-db" }
 
 # Japanese tokenizer
-lindera = { version = "0.25" }
+lindera = { workspace = true }
 
 # Vector search
-pgvector = { version = "0.4", optional = true }
+pgvector = { workspace = true, optional = true }
 
 # Postgres
 sqlx = { workspace = true, features = ["postgres", "runtime-tokio"] }
 
 # Qdrant
-qdrant-client = { version = "0.11", optional = true }
+qdrant-client = { workspace = true, optional = true }
 
 # Async
 tokio = { workspace = true }

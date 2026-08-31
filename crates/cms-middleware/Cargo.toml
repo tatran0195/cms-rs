@@ -19,7 +19,7 @@ cms-access-control = { path = "../cms-access-control" }
 # External dependencies
 axum = { workspace = true }
 tower = { workspace = true }
-tower-http = { version = "0.7.0", features = ["cors", "limit", "trace", "compression-full", "fs", "sensitive-headers", "set-header"] }
+tower-http = { workspace = true, features = ["cors", "limit", "trace", "compression-full", "fs", "sensitive-headers", "set-header"] }
 tokio = { workspace = true, features = ["full"] }
 serde = { workspace = true }
 tracing = { workspace = true }
@@ -32,8 +32,8 @@ async-trait = { workspace = true }
 # Production-ready infrastructure crates
 governor = { workspace = true }  # Rate limiting with per-key support
 metrics = { workspace = true }  # Lightweight metrics collection
-metrics-exporter-prometheus = { version = "0.11", optional = true }  # Optional Prometheus exporter
-hyper = { version = "1.3", optional = true }  # For Prometheus exporter
+metrics-exporter-prometheus = { workspace = true, optional = true }  # Optional Prometheus exporter
+hyper = { workspace = true, optional = true }  # For Prometheus exporter
 
 [features]
 default = []

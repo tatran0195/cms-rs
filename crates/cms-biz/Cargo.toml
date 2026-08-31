@@ -14,7 +14,7 @@ cms-storage = { path = "../cms-storage" }
 cms-search = { path = "../cms-search" }
 cms-queue = { path = "../cms-queue" }
 cms-access-control = { path = "../cms-access-control" }
-bytes = "1"
+bytes = { workspace = true }
 
 # Async
 tokio = { workspace = true }

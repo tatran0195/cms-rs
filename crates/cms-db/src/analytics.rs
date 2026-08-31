@@ -202,62 +202,47 @@ impl AnalyticsEventQueries {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<cms_entity::analytics::AnalyticsEvent>, AppError> {
-        let mut conditions: Vec<String> = Vec::new();
-        let mut idx = 1usize;
+        let mut builder = sqlx::QueryBuilder::<sqlx::Postgres>::new(r#"SELECT * FROM "AnalyticsEvent""#);
+        let mut has_where = false;
 
-        if project_id.is_some() {
-            conditions.push(format!("project_id = ${}", idx));
-            idx += 1;
-        }
-        if user_id.is_some() {
-            conditions.push(format!("user_id = ${}", idx));
-            idx += 1;
-        }
-        if event_type.is_some() {
-            conditions.push(format!("event_type = ${}", idx));
-            idx += 1;
-        }
-        if start_date.is_some() {
-            conditions.push(format!("created_at >= ${}", idx));
-            idx += 1;
-        }
-        if end_date.is_some() {
-            conditions.push(format!("created_at <= ${}", idx));
-            idx += 1;
-        }
-
-        let where_clause = if conditions.is_empty() {
-            String::new()
-        } else {
-            format!("WHERE {}", conditions.join(" AND "))
-        };
-
-        let sql = format!(
-            r#"SELECT * FROM "AnalyticsEvent" {} ORDER BY created_at DESC LIMIT ${} OFFSET ${}"#,
-            where_clause,
-            idx,
-            idx + 1
-        );
-
-        let mut q = sqlx::query_as::<_, AnalyticsEventRow>(&sql);
         if let Some(v) = project_id {
-            q = q.bind(v);
+            builder.push(if !has_where { " WHERE " } else { " AND " });
+            builder.push("project_id = ");
+            builder.push_bind(v);
+            has_where = true;
         }
         if let Some(v) = user_id {
-            q = q.bind(v);
+            builder.push(if !has_where { " WHERE " } else { " AND " });
+            builder.push("user_id = ");
+            builder.push_bind(v);
+            has_where = true;
         }
         if let Some(v) = event_type {
-            q = q.bind(v);
+            builder.push(if !has_where { " WHERE " } else { " AND " });
+            builder.push("event_type = ");
+            builder.push_bind(v);
+            has_where = true;
         }
         if let Some(v) = start_date {
-            q = q.bind(v);
+            builder.push(if !has_where { " WHERE " } else { " AND " });
+            builder.push("created_at >= ");
+            builder.push_bind(v);
+            has_where = true;
         }
         if let Some(v) = end_date {
-            q = q.bind(v);
+            builder.push(if !has_where { " WHERE " } else { " AND " });
+            builder.push("created_at <= ");
+            builder.push_bind(v);
+            has_where = true;
         }
-        q = q.bind(limit).bind(offset);
 
-        let rows = q
+        builder.push(" ORDER BY created_at DESC LIMIT ");
+        builder.push_bind(limit);
+        builder.push(" OFFSET ");
+        builder.push_bind(offset);
+
+        let rows = builder
+            .build_query_as::<AnalyticsEventRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;

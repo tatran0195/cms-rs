@@ -211,7 +211,6 @@ pub async fn log_response<B>(response: Response<B>) -> Response<B> {
 #[derive(Debug, Clone)]
 pub struct RequestId(pub String);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for RequestId
 where
     S: Send + Sync,
