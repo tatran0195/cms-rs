@@ -82,7 +82,7 @@ tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt", "json"] }
 
 # Configuration
-config = "0.15.25"
+config = { version = "0.15.25", features = ["toml"] }
 
 # Error handling
 anyhow = "1.0.104"
