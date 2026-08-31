@@ -806,9 +806,11 @@ impl Config {
     pub fn load_from_path(path: &str) -> Result<Self, anyhow::Error> {
         let mut builder = ConfigLib::builder();
 
-        if std::path::Path::new(path).exists() {
-            builder = builder.add_source(File::with_name(path));
+        if !std::path::Path::new(path).exists() {
+            anyhow::bail!("Config file does not exist at path: {}", path);
         }
+
+        builder = builder.add_source(File::with_name(path));
 
         builder = builder.add_source(
             Environment::with_prefix("CMS")
@@ -957,5 +959,33 @@ mod tests {
         // Untouched sections retain default values
         assert_eq!(config.queue.backend, "memory");
         assert_eq!(config.search.backend, "pgvector");
+    }
+
+    #[test]
+    fn test_load_from_path() {
+        let manifest_dir = env!("CARGO_MANIFEST_DIR");
+        let deploy_path = format!("{}/../../config/deploy.toml", manifest_dir);
+        let config = Config::load_from_path(&deploy_path);
+        assert!(config.is_ok(), "loading config/deploy.toml should succeed: {:?}", config.err());
+        let config = config.unwrap();
+        assert_eq!(config.database.max_pool_size, 30);
+        assert_eq!(config.queue.workers, 8);
+        assert_eq!(config.queue.max_retries, 5);
+        assert!(!config.admin_origin.allow_localhost);
+    }
+
+    #[test]
+    fn test_env_var_override() {
+        // Set an env var
+        env::set_var("CMS_SERVER__PORT", "9999");
+        env::set_var("CMS_DATABASE__MAX_POOL_SIZE", "77");
+
+        let config = Config::load().expect("Config::load should succeed");
+        assert_eq!(config.server.port, 9999);
+        assert_eq!(config.database.max_pool_size, 77);
+
+        // Cleanup
+        env::remove_var("CMS_SERVER__PORT");
+        env::remove_var("CMS_DATABASE__MAX_POOL_SIZE");
     }
 }
