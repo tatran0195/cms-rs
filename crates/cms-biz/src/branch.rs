@@ -333,43 +333,77 @@ impl BranchService {
         )
         .await?;
 
-        // Copy all pages from the source branch
-        let pages = PageQueries::get_by_project_and_branch(
-            &ctx.pool,
-            &source_branch.project_id,
-            source_branch_id,
-            None,
-            None,
-            None,
-            None,
-            None,
-        )
-        .await?;
+        // Copy all pages from the source branch preserving parent hierarchy
+        let all_pages = PageQueries::get_by_project(&ctx.pool, &source_branch.project_id).await?;
+        let branch_pages: Vec<cms_entity::page::Page> = all_pages
+            .into_iter()
+            .filter(|p| p.branch_id == source_branch_id)
+            .collect();
 
-        for page in pages {
-            // Create a copy of the page in the new branch
-            // Note: We need to handle parent relationships carefully
-            let parent_id: Option<&str> = if let Some(_parent_id) = &page.parent_id {
-                // Find the corresponding parent in the new branch
-                // Simplified: create all pages at root level
-                None
-            } else {
-                None
-            };
+        let mut id_mapping: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
+        let mut remaining = branch_pages;
 
-            PageQueries::create(
-                &ctx.pool,
-                &source_branch.project_id,
-                &new_branch.id,
-                parent_id,
-                &page.slug,
-                &page.title,
-                page.description.as_deref(),
-                page.content.as_deref(),
-                page.position,
-                page.is_published,
-            )
-            .await?;
+        // Multi-pass creation to ensure parents are created before children
+        while !remaining.is_empty() {
+            let mut made_progress = false;
+            let mut next_remaining = Vec::new();
+
+            for page in remaining {
+                let can_create = match &page.parent_id {
+                    None => true,
+                    Some(parent_id) => id_mapping.contains_key(parent_id),
+                };
+
+                if can_create {
+                    let mapped_parent = page
+                        .parent_id
+                        .as_ref()
+                        .and_then(|pid| id_mapping.get(pid).cloned());
+
+                    let new_page = PageQueries::create(
+                        &ctx.pool,
+                        &source_branch.project_id,
+                        &new_branch.id,
+                        mapped_parent.as_deref(),
+                        &page.slug,
+                        &page.title,
+                        page.description.as_deref(),
+                        Some(&page.content),
+                        page.position,
+                        page.is_published,
+                    )
+                    .await?;
+
+                    id_mapping.insert(page.id.clone(), new_page.id);
+                    made_progress = true;
+                } else {
+                    next_remaining.push(page);
+                }
+            }
+
+            if !made_progress {
+                // Fallback for orphan or circular parent references
+                for page in next_remaining {
+                    let new_page = PageQueries::create(
+                        &ctx.pool,
+                        &source_branch.project_id,
+                        &new_branch.id,
+                        None,
+                        &page.slug,
+                        &page.title,
+                        page.description.as_deref(),
+                        Some(&page.content),
+                        page.position,
+                        page.is_published,
+                    )
+                    .await?;
+                    id_mapping.insert(page.id.clone(), new_page.id);
+                }
+                break;
+            }
+
+            remaining = next_remaining;
         }
 
         Ok(BranchWithProjectResponse {

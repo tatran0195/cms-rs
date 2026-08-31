@@ -181,12 +181,7 @@ impl ExportService {
 
         let total = ExportJobQueries::count_by_project(&ctx.pool, project_id).await?;
 
-        Ok(PaginatedResponse::new(
-            jobs,
-            total as u64,
-            page,
-            page_size,
-        ))
+        Ok(PaginatedResponse::new(jobs, total as u64, page, page_size))
     }
 
     /// Get export artifacts for a job
@@ -455,7 +450,11 @@ pub async fn process_export_job(
     ExportJobQueries::update_status(pool, job_id, ExportStatus::Completed).await?;
     ExportJobQueries::update_output_path(pool, job_id, &storage_key).await?;
 
-    tracing::info!("Export job {} completed successfully -> {}", job_id, storage_key);
+    tracing::info!(
+        "Export job {} completed successfully -> {}",
+        job_id,
+        storage_key
+    );
 
     Ok(())
 }
@@ -572,8 +571,12 @@ async fn generate_pdf_export(
 ) -> Result<Bytes, AppError> {
     use printpdf::*;
 
-    let (doc, page1, layer1) =
-        PdfDocument::new(format!("Documentation - {}", project_id), Mm(210.0), Mm(297.0), "Layer 1");
+    let (doc, page1, layer1) = PdfDocument::new(
+        format!("Documentation - {}", project_id),
+        Mm(210.0),
+        Mm(297.0),
+        "Layer 1",
+    );
 
     let font_title = doc
         .add_builtin_font(BuiltinFont::HelveticaBold)
@@ -605,7 +608,13 @@ async fn generate_pdf_export(
     let mut current_y = 220.0;
 
     // Table of contents on first page
-    current_layer.use_text("Table of Contents:", 14.0, Mm(20.0), Mm(current_y), &font_title);
+    current_layer.use_text(
+        "Table of Contents:",
+        14.0,
+        Mm(20.0),
+        Mm(current_y),
+        &font_title,
+    );
     current_y -= 10.0;
 
     for (i, page) in pages.iter().take(15).enumerate() {
@@ -665,8 +674,9 @@ async fn generate_epub_export(
     let zip_lib = ZipLibrary::new()
         .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to create ZipLibrary: {:?}", e)))?;
 
-    let mut builder = EpubBuilder::new(zip_lib)
-        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to create EpubBuilder: {:?}", e)))?;
+    let mut builder = EpubBuilder::new(zip_lib).map_err(|e| {
+        AppError::Internal(anyhow::anyhow!("Failed to create EpubBuilder: {:?}", e))
+    })?;
 
     builder
         .metadata("author", "CMS Documentation Platform")
@@ -702,9 +712,9 @@ async fn generate_epub_export(
         let filename = format!("chapter_{}_{}.xhtml", i + 1, page.slug);
         let content = EpubContent::new(&filename, xhtml.as_bytes()).title(&page.title);
 
-        builder
-            .add_content(content)
-            .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to add EPUB chapter: {:?}", e)))?;
+        builder.add_content(content).map_err(|e| {
+            AppError::Internal(anyhow::anyhow!("Failed to add EPUB chapter: {:?}", e))
+        })?;
     }
 
     let mut output = Vec::new();
@@ -717,9 +727,10 @@ async fn generate_epub_export(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use chrono::Utc;
     use cms_entity::page::PageListItem;
+
+    use super::*;
 
     fn mock_pages() -> Vec<PageListItem> {
         vec![
@@ -732,7 +743,10 @@ mod tests {
                 slug: "getting-started".to_string(),
                 title: "Getting Started".to_string(),
                 description: Some("Introductory guide".to_string()),
-                content: Some("# Getting Started\n\nWelcome to **CMS**!\n\n- Feature 1\n- Feature 2".to_string()),
+                content: Some(
+                    "# Getting Started\n\nWelcome to **CMS**!\n\n- Feature 1\n- Feature 2"
+                        .to_string(),
+                ),
                 position: 0,
                 is_published: true,
                 created_at: Utc::now(),
@@ -799,4 +813,3 @@ mod tests {
         assert_eq!(&bytes[..2], b"PK");
     }
 }
-

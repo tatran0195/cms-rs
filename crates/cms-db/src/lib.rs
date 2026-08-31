@@ -34,6 +34,7 @@ pub mod theme;
 pub mod usage;
 
 use cms_error::AppError;
+pub use sqlx;
 use sqlx::postgres::PgPoolOptions;
 
 /// Database connection pool type

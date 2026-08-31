@@ -88,7 +88,27 @@ impl PlatformEventService {
     }
 
     /// Get system health
-    pub async fn get_system_health(_ctx: &BizContext) -> Result<serde_json::Value, AppError> {
-        Ok(serde_json::json!({ "status": "healthy", "database": "connected" }))
+    pub async fn get_system_health(ctx: &BizContext) -> Result<serde_json::Value, AppError> {
+        let start = std::time::Instant::now();
+        let db_status = match cms_db::sqlx::query("SELECT 1").execute(&ctx.pool).await {
+            Ok(_) => "connected",
+            Err(e) => {
+                tracing::error!("Database health check failed: {}", e);
+                "disconnected"
+            }
+        };
+        let latency_ms = start.elapsed().as_millis();
+        let status = if db_status == "connected" {
+            "healthy"
+        } else {
+            "degraded"
+        };
+
+        Ok(serde_json::json!({
+            "status": status,
+            "database": db_status,
+            "database_latency_ms": latency_ms,
+            "timestamp": Utc::now().to_rfc3339()
+        }))
     }
 }

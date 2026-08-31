@@ -518,18 +518,18 @@ async fn do_deployment(
         );
 
         storage
-            .put(&storage_key, bytes::Bytes::from(html), "text/html; charset=utf-8")
+            .put(
+                &storage_key,
+                bytes::Bytes::from(html),
+                "text/html; charset=utf-8",
+            )
             .await
             .map_err(|e| {
                 tracing::error!("Failed to store page {} at {}: {}", page.id, storage_key, e);
                 e
             })?;
 
-        tracing::debug!(
-            "Stored page {} -> {}",
-            page.path,
-            storage_key
-        );
+        tracing::debug!("Stored page {} -> {}", page.path, storage_key);
     }
 
     Ok(())
@@ -544,13 +544,9 @@ pub async fn process_publish_job(
     storage: Arc<dyn Storage>,
     payload: &serde_json::Value,
 ) -> Result<(), AppError> {
-    let page_id = payload
-        .get("page_id")
-        .and_then(|v| v.as_str());
+    let page_id = payload.get("page_id").and_then(|v| v.as_str());
 
-    let project_id = payload
-        .get("project_id")
-        .and_then(|v| v.as_str());
+    let project_id = payload.get("project_id").and_then(|v| v.as_str());
 
     // If we have a specific page_id, re-render just that page across active deployments
     if let (Some(pid), Some(proj_id)) = (page_id, project_id) {
@@ -559,7 +555,8 @@ pub async fn process_publish_job(
             .ok_or_else(|| AppError::NotFound("Page not found".to_string()))?;
 
         // Find active deployments for this project
-        let deployments = DeploymentQueries::get_active_by_project(pool, proj_id).await
+        let deployments = DeploymentQueries::get_active_by_project(pool, proj_id)
+            .await
             .unwrap_or_default();
 
         for deployment in &deployments {
@@ -567,13 +564,14 @@ pub async fn process_publish_job(
             let html = render_markdown_to_html(markdown, &page.title);
 
             let page_path = page.path.trim_start_matches('/');
-            let storage_key = format!(
-                "sites/{}/{}/{}.html",
-                proj_id, deployment.id, page_path
-            );
+            let storage_key = format!("sites/{}/{}/{}.html", proj_id, deployment.id, page_path);
 
             if let Err(e) = storage
-                .put(&storage_key, bytes::Bytes::from(html), "text/html; charset=utf-8")
+                .put(
+                    &storage_key,
+                    bytes::Bytes::from(html),
+                    "text/html; charset=utf-8",
+                )
                 .await
             {
                 tracing::error!(

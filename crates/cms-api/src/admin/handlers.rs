@@ -47,8 +47,11 @@ pub async fn list_all_organizations_handler(
     auth: AuthExtractor,
     Query(query): Query<serde_json::Value>,
 ) -> Result<Json<PaginatedResponse<OrganizationResponse>>, AppError> {
-    // Check if user is admin
-    // In a real implementation, this would check admin privileges
+    state
+        .biz_context
+        .access_control
+        .require_system_admin(&auth.user.id)
+        .await?;
 
     let page = query.get("page").and_then(|v| v.as_u64()).unwrap_or(1);
     let page_size = query
@@ -91,7 +94,11 @@ pub async fn get_organization_stats_handler(
     auth: AuthExtractor,
     Path(org_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    // Check if user is admin
+    state
+        .biz_context
+        .access_control
+        .require_system_admin(&auth.user.id)
+        .await?;
 
     let stats =
         cms_biz::analytics::AnalyticsService::get_organization_stats(&state.biz_context, &org_id)
@@ -123,7 +130,11 @@ pub async fn get_system_stats_handler(
     State(state): State<Arc<AppState>>,
     auth: AuthExtractor,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    // Check if user is admin
+    state
+        .biz_context
+        .access_control
+        .require_system_admin(&auth.user.id)
+        .await?;
 
     let stats = cms_biz::analytics::AnalyticsService::get_system_stats(&state.biz_context).await?;
 
@@ -153,7 +164,11 @@ pub async fn get_system_health_handler(
     State(state): State<Arc<AppState>>,
     auth: AuthExtractor,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    // Check if user is admin
+    state
+        .biz_context
+        .access_control
+        .require_system_admin(&auth.user.id)
+        .await?;
 
     let health =
         cms_biz::platform_event::PlatformEventService::get_system_health(&state.biz_context)

@@ -513,7 +513,6 @@ impl UsageEntitlementQueries {
     }
 }
 
-
 // ============================================
 // OrganizationUsagePlan
 // ============================================
@@ -635,7 +634,6 @@ impl OrganizationUsagePlanQueries {
         Ok(row.into())
     }
 }
-
 
 // ============================================
 // AnalyticsEvent

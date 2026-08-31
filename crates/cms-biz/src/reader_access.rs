@@ -11,6 +11,8 @@ use cms_auth::{
     AuthService,
 };
 use cms_db::{
+    branch::BranchQueries,
+    language::LanguageQueries,
     project::ProjectQueries,
     reader_access::{
         AudienceGrantQueries, AudienceQueries, JwtAccessProviderQueries, JwtReplayQueries,
@@ -238,13 +240,56 @@ impl ReaderAccessService {
             .await?
             .ok_or_else(|| AppError::NotFound("Audience not found".to_string()))?;
 
-        // Check if user has admin role in the project
+        // Check if user has admin role in the audience's source project
         ctx.access_control
             .require_project_role(user_id, &audience.project_id, MemberRole::Admin)
             .await?;
 
-        // Verify project belongs to the same organization
-        // (This would be checked in a real implementation)
+        // Fetch source project
+        let audience_project = ProjectQueries::get_by_id(&ctx.pool, &audience.project_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Audience project not found".to_string()))?;
+
+        // Fetch target project
+        let target_project = ProjectQueries::get_by_id(&ctx.pool, project_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Target project not found".to_string()))?;
+
+        // Verify target project belongs to the same organization as the audience project
+        if audience_project.organization_id != target_project.organization_id {
+            return Err(AppError::AccessDenied(
+                "Audience and target project must belong to the same organization".to_string(),
+            ));
+        }
+
+        // Check if user has admin role in the target project
+        ctx.access_control
+            .require_project_role(user_id, project_id, MemberRole::Admin)
+            .await?;
+
+        // Verify branch belongs to the target project if specified
+        if let Some(bid) = branch_id {
+            let branch = BranchQueries::get_by_id(&ctx.pool, bid)
+                .await?
+                .ok_or_else(|| AppError::NotFound("Branch not found".to_string()))?;
+            if branch.project_id != target_project.id {
+                return Err(AppError::Validation(
+                    "Branch does not belong to the target project".to_string(),
+                ));
+            }
+        }
+
+        // Verify language belongs to the target project if specified
+        if let Some(lid) = language_id {
+            let language = LanguageQueries::get_by_id(&ctx.pool, lid)
+                .await?
+                .ok_or_else(|| AppError::NotFound("Language not found".to_string()))?;
+            if language.project_id != target_project.id {
+                return Err(AppError::Validation(
+                    "Language does not belong to the target project".to_string(),
+                ));
+            }
+        }
 
         let grant = AudienceGrantQueries::create(
             &ctx.pool,

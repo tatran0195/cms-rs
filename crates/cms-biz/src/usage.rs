@@ -227,8 +227,7 @@ impl UsageService {
         _org_id: &str,
         feature_code: &str,
     ) -> Result<bool, AppError> {
-        let entitlement =
-            UsageEntitlementQueries::get_by_code(&ctx.pool, feature_code).await?;
+        let entitlement = UsageEntitlementQueries::get_by_code(&ctx.pool, feature_code).await?;
 
         Ok(entitlement.map(|e| e.is_enabled).unwrap_or(false))
     }

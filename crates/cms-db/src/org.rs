@@ -155,6 +155,15 @@ impl OrganizationQueries {
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 
+    /// Count all organizations
+    pub async fn count_all(pool: &PgPool) -> Result<i64, AppError> {
+        let count: i64 = sqlx::query_scalar(r#"SELECT COUNT(*) FROM "Organization""#)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+        Ok(count)
+    }
+
     /// Create a new organization
     pub async fn create(
         pool: &PgPool,

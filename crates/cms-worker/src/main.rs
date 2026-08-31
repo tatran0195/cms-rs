@@ -35,16 +35,24 @@ async fn main() -> Result<(), AppError> {
     // Build worker state (includes DB pool, storage, search, analytics, mailer)
     let state = Arc::new(WorkerState::new(&config, job_queue.clone()).await?);
 
-    // Start job consumers
+    // Create graceful shutdown signal channel
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+
+    // Start job consumers with graceful shutdown listener
     info!("Starting job consumers...");
-    start_consumers(job_queue, state).await?;
+    cms_worker::start_consumers_with_shutdown(job_queue, state, shutdown_rx).await?;
 
     // Keep the worker running until CTRL+C
     tokio::signal::ctrl_c()
         .await
         .map_err(|e| AppError::Internal(e.into()))?;
 
-    info!("Worker shutting down...");
+    info!("Worker received stop signal, shutting down consumers gracefully...");
+    let _ = shutdown_tx.send(true);
+
+    // Give in-flight tasks a moment to wrap up
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+    info!("Worker shutdown complete.");
 
     Ok(())
 }

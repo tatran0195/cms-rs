@@ -122,9 +122,8 @@ impl AnalyticsQueries {
         end_date: Option<DateTime<Utc>>,
     ) -> Result<Vec<(String, i64)>, AppError> {
         let mut qb = QueryBuilder::<Postgres>::new(
-            "SELECT COALESCE(metadata->>'page_id', metadata->>'path', 'unknown') AS page_key, COUNT(*) AS view_count \
-             FROM \"AnalyticsEvent\" \
-             WHERE project_id = ",
+            "SELECT COALESCE(metadata->>'page_id', metadata->>'path', 'unknown') AS page_key, \
+             COUNT(*) AS view_count FROM \"AnalyticsEvent\" WHERE project_id = ",
         );
         qb.push_bind(project_id);
         qb.push(" AND event_type = 'page_view'");
@@ -149,7 +148,12 @@ impl AnalyticsQueries {
 
         let results = rows
             .into_iter()
-            .map(|r| (r.get::<String, _>("page_key"), r.get::<i64, _>("view_count")))
+            .map(|r| {
+                (
+                    r.get::<String, _>("page_key"),
+                    r.get::<i64, _>("view_count"),
+                )
+            })
             .collect();
 
         Ok(results)
@@ -163,7 +167,8 @@ impl AnalyticsQueries {
         end_date: DateTime<Utc>,
     ) -> Result<serde_json::Value, AppError> {
         let total_events: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM \"AnalyticsEvent\" WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $3",
+            "SELECT COUNT(*) FROM \"AnalyticsEvent\" WHERE organization_id = $1 AND created_at >= \
+             $2 AND created_at <= $3",
         )
         .bind(org_id)
         .bind(start_date)
@@ -173,7 +178,8 @@ impl AnalyticsQueries {
         .map_err(|e| AppError::Database(e.into()))?;
 
         let unique_users: i64 = sqlx::query_scalar(
-            "SELECT COUNT(DISTINCT user_id) FROM \"AnalyticsEvent\" WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $3 AND user_id IS NOT NULL",
+            "SELECT COUNT(DISTINCT user_id) FROM \"AnalyticsEvent\" WHERE organization_id = $1 \
+             AND created_at >= $2 AND created_at <= $3 AND user_id IS NOT NULL",
         )
         .bind(org_id)
         .bind(start_date)
@@ -183,7 +189,8 @@ impl AnalyticsQueries {
         .map_err(|e| AppError::Database(e.into()))?;
 
         let page_views: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM \"AnalyticsEvent\" WHERE organization_id = $1 AND event_type = 'page_view' AND created_at >= $2 AND created_at <= $3",
+            "SELECT COUNT(*) FROM \"AnalyticsEvent\" WHERE organization_id = $1 AND event_type = \
+             'page_view' AND created_at >= $2 AND created_at <= $3",
         )
         .bind(org_id)
         .bind(start_date)
@@ -193,7 +200,8 @@ impl AnalyticsQueries {
         .map_err(|e| AppError::Database(e.into()))?;
 
         let searches: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM \"AnalyticsEvent\" WHERE organization_id = $1 AND event_type = 'search' AND created_at >= $2 AND created_at <= $3",
+            "SELECT COUNT(*) FROM \"AnalyticsEvent\" WHERE organization_id = $1 AND event_type = \
+             'search' AND created_at >= $2 AND created_at <= $3",
         )
         .bind(org_id)
         .bind(start_date)
@@ -215,16 +223,16 @@ impl AnalyticsQueries {
         pool: &PgPool,
         project_id: &str,
     ) -> Result<AnalyticsDashboardResponse, AppError> {
-        let total_events: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM \"AnalyticsEvent\" WHERE project_id = $1",
-        )
-        .bind(project_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
+        let total_events: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM \"AnalyticsEvent\" WHERE project_id = $1")
+                .bind(project_id)
+                .fetch_one(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
 
         let event_type_rows = sqlx::query(
-            "SELECT event_type, COUNT(*) as count FROM \"AnalyticsEvent\" WHERE project_id = $1 GROUP BY event_type",
+            "SELECT event_type, COUNT(*) as count FROM \"AnalyticsEvent\" WHERE project_id = $1 \
+             GROUP BY event_type",
         )
         .bind(project_id)
         .fetch_all(pool)
@@ -239,10 +247,9 @@ impl AnalyticsQueries {
         }
 
         let time_series_rows = sqlx::query(
-            "SELECT TO_CHAR(created_at, 'YYYY-MM-DD') AS dt, COUNT(*) AS cnt \
-             FROM \"AnalyticsEvent\" \
-             WHERE project_id = $1 AND created_at >= NOW() - INTERVAL '30 days' \
-             GROUP BY dt ORDER BY dt ASC",
+            "SELECT TO_CHAR(created_at, 'YYYY-MM-DD') AS dt, COUNT(*) AS cnt FROM \
+             \"AnalyticsEvent\" WHERE project_id = $1 AND created_at >= NOW() - INTERVAL '30 \
+             days' GROUP BY dt ORDER BY dt ASC",
         )
         .bind(project_id)
         .fetch_all(pool)
@@ -270,8 +277,8 @@ impl AnalyticsQueries {
         page_id: &str,
     ) -> Result<serde_json::Value, AppError> {
         let views: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM \"AnalyticsEvent\" \
-             WHERE event_type = 'page_view' AND (metadata->>'page_id' = $1 OR metadata->>'id' = $1)",
+            "SELECT COUNT(*) FROM \"AnalyticsEvent\" WHERE event_type = 'page_view' AND \
+             (metadata->>'page_id' = $1 OR metadata->>'id' = $1)",
         )
         .bind(page_id)
         .fetch_one(pool)
@@ -279,8 +286,8 @@ impl AnalyticsQueries {
         .map_err(|e| AppError::Database(e.into()))?;
 
         let unique_visitors: i64 = sqlx::query_scalar(
-            "SELECT COUNT(DISTINCT COALESCE(user_id, ip_address)) FROM \"AnalyticsEvent\" \
-             WHERE event_type = 'page_view' AND (metadata->>'page_id' = $1 OR metadata->>'id' = $1)",
+            "SELECT COUNT(DISTINCT COALESCE(user_id, ip_address)) FROM \"AnalyticsEvent\" WHERE \
+             event_type = 'page_view' AND (metadata->>'page_id' = $1 OR metadata->>'id' = $1)",
         )
         .bind(page_id)
         .fetch_one(pool)
@@ -298,21 +305,19 @@ impl AnalyticsQueries {
         pool: &PgPool,
         org_id: &str,
     ) -> Result<serde_json::Value, AppError> {
-        let projects: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM \"Project\" WHERE organization_id = $1",
-        )
-        .bind(org_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
+        let projects: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM \"Project\" WHERE organization_id = $1")
+                .bind(org_id)
+                .fetch_one(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
 
-        let members: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM \"Member\" WHERE organization_id = $1",
-        )
-        .bind(org_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
+        let members: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM \"Member\" WHERE organization_id = $1")
+                .bind(org_id)
+                .fetch_one(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
 
         let events: i64 = sqlx::query_scalar(
             "SELECT COUNT(*) FROM \"AnalyticsEvent\" WHERE organization_id = $1",
@@ -431,7 +436,8 @@ impl AnalyticsEventQueries {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<cms_entity::analytics::AnalyticsEvent>, AppError> {
-        let mut builder = sqlx::QueryBuilder::<sqlx::Postgres>::new(r#"SELECT * FROM "AnalyticsEvent""#);
+        let mut builder =
+            sqlx::QueryBuilder::<sqlx::Postgres>::new(r#"SELECT * FROM "AnalyticsEvent""#);
         let mut has_where = false;
 
         if let Some(v) = project_id {

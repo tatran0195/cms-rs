@@ -357,7 +357,9 @@ impl GitService {
 
         let connection = GitConnectionQueries::get_by_project(&ctx.pool, project_id).await?;
         if let Some(conn) = connection {
-            let operations = GitSyncOperationQueries::get_by_connection(&ctx.pool, &conn.id, Some(1), None).await?;
+            let operations =
+                GitSyncOperationQueries::get_by_connection(&ctx.pool, &conn.id, Some(1), None)
+                    .await?;
             if let Some(latest) = operations.into_iter().next() {
                 return Ok(serde_json::json!({
                     "status": format!("{:?}", latest.status).to_lowercase(),
@@ -473,7 +475,9 @@ async fn do_git_sync(
     let branch = match branch {
         Some(b) => b,
         None => {
-            let branches = BranchQueries::get_by_project(pool, &connection.project_id, None, Some(1), None).await?;
+            let branches =
+                BranchQueries::get_by_project(pool, &connection.project_id, None, Some(1), None)
+                    .await?;
             branches.into_iter().next().ok_or_else(|| {
                 AppError::NotFound("No branches found in project to sync pages into".to_string())
             })?
@@ -487,12 +491,8 @@ async fn do_git_sync(
         .map_err(|e| AppError::Internal(e.into()))?;
 
     match connection.provider {
-        GitProvider::Github => {
-            sync_github_repo(pool, &client, connection, &branch.id).await
-        }
-        GitProvider::Gitlab => {
-            sync_gitlab_repo(pool, &client, connection, &branch.id).await
-        }
+        GitProvider::Github => sync_github_repo(pool, &client, connection, &branch.id).await,
+        GitProvider::Gitlab => sync_gitlab_repo(pool, &client, connection, &branch.id).await,
         GitProvider::Bitbucket | GitProvider::AzureDevops => {
             tracing::warn!(
                 "Git sync for provider {:?} is not yet configured for direct REST API",
@@ -510,7 +510,10 @@ async fn sync_github_repo(
     connection: &GitConnection,
     branch_id: &str,
 ) -> Result<Option<String>, AppError> {
-    let repo = connection.repository.trim_start_matches("https://github.com/").trim_end_matches(".git");
+    let repo = connection
+        .repository
+        .trim_start_matches("https://github.com/")
+        .trim_end_matches(".git");
     let tree_url = format!(
         "https://api.github.com/repos/{}/git/trees/{}?recursive=1",
         repo, connection.branch
@@ -521,9 +524,10 @@ async fn sync_github_repo(
         req = req.bearer_auth(&connection.access_token);
     }
 
-    let res = req.send().await.map_err(|e| {
-        AppError::GitOperationFailed(format!("GitHub API request failed: {}", e))
-    })?;
+    let res = req
+        .send()
+        .await
+        .map_err(|e| AppError::GitOperationFailed(format!("GitHub API request failed: {}", e)))?;
 
     if !res.status().is_success() {
         let status = res.status();
@@ -538,8 +542,15 @@ async fn sync_github_repo(
         AppError::GitOperationFailed(format!("Failed to parse GitHub tree response: {}", e))
     })?;
 
-    let commit_sha = tree_response.get("sha").and_then(|v| v.as_str()).map(ToString::to_string);
-    let tree_entries = tree_response.get("tree").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+    let commit_sha = tree_response
+        .get("sha")
+        .and_then(|v| v.as_str())
+        .map(ToString::to_string);
+    let tree_entries = tree_response
+        .get("tree")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
 
     for entry in tree_entries {
         let entry_type = entry.get("type").and_then(|v| v.as_str()).unwrap_or("");
@@ -575,7 +586,13 @@ async fn sync_github_repo(
                     let title = extract_title_from_markdown(&content, &slug);
 
                     // Check if page exists
-                    let existing_page = PageQueries::get_by_path(pool, &connection.project_id, branch_id, &page_path).await?;
+                    let existing_page = PageQueries::get_by_path(
+                        pool,
+                        &connection.project_id,
+                        branch_id,
+                        &page_path,
+                    )
+                    .await?;
                     if let Some(page) = existing_page {
                         let _ = PageQueries::update(
                             pool,
@@ -587,7 +604,8 @@ async fn sync_github_repo(
                             Some(&content),
                             None,
                             Some(true),
-                        ).await;
+                        )
+                        .await;
                     } else {
                         let _ = PageQueries::create(
                             pool,
@@ -600,15 +618,25 @@ async fn sync_github_repo(
                             Some(&content),
                             0,
                             true,
-                        ).await;
+                        )
+                        .await;
                     }
 
                     // Record or update GitFileState
-                    let existing_state = GitFileStateQueries::get_by_path(pool, &connection.project_id, &page_path).await?;
+                    let existing_state =
+                        GitFileStateQueries::get_by_path(pool, &connection.project_id, &page_path)
+                            .await?;
                     if let Some(state) = existing_state {
-                        let _ = GitFileStateQueries::update(pool, &state.id, commit_sha.as_deref()).await;
+                        let _ = GitFileStateQueries::update(pool, &state.id, commit_sha.as_deref())
+                            .await;
                     } else {
-                        let _ = GitFileStateQueries::create(pool, &connection.project_id, &page_path, file_path).await;
+                        let _ = GitFileStateQueries::create(
+                            pool,
+                            &connection.project_id,
+                            &page_path,
+                            file_path,
+                        )
+                        .await;
                     }
                 }
             }
@@ -636,9 +664,10 @@ async fn sync_gitlab_repo(
         req = req.header("PRIVATE-TOKEN", &connection.access_token);
     }
 
-    let res = req.send().await.map_err(|e| {
-        AppError::GitOperationFailed(format!("GitLab API request failed: {}", e))
-    })?;
+    let res = req
+        .send()
+        .await
+        .map_err(|e| AppError::GitOperationFailed(format!("GitLab API request failed: {}", e)))?;
 
     if !res.status().is_success() {
         let status = res.status();
@@ -686,7 +715,13 @@ async fn sync_gitlab_repo(
                     let (slug, page_path) = derive_slug_and_path(file_path);
                     let title = extract_title_from_markdown(&content, &slug);
 
-                    let existing_page = PageQueries::get_by_path(pool, &connection.project_id, branch_id, &page_path).await?;
+                    let existing_page = PageQueries::get_by_path(
+                        pool,
+                        &connection.project_id,
+                        branch_id,
+                        &page_path,
+                    )
+                    .await?;
                     if let Some(page) = existing_page {
                         let _ = PageQueries::update(
                             pool,
@@ -698,7 +733,8 @@ async fn sync_gitlab_repo(
                             Some(&content),
                             None,
                             Some(true),
-                        ).await;
+                        )
+                        .await;
                     } else {
                         let _ = PageQueries::create(
                             pool,
@@ -711,7 +747,8 @@ async fn sync_gitlab_repo(
                             Some(&content),
                             0,
                             true,
-                        ).await;
+                        )
+                        .await;
                     }
                 }
             }

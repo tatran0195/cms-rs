@@ -15,6 +15,16 @@ pub async fn start_consumers(
     job_queue: Arc<dyn JobQueue>,
     state: Arc<WorkerState>,
 ) -> Result<(), AppError> {
+    let (_tx, rx) = tokio::sync::watch::channel(false);
+    start_consumers_with_shutdown(job_queue, state, rx).await
+}
+
+/// Start job consumers with graceful shutdown support
+pub async fn start_consumers_with_shutdown(
+    job_queue: Arc<dyn JobQueue>,
+    state: Arc<WorkerState>,
+    shutdown_rx: tokio::sync::watch::Receiver<bool>,
+) -> Result<(), AppError> {
     let config = &state.config.queue;
     let num_workers = config.workers;
 
@@ -23,10 +33,11 @@ pub async fn start_consumers(
     for i in 0..num_workers {
         let queue = job_queue.clone();
         let state = state.clone();
+        let mut worker_shutdown = shutdown_rx.clone();
 
         tokio::spawn(async move {
             let consumer_name = format!("worker-{}", i);
-            if let Err(e) = run_consumer(queue, state, consumer_name).await {
+            if let Err(e) = run_consumer(queue, state, consumer_name, &mut worker_shutdown).await {
                 error!("Consumer {} failed: {}", i, e);
             }
         });
@@ -35,49 +46,67 @@ pub async fn start_consumers(
     Ok(())
 }
 
-/// Run a single job consumer
+/// Run a single job consumer with graceful shutdown handling
 pub async fn run_consumer(
     job_queue: Arc<dyn JobQueue>,
     state: Arc<WorkerState>,
     consumer_name: String,
+    shutdown_rx: &mut tokio::sync::watch::Receiver<bool>,
 ) -> Result<(), AppError> {
     info!("Consumer {} started", consumer_name);
 
     loop {
-        match job_queue.consume(&consumer_name).await {
-            Ok(job) => {
-                debug!(
-                    "Consumer {} processing job: {:?}",
-                    consumer_name, job.job_type
-                );
+        if *shutdown_rx.borrow() {
+            info!("Consumer {} shutting down gracefully", consumer_name);
+            break;
+        }
 
-                // Process the job — nack on failure so it can be retried
-                match process_job(&job, state.clone()).await {
-                    Ok(()) => {
-                        if let Err(e) = job_queue.ack(&job.id).await {
-                            error!("Failed to acknowledge job {}: {}", job.id.0, e);
+        tokio::select! {
+            _ = shutdown_rx.changed() => {
+                if *shutdown_rx.borrow() {
+                    info!("Consumer {} received shutdown signal", consumer_name);
+                    break;
+                }
+            }
+            res = job_queue.consume(&consumer_name) => {
+                match res {
+                    Ok(job) => {
+                        debug!(
+                            "Consumer {} processing job: {:?}",
+                            consumer_name, job.job_type
+                        );
+
+                        // Process the job — nack on failure so it can be retried
+                        match process_job(&job, state.clone()).await {
+                            Ok(()) => {
+                                if let Err(e) = job_queue.ack(&job.id).await {
+                                    error!("Failed to acknowledge job {}: {}", job.id.0, e);
+                                }
+                            }
+                            Err(e) => {
+                                error!(
+                                    "Failed to process job {} (type={:?}): {}",
+                                    job.id.0, job.job_type, e
+                                );
+                                if let Err(nack_err) = job_queue.nack(&job.id, &e.to_string()).await {
+                                    error!(
+                                        "Failed to nack job {} after error: {}",
+                                        job.id.0, nack_err
+                                    );
+                                }
+                            }
                         }
                     }
                     Err(e) => {
-                        error!(
-                            "Failed to process job {} (type={:?}): {}",
-                            job.id.0, job.job_type, e
-                        );
-                        if let Err(nack_err) = job_queue.nack(&job.id, &e.to_string()).await {
-                            error!(
-                                "Failed to nack job {} after error: {}",
-                                job.id.0, nack_err
-                            );
-                        }
+                        error!("Consumer {} error: {}", consumer_name, e);
+                        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                     }
                 }
             }
-            Err(e) => {
-                error!("Consumer {} error: {}", consumer_name, e);
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-            }
         }
     }
+
+    Ok(())
 }
 
 /// Process a single job
@@ -108,11 +137,13 @@ pub async fn process_job(
             .await
         }
         JobType::Search => {
-            cms_biz::search::process_search_job(&state.db, state.search.clone(), &job.payload)
-                .await
+            cms_biz::search::process_search_job(&state.db, state.search.clone(), &job.payload).await
         }
         JobType::Usage => cms_biz::usage::process_usage_job(&state.db, &job.payload).await,
-        JobType::Reaper => cms_biz::queue::process_reaper_job(&state.db, state.job_queue.clone(), &job.payload).await,
+        JobType::Reaper => {
+            cms_biz::queue::process_reaper_job(&state.db, state.job_queue.clone(), &job.payload)
+                .await
+        }
     }
 }
 
@@ -141,10 +172,7 @@ pub mod app_state {
     }
 
     impl WorkerState {
-        pub async fn new(
-            config: &Config,
-            job_queue: Arc<dyn JobQueue>,
-        ) -> Result<Self, AppError> {
+        pub async fn new(config: &Config, job_queue: Arc<dyn JobQueue>) -> Result<Self, AppError> {
             // Create database pool
             let db = cms_db::create_pool(&config.database.url).await?;
 
@@ -190,8 +218,8 @@ pub mod app_state {
         }
 
         tracing::warn!(
-            "No SMTP host configured — emails will be silently discarded. \
-             Set CMS_MAILER__SMTP_HOST to enable email delivery."
+            "No SMTP host configured — emails will be silently discarded. Set \
+             CMS_MAILER__SMTP_HOST to enable email delivery."
         );
         Ok(Arc::new(NoopMailer))
     }
@@ -268,13 +296,10 @@ pub mod app_state {
                 .body(body.to_string())
                 .map_err(|e| AppError::Internal(e.into()))?;
 
-            self.transport
-                .send(email)
-                .await
-                .map_err(|e| {
-                    tracing::error!("SMTP send failed to={} subject={}: {}", to, subject, e);
-                    AppError::Internal(e.into())
-                })?;
+            self.transport.send(email).await.map_err(|e| {
+                tracing::error!("SMTP send failed to={} subject={}: {}", to, subject, e);
+                AppError::Internal(e.into())
+            })?;
 
             tracing::debug!("Email sent to={} subject={}", to, subject);
             Ok(())
@@ -304,14 +329,17 @@ pub mod app_state {
 
 #[cfg(test)]
 mod tests {
-    use crate::app_state::*;
     use cms_biz::email::Mailer;
     use cms_config::MailerConfig;
+
+    use crate::app_state::*;
 
     #[tokio::test]
     async fn test_noop_mailer_send() {
         let mailer = NoopMailer;
-        let result = mailer.send_email("test@example.com", "Test Subject", "Test Body").await;
+        let result = mailer
+            .send_email("test@example.com", "Test Subject", "Test Body")
+            .await;
         assert!(result.is_ok());
     }
 
@@ -346,4 +374,3 @@ mod tests {
         assert!(valid_result.is_ok());
     }
 }
-

@@ -75,6 +75,9 @@ pub trait AccessControl: Send + Sync {
         self.require_project_role(user_id, project_id, MemberRole::Member)
             .await
     }
+
+    /// Require that the user has system administrative privileges
+    async fn require_system_admin(&self, user_id: &str) -> Result<(), AppError>;
 }
 
 /// Production implementation of AccessControl
@@ -230,6 +233,18 @@ impl AccessControl for ProductionAccessControl {
             )),
         }
     }
+
+    async fn require_system_admin(&self, user_id: &str) -> Result<(), AppError> {
+        use cms_db::org::MemberQueries;
+        let memberships = MemberQueries::get_by_user(&self.pool, user_id).await?;
+        let is_admin = memberships
+            .iter()
+            .any(|m| matches!(m.role, MemberRole::Owner | MemberRole::Admin));
+        if !is_admin {
+            return Err(AppError::Forbidden);
+        }
+        Ok(())
+    }
 }
 
 /// No-op access control for testing
@@ -272,6 +287,10 @@ impl AccessControl for NoopAccessControl {
     }
 
     async fn require_org_admin(&self, _user_id: &str, _org_id: &str) -> Result<(), AppError> {
+        Ok(())
+    }
+
+    async fn require_system_admin(&self, _user_id: &str) -> Result<(), AppError> {
         Ok(())
     }
 }

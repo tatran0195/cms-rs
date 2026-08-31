@@ -86,7 +86,7 @@ pub fn create_api_router(state: Arc<AppState>) -> Router {
     router = router.route("/api-docs/redoc", get(serve_redoc));
 
     // Health check endpoint
-    router = router.route("/health", get(get_health));
+    router = router.route("/health", get(get_health).with_state(state));
 
     router
 }
@@ -97,6 +97,11 @@ pub fn api_router(state: Arc<AppState>) -> Router {
 }
 
 /// Health check handler
-async fn get_health() -> Result<&'static str, AppError> {
-    Ok("OK")
+async fn get_health(
+    axum::extract::State(state): axum::extract::State<Arc<AppState>>,
+) -> Result<axum::Json<serde_json::Value>, AppError> {
+    let health =
+        cms_biz::platform_event::PlatformEventService::get_system_health(&state.biz_context)
+            .await?;
+    Ok(axum::Json(health))
 }

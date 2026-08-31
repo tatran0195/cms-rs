@@ -124,15 +124,33 @@ impl LocalFsStorage {
         Self { root_dir }
     }
 
-    /// Get the full path for a key
-    fn get_path(&self, key: &str) -> std::path::PathBuf {
-        let sanitized_key = key.replace('\\', "/");
-        Path::new(&self.root_dir).join(sanitized_key)
+    /// Get the safe full path for a key, preventing path traversal attacks
+    fn get_path(&self, key: &str) -> Result<std::path::PathBuf, AppError> {
+        let normalized = key.replace('\\', "/");
+        let path = Path::new(&normalized);
+        for component in path.components() {
+            match component {
+                std::path::Component::ParentDir => {
+                    return Err(AppError::InvalidInput(
+                        "Path traversal detected".to_string(),
+                    ));
+                }
+                std::path::Component::RootDir | std::path::Component::Prefix(_) => {
+                    return Err(AppError::InvalidInput(
+                        "Absolute paths not allowed in storage keys".to_string(),
+                    ));
+                }
+                _ => {}
+            }
+        }
+
+        let root = Path::new(&self.root_dir);
+        Ok(root.join(path))
     }
 
     /// Ensure parent directory exists
     async fn ensure_parent_exists(&self, key: &str) -> Result<(), AppError> {
-        let path = self.get_path(key);
+        let path = self.get_path(key)?;
         if let Some(parent) = path.parent() {
             tokio::fs::create_dir_all(parent)
                 .await
@@ -147,7 +165,7 @@ impl Storage for LocalFsStorage {
     async fn put(&self, key: &str, body: Bytes, _content_type: &str) -> Result<(), AppError> {
         self.ensure_parent_exists(key).await?;
 
-        let path = self.get_path(key);
+        let path = self.get_path(key)?;
         tokio::fs::write(&path, &body)
             .await
             .map_err(|e| AppError::Storage(format!("Failed to write file: {}", e)))?;
@@ -156,7 +174,7 @@ impl Storage for LocalFsStorage {
     }
 
     async fn get(&self, key: &str) -> Result<Bytes, AppError> {
-        let path = self.get_path(key);
+        let path = self.get_path(key)?;
         let bytes = tokio::fs::read(&path).await.map_err(|e| {
             if e.to_string().contains("No such file") {
                 AppError::ObjectNotFound(key.to_string())
@@ -169,7 +187,7 @@ impl Storage for LocalFsStorage {
     }
 
     async fn delete(&self, key: &str) -> Result<(), AppError> {
-        let path = self.get_path(key);
+        let path = self.get_path(key)?;
         match tokio::fs::remove_file(&path).await {
             Ok(_) => Ok(()),
             Err(e) => {
@@ -188,6 +206,8 @@ impl Storage for LocalFsStorage {
         key: &str,
         _expires_in: Duration,
     ) -> Result<UploadTarget, AppError> {
+        // Validate key before returning target
+        let _ = self.get_path(key)?;
         // For local storage, uploads are server-mediated
         Ok(UploadTarget::ServerMediated(format!(
             "/api/app/assets/{}/upload",
@@ -200,6 +220,8 @@ impl Storage for LocalFsStorage {
         key: &str,
         _expires_in: Duration,
     ) -> Result<DownloadTarget, AppError> {
+        // Validate key before returning target
+        let _ = self.get_path(key)?;
         // For local storage, downloads are server-mediated
         Ok(DownloadTarget::ServerMediated(format!(
             "/api/app/assets/{}",
@@ -215,7 +237,7 @@ impl Storage for LocalFsStorage {
     }
 
     async fn exists(&self, key: &str) -> Result<bool, AppError> {
-        let path = self.get_path(key);
+        let path = self.get_path(key)?;
         Ok(tokio::fs::try_exists(&path)
             .await
             .map_err(|e| AppError::Storage(format!("Failed to check file existence: {}", e)))?)
@@ -226,7 +248,21 @@ impl Storage for LocalFsStorage {
         let prefix_path = if prefix.is_empty() {
             root_path.to_path_buf()
         } else {
-            root_path.join(prefix)
+            let normalized = prefix.replace('\\', "/");
+            let path = Path::new(&normalized);
+            for component in path.components() {
+                if matches!(
+                    component,
+                    std::path::Component::ParentDir
+                        | std::path::Component::RootDir
+                        | std::path::Component::Prefix(_)
+                ) {
+                    return Err(AppError::InvalidInput(
+                        "Path traversal detected".to_string(),
+                    ));
+                }
+            }
+            root_path.join(path)
         };
 
         let mut keys = Vec::new();
@@ -595,5 +631,27 @@ mod tests {
             }
             UploadTarget::Presigned(_) => panic!("Expected ServerMediated for local storage"),
         }
+    }
+
+    #[tokio::test]
+    async fn test_local_storage_path_traversal_prevention() {
+        let dir = tempdir().unwrap();
+        let storage = LocalFsStorage::new(dir.path().to_string_lossy().into_owned());
+
+        // Relative parent traversal
+        assert!(storage
+            .put("../evil.txt", Bytes::from("payload"), "text/plain")
+            .await
+            .is_err());
+        assert!(storage.get("../evil.txt").await.is_err());
+        assert!(storage.delete("foo/../../evil.txt").await.is_err());
+        assert!(storage.exists("nested/../../../etc/passwd").await.is_err());
+        assert!(storage.list("../").await.is_err());
+
+        // Absolute path attempts
+        assert!(storage
+            .put("/root/file.txt", Bytes::from("payload"), "text/plain")
+            .await
+            .is_err());
     }
 }

@@ -4,7 +4,7 @@
 //! that doesn't fit in the main auth crate.
 
 use chrono::{DateTime, Utc};
-use cms_db::auth::{ApiKeyQueries, SessionQueries, UserQueries};
+use cms_db::auth::{AccountQueries, ApiKeyQueries, SessionQueries, UserQueries};
 use cms_entity::auth::{ApiKeyResponse, CreateUserRequest, UserResponse};
 use uuid::Uuid;
 
@@ -17,18 +17,33 @@ impl AuthService {
     pub async fn login(
         ctx: &BizContext,
         email: &str,
-        _password: &str,
+        password: &str,
     ) -> Result<UserResponse, AppError> {
         let user = UserQueries::get_by_email(&ctx.pool, email)
             .await?
             .ok_or(AppError::InvalidCredentials)?;
+
+        let account = AccountQueries::get_by_provider(&ctx.pool, "credentials", email).await?;
+        if let Some(account) = account {
+            if let Some(ref hash) = account.access_token {
+                let is_valid = cms_auth::password::verify_password(password, hash).unwrap_or(false);
+                if !is_valid {
+                    return Err(AppError::InvalidCredentials);
+                }
+            } else {
+                return Err(AppError::InvalidCredentials);
+            }
+        } else {
+            return Err(AppError::InvalidCredentials);
+        }
+
         Ok(user.into())
     }
 
     pub async fn register(
         ctx: &BizContext,
         email: &str,
-        _password: &str,
+        password: &str,
         name: Option<&str>,
     ) -> Result<UserResponse, AppError> {
         let existing = UserQueries::get_by_email(&ctx.pool, email).await?;
@@ -36,6 +51,23 @@ impl AuthService {
             return Err(AppError::Conflict("Email already exists".to_string()));
         }
         let user = UserQueries::create(&ctx.pool, email, name, None, false).await?;
+
+        if !password.is_empty() {
+            let hashed = cms_auth::password::hash_password(password)?;
+            AccountQueries::create(
+                &ctx.pool,
+                &user.id,
+                "credentials",
+                email,
+                Some(&hashed),
+                None,
+                None,
+                None,
+                None,
+            )
+            .await?;
+        }
+
         Ok(user.into())
     }
 
@@ -63,6 +95,16 @@ impl AuthService {
     }
 
     pub async fn get_user_by_jwt(ctx: &BizContext, token: &str) -> Result<UserResponse, AppError> {
+        if let Some(session) = SessionQueries::get_by_token(&ctx.pool, token).await? {
+            if session.expires_at < Utc::now() {
+                return Err(AppError::TokenExpired);
+            }
+            let user = UserQueries::get_by_id(&ctx.pool, &session.user_id)
+                .await?
+                .ok_or_else(|| AppError::NotFound("User not found".to_string()))?;
+            return Ok(user.into());
+        }
+
         let user = UserQueries::get_by_id(&ctx.pool, token)
             .await?
             .ok_or(AppError::InvalidCredentials)?;
@@ -73,12 +115,14 @@ impl AuthService {
         ctx: &BizContext,
         api_key: &str,
     ) -> Result<UserResponse, AppError> {
-        let key = ApiKeyQueries::get_by_key(&ctx.pool, api_key)
+        let hashed = cms_auth::api_key::hash_key(api_key);
+        let key = ApiKeyQueries::get_by_key(&ctx.pool, &hashed)
             .await?
             .ok_or(AppError::InvalidApiKey)?;
         let user = UserQueries::get_by_id(&ctx.pool, &key.user_id)
             .await?
             .ok_or_else(|| AppError::NotFound("User not found".to_string()))?;
+        let _ = ApiKeyQueries::update_last_used(&ctx.pool, &key.id).await;
         Ok(user.into())
     }
 
@@ -114,8 +158,9 @@ impl AuthService {
         user_id: &str,
         name: &str,
     ) -> Result<ApiKeyResponse, AppError> {
-        let raw_key = Uuid::new_v4().to_string();
-        let key = ApiKeyQueries::create(&ctx.pool, user_id, name, &raw_key).await?;
+        let raw_key = format!("nbl_{}", Uuid::new_v4().to_string().replace("-", ""));
+        let hashed = cms_auth::api_key::hash_key(&raw_key);
+        let key = ApiKeyQueries::create(&ctx.pool, user_id, name, &hashed).await?;
         Ok(key.into())
     }
 

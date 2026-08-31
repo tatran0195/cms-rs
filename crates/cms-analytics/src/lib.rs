@@ -8,8 +8,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use cms_config::AnalyticsConfig;
-use cms_db::analytics::AnalyticsEventQueries;
-use cms_db::PgPool;
+use cms_db::{analytics::AnalyticsEventQueries, PgPool};
 use cms_error::AppError;
 
 /// Analytics store trait
@@ -118,14 +117,7 @@ impl AnalyticsStore for PostgresAnalyticsStore {
         user_agent: Option<&str>,
     ) -> Result<(), AppError> {
         AnalyticsEventQueries::create(
-            &self.pool,
-            org_id,
-            project_id,
-            user_id,
-            event_type,
-            metadata,
-            ip_address,
-            user_agent,
+            &self.pool, org_id, project_id, user_id, event_type, metadata, ip_address, user_agent,
         )
         .await?;
         Ok(())

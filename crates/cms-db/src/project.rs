@@ -214,7 +214,7 @@ impl ProjectQueries {
             LEFT JOIN "Member" m ON p.organization_id = m.organization_id AND m.user_id = $1
             WHERE p.is_public = true OR m.id IS NOT NULL
             ORDER BY p.created_at DESC
-            "#
+            "#,
         )
         .bind(user_id)
         .fetch_all(pool)

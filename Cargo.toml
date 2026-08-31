@@ -105,6 +105,8 @@ tempfile = "3.27.0"
 # Authentication
 jsonwebtoken = { version = "11.0.0", features = ["rust_crypto"] }
 argon2 = "0.6.0"
+sha2 = "0.10.8"
+hex = "0.4.3"
 base64 = "0.23.1"
 serde_urlencoded = "0.7.1"
 urlencoding = "2.1.3"

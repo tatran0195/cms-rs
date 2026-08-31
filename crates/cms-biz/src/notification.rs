@@ -187,9 +187,10 @@ impl NotificationService {
         ctx: &BizContext,
         user_id: &str,
     ) -> Result<cms_entity::notification::NotificationCountResponse, AppError> {
-        let unread = Self::get_unread_count(ctx, user_id).await? as i64;
+        let total = NotificationQueries::count_by_user(&ctx.pool, user_id, None).await?;
+        let unread = NotificationQueries::count_unread_by_user(&ctx.pool, user_id).await?;
         Ok(cms_entity::notification::NotificationCountResponse {
-            total: unread,
+            total,
             unread,
             by_type: std::collections::HashMap::new(),
         })

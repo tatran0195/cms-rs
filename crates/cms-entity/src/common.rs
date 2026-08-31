@@ -133,7 +133,19 @@ impl SuccessResponse {
 
 /// Member role in an organization
 #[derive(
-    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, sqlx::Type, Default, utoipa::ToSchema)]
+    Debug,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    sqlx::Type,
+    Default,
+    utoipa::ToSchema,
+)]
 #[serde(rename_all = "lowercase")]
 #[sqlx(type_name = "member_role", rename_all = "lowercase")]
 pub enum MemberRole {

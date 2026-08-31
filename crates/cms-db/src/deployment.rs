@@ -319,7 +319,8 @@ impl DeploymentQueries {
         project_id: &str,
     ) -> Result<Vec<Deployment>, AppError> {
         let rows = sqlx::query_as::<_, DeploymentRow>(
-            "SELECT * FROM \"Deployment\" WHERE project_id = $1 AND status = $2 ORDER BY deployed_at DESC",
+            "SELECT * FROM \"Deployment\" WHERE project_id = $1 AND status = $2 ORDER BY \
+             deployed_at DESC",
         )
         .bind(project_id)
         .bind(DeploymentStatus::Active)
@@ -330,7 +331,6 @@ impl DeploymentQueries {
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 }
-
 
 /// Domain queries
 pub struct DomainQueries;

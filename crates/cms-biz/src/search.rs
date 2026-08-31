@@ -10,8 +10,8 @@ use cms_entity::{
     common::{Id, MemberRole, PaginatedResponse},
     search::{
         IndexPageRequest, ListSearchIndexRunsQuery, RagAnswer, ReindexRequest, SearchIndexRun,
-        SearchIndexRunResponse, SearchIndexRunStatus, SearchOptions, SearchRequest,
-        SearchResponse, SearchResultItem,
+        SearchIndexRunResponse, SearchIndexRunStatus, SearchOptions, SearchRequest, SearchResponse,
+        SearchResultItem,
     },
 };
 
@@ -126,22 +126,17 @@ impl SearchService {
         user_id: &str,
         query: ListSearchIndexRunsQuery,
     ) -> Result<PaginatedResponse<SearchIndexRunResponse>, AppError> {
-        let project_id = query
-            .project_id
-            .as_deref()
-            .ok_or_else(|| AppError::InvalidInput("project_id query param is required".to_string()))?;
+        let project_id = query.project_id.as_deref().ok_or_else(|| {
+            AppError::InvalidInput("project_id query param is required".to_string())
+        })?;
 
         ctx.access_control
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 
-        let runs = SearchIndexRunQueries::get_by_project(
-            &ctx.pool,
-            project_id,
-            query.limit,
-            query.offset,
-        )
-        .await?;
+        let runs =
+            SearchIndexRunQueries::get_by_project(&ctx.pool, project_id, query.limit, query.offset)
+                .await?;
 
         let total = SearchIndexRunQueries::count_by_project(&ctx.pool, project_id).await?;
 
@@ -184,7 +179,8 @@ impl SearchService {
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 
-        let latest_run = SearchIndexRunQueries::get_latest_by_project(&ctx.pool, project_id).await?;
+        let latest_run =
+            SearchIndexRunQueries::get_latest_by_project(&ctx.pool, project_id).await?;
         let total_runs = SearchIndexRunQueries::count_by_project(&ctx.pool, project_id).await?;
 
         Ok(serde_json::json!({
@@ -238,7 +234,8 @@ impl SearchService {
             .await?
         } else {
             // Retrieve default branch
-            let default_branch = cms_db::branch::BranchQueries::get_default(&ctx.pool, &request.project_id).await?;
+            let default_branch =
+                cms_db::branch::BranchQueries::get_default(&ctx.pool, &request.project_id).await?;
             if let Some(b) = default_branch {
                 PageQueries::get_by_project_and_branch(
                     &ctx.pool,
@@ -265,7 +262,8 @@ impl SearchService {
             }
         }
 
-        let completed = SearchIndexRunQueries::mark_completed(&ctx.pool, &run.id, indexed_count).await?;
+        let completed =
+            SearchIndexRunQueries::mark_completed(&ctx.pool, &run.id, indexed_count).await?;
 
         tracing::info!(
             "Reindex completed for project {}: {} page(s) indexed",

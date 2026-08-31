@@ -16,8 +16,10 @@ cms-db = { path = "../cms-db" }
 cms-entity = { path = "../cms-entity" }
 cms-error = { path = "../cms-error" }
 
-# Password hashing
+# Password hashing & cryptography
 argon2 = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
 tracing = { workspace = true }
 anyhow = { workspace = true }
 axum-extra = { workspace = true, features = ["cookie"] }

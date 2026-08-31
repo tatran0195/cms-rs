@@ -426,44 +426,141 @@ impl PageService {
         Ok(count)
     }
 
+    /// Helper to resolve public project by org slug and project slug
+    async fn resolve_public_project(
+        pool: &PgPool,
+        org_slug: &str,
+        project_slug: &str,
+    ) -> Result<cms_entity::project::Project, AppError> {
+        use cms_db::org::OrganizationQueries;
+
+        let org = OrganizationQueries::get_by_slug(pool, org_slug)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Organization not found".to_string()))?;
+
+        let project = ProjectQueries::get_by_slug(pool, &org.id, project_slug)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
+
+        if !project.is_public {
+            return Err(AppError::Forbidden);
+        }
+
+        Ok(project)
+    }
+
     /// Get a public page by path
     pub async fn get_public_page(
         ctx: &BizContext,
-        _org_slug: &str,
-        _project_slug: &str,
+        org_slug: &str,
+        project_slug: &str,
         page_path: &str,
     ) -> Result<PageResponse, AppError> {
-        let page = PageQueries::get_by_id(&ctx.pool, page_path)
-            .await?
-            .ok_or_else(|| AppError::NotFound("Page not found".to_string()))?;
+        let project = Self::resolve_public_project(&ctx.pool, org_slug, project_slug).await?;
+
+        let default_branch = BranchQueries::get_default(&ctx.pool, &project.id).await?;
+        let branch_id = default_branch
+            .map(|b| b.id)
+            .ok_or_else(|| AppError::NotFound("Default branch not found".to_string()))?;
+
+        let normalized_path = if page_path.starts_with('/') {
+            page_path.to_string()
+        } else {
+            format!("/{}", page_path)
+        };
+
+        let page =
+            PageQueries::get_by_path(&ctx.pool, &project.id, &branch_id, &normalized_path).await?;
+
+        let page = match page {
+            Some(p) => p,
+            None => PageQueries::get_by_id(&ctx.pool, page_path)
+                .await?
+                .ok_or_else(|| AppError::NotFound("Page not found".to_string()))?,
+        };
+
+        if !page.is_published {
+            return Err(AppError::NotFound("Page not found".to_string()));
+        }
+
         Ok(page.into())
     }
 
     /// List public pages
     pub async fn list_public_pages(
-        _ctx: &BizContext,
-        _org_slug: &str,
-        _project_slug: &str,
+        ctx: &BizContext,
+        org_slug: &str,
+        project_slug: &str,
     ) -> Result<Vec<PageResponse>, AppError> {
-        Ok(vec![])
+        let project = Self::resolve_public_project(&ctx.pool, org_slug, project_slug).await?;
+
+        let default_branch = BranchQueries::get_default(&ctx.pool, &project.id).await?;
+        let branch_id = default_branch.map(|b| b.id).unwrap_or_default();
+
+        let all_pages = PageQueries::get_by_project(&ctx.pool, &project.id).await?;
+        let published_pages = all_pages
+            .into_iter()
+            .filter(|p| p.is_published && (branch_id.is_empty() || p.branch_id == branch_id))
+            .map(|p| p.into())
+            .collect();
+
+        Ok(published_pages)
     }
 
     /// Search public pages
     pub async fn search_public_pages(
-        _ctx: &BizContext,
-        _org_slug: &str,
-        _project_slug: &str,
-        _search_term: &str,
+        ctx: &BizContext,
+        org_slug: &str,
+        project_slug: &str,
+        search_term: &str,
     ) -> Result<Vec<PageResponse>, AppError> {
-        Ok(vec![])
+        let project = Self::resolve_public_project(&ctx.pool, org_slug, project_slug).await?;
+
+        let default_branch = BranchQueries::get_default(&ctx.pool, &project.id).await?;
+        let branch_id = default_branch.map(|b| b.id).unwrap_or_default();
+
+        let all_pages = PageQueries::get_by_project(&ctx.pool, &project.id).await?;
+        let search_lower = search_term.to_lowercase();
+
+        let results = all_pages
+            .into_iter()
+            .filter(|p| {
+                p.is_published
+                    && (branch_id.is_empty() || p.branch_id == branch_id)
+                    && (p.title.to_lowercase().contains(&search_lower)
+                        || p.content.to_lowercase().contains(&search_lower)
+                        || p.slug.to_lowercase().contains(&search_lower))
+            })
+            .map(|p| p.into())
+            .collect();
+
+        Ok(results)
     }
 
     /// Get project sitemap
     pub async fn get_project_sitemap(
-        _ctx: &BizContext,
-        _org_slug: &str,
-        _project_slug: &str,
+        ctx: &BizContext,
+        org_slug: &str,
+        project_slug: &str,
     ) -> Result<serde_json::Value, AppError> {
-        Ok(serde_json::json!({ "urls": [] }))
+        let project = Self::resolve_public_project(&ctx.pool, org_slug, project_slug).await?;
+
+        let default_branch = BranchQueries::get_default(&ctx.pool, &project.id).await?;
+        let branch_id = default_branch.map(|b| b.id).unwrap_or_default();
+
+        let all_pages = PageQueries::get_by_project(&ctx.pool, &project.id).await?;
+        let urls: Vec<serde_json::Value> = all_pages
+            .into_iter()
+            .filter(|p| p.is_published && (branch_id.is_empty() || p.branch_id == branch_id))
+            .map(|p| {
+                serde_json::json!({
+                    "loc": format!("/{}/{}{}", org_slug, project_slug, p.path),
+                    "lastmod": p.updated_at.to_rfc3339(),
+                    "title": p.title,
+                })
+            })
+            .collect();
+
+        Ok(serde_json::json!({ "urls": urls }))
     }
 }

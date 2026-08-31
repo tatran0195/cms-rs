@@ -144,7 +144,7 @@ impl OrgService {
         let limit = page_size as i64;
         let offset = ((page.saturating_sub(1)) as i64) * limit;
         let orgs = OrganizationQueries::list_all(&ctx.pool, Some(limit), Some(offset)).await?;
-        let total = orgs.len() as u64;
+        let total = OrganizationQueries::count_all(&ctx.pool).await? as u64;
         Ok(PaginatedResponse::new(
             orgs.into_iter().map(|o| o.into()).collect(),
             total,

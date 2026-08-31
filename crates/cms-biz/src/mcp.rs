@@ -25,10 +25,15 @@ impl McpService {
         project_id: Option<&str>,
     ) -> Result<McpCapabilities, AppError> {
         if let Some(pid) = project_id {
+            let project = ProjectQueries::get_by_id(&ctx.pool, pid)
+                .await?
+                .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
             if let Some(uid) = user_id {
                 ctx.access_control
                     .require_project_role(uid, pid, MemberRole::Viewer)
                     .await?;
+            } else if !project.is_public {
+                return Err(AppError::Forbidden);
             }
         }
 
@@ -111,7 +116,9 @@ impl McpService {
         }
 
         match request.tool_name.as_str() {
-            "search" => Self::execute_search(ctx, &request.tool_name, user_id, &request.arguments).await,
+            "search" => {
+                Self::execute_search(ctx, &request.tool_name, user_id, &request.arguments).await
+            }
             "get_page" => {
                 Self::execute_get_page(ctx, &request.tool_name, user_id, &request.arguments).await
             }
@@ -147,9 +154,12 @@ impl McpService {
             .and_then(|v| v.as_str())
             .ok_or_else(|| AppError::InvalidInput("Missing project_id parameter".to_string()))?;
 
-        let limit = arguments.get("limit").and_then(|v| v.as_i64()).unwrap_or(10);
+        let limit = arguments
+            .get("limit")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(10);
 
-        let _project = ProjectQueries::get_by_id(&ctx.pool, project_id)
+        let project = ProjectQueries::get_by_id(&ctx.pool, project_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
@@ -157,6 +167,8 @@ impl McpService {
             ctx.access_control
                 .require_project_role(uid, project_id, MemberRole::Viewer)
                 .await?;
+        } else if !project.is_public {
+            return Err(AppError::Forbidden);
         }
 
         // Find branch
@@ -219,7 +231,7 @@ impl McpService {
             .and_then(|v| v.as_str())
             .ok_or_else(|| AppError::InvalidInput("Missing path parameter".to_string()))?;
 
-        let _project = ProjectQueries::get_by_id(&ctx.pool, project_id)
+        let project = ProjectQueries::get_by_id(&ctx.pool, project_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
@@ -227,6 +239,8 @@ impl McpService {
             ctx.access_control
                 .require_project_role(uid, project_id, MemberRole::Viewer)
                 .await?;
+        } else if !project.is_public {
+            return Err(AppError::Forbidden);
         }
 
         let default_branch = BranchQueries::get_default(&ctx.pool, project_id).await?;
@@ -238,10 +252,7 @@ impl McpService {
 
         let content = format!(
             "# {}\n\n*Path: {}*\n\n{}\n\n---\n*Last Updated: {}*",
-            page.title,
-            page.path,
-            page.content,
-            page.updated_at
+            page.title, page.path, page.content, page.updated_at
         );
 
         Ok(McpResponse {
@@ -270,7 +281,7 @@ impl McpService {
         let branch_id = args.get("branch_id").and_then(|v| v.as_str());
         let limit = args.get("limit").and_then(|v| v.as_i64()).unwrap_or(50);
 
-        let _project = ProjectQueries::get_by_id(&ctx.pool, project_id)
+        let project = ProjectQueries::get_by_id(&ctx.pool, project_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
@@ -278,6 +289,8 @@ impl McpService {
             ctx.access_control
                 .require_project_role(uid, project_id, MemberRole::Viewer)
                 .await?;
+        } else if !project.is_public {
+            return Err(AppError::Forbidden);
         }
 
         let pages: Vec<(String, String)> = if let Some(bid) = branch_id {
@@ -342,6 +355,8 @@ impl McpService {
             ctx.access_control
                 .require_project_role(uid, project_id, MemberRole::Viewer)
                 .await?;
+        } else if !project.is_public {
+            return Err(AppError::Forbidden);
         }
 
         let content = format!(
@@ -433,11 +448,15 @@ impl McpService {
         ctx: &BizContext,
         user_id: &str,
     ) -> Result<serde_json::Value, AppError> {
-        let projects = ProjectQueries::list_by_user(&ctx.pool, user_id).await.unwrap_or_default();
+        let projects = ProjectQueries::list_by_user(&ctx.pool, user_id)
+            .await
+            .unwrap_or_default();
         let mut resources = Vec::new();
 
         for project in projects {
-            let pages = PageQueries::get_by_project(&ctx.pool, &project.id).await.unwrap_or_default();
+            let pages = PageQueries::get_by_project(&ctx.pool, &project.id)
+                .await
+                .unwrap_or_default();
             for page in pages {
                 resources.push(serde_json::json!({
                     "uri": format!("cms://projects/{}/pages{}", project.id, page.path),
@@ -459,12 +478,17 @@ impl McpService {
     ) -> Result<serde_json::Value, AppError> {
         // Expected URI format: cms://projects/{project_id}/pages/{path}
         let stripped = uri.strip_prefix("cms://projects/").ok_or_else(|| {
-            AppError::InvalidInput("Invalid resource URI scheme. Expected cms://projects/{project_id}/pages/{path}".to_string())
+            AppError::InvalidInput(
+                "Invalid resource URI scheme. Expected cms://projects/{project_id}/pages/{path}"
+                    .to_string(),
+            )
         })?;
 
         let parts: Vec<&str> = stripped.splitn(2, "/pages").collect();
         if parts.len() != 2 {
-            return Err(AppError::InvalidInput("Invalid resource URI format".to_string()));
+            return Err(AppError::InvalidInput(
+                "Invalid resource URI format".to_string(),
+            ));
         }
 
         let project_id = parts[0];

@@ -3,22 +3,17 @@
 use cms_db::auth::ApiKeyQueries;
 use cms_entity::auth::{ApiKey, ApiKeyResponse};
 use cms_error::AppError;
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::AuthService;
 
-/// Hash an API key for storage using SHA-256
-fn hash_key(raw_key: &str) -> String {
-    use std::{
-        collections::hash_map::DefaultHasher,
-        hash::{Hash, Hasher},
-    };
-
-    // Use SHA-256 via the std hasher as a simple non-cryptographic placeholder.
-    // Production code should use sha2 or argon2.
-    let mut hasher = DefaultHasher::new();
-    raw_key.hash(&mut hasher);
-    format!("sha256:{:x}", hasher.finish())
+/// Hash an API key for storage using cryptographic SHA-256
+pub fn hash_key(raw_key: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(raw_key.as_bytes());
+    let result = hasher.finalize();
+    format!("sha256:{}", hex::encode(result))
 }
 
 impl AuthService {

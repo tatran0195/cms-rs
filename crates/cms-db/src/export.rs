@@ -231,7 +231,8 @@ impl ExportJobQueries {
         offset: Option<i64>,
     ) -> Result<Vec<ExportJob>, AppError> {
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT j.* FROM \"ExportJob\" j JOIN \"ExportSnapshot\" s ON j.snapshot_id = s.id WHERE s.project_id = ",
+            "SELECT j.* FROM \"ExportJob\" j JOIN \"ExportSnapshot\" s ON j.snapshot_id = s.id \
+             WHERE s.project_id = ",
         );
         query_builder.push_bind(project_id);
         query_builder.push(" ORDER BY j.created_at DESC");
@@ -257,7 +258,8 @@ impl ExportJobQueries {
 
     pub async fn count_by_project(pool: &PgPool, project_id: &str) -> Result<i64, AppError> {
         let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM \"ExportJob\" j JOIN \"ExportSnapshot\" s ON j.snapshot_id = s.id WHERE s.project_id = $1",
+            "SELECT COUNT(*) FROM \"ExportJob\" j JOIN \"ExportSnapshot\" s ON j.snapshot_id = \
+             s.id WHERE s.project_id = $1",
         )
         .bind(project_id)
         .fetch_one(pool)

@@ -209,23 +209,83 @@ impl OpenApiService {
         user_id: &str,
         document_id: &str,
     ) -> Result<serde_json::Value, AppError> {
-        let _doc = Self::get_document(ctx, user_id, document_id).await?;
+        let document = OpenApiDocumentQueries::get_by_id(&ctx.pool, document_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("OpenAPI document not found".to_string()))?;
+
+        ctx.access_control
+            .require_project_access(user_id, &document.project_id)
+            .await?;
+
+        if let Some(content_str) = document.content {
+            if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(&content_str) {
+                return Ok(json_val);
+            }
+        }
+
+        // Return empty valid spec structure if not yet parsed
         Ok(
-            serde_json::json!({ "openapi": "3.0.0", "info": { "title": "API", "version": "1.0.0" } }),
+            serde_json::json!({ "openapi": "3.0.0", "info": { "title": document.name, "version": "1.0.0" }, "paths": {} }),
         )
     }
 }
 
-/// Helper function to fetch OpenAPI content (placeholder)
+/// Fetch OpenAPI content from a URL via HTTP
 async fn fetch_openapi_content(url: &str) -> Result<String, String> {
-    // In a real implementation, this would use reqwest to fetch the URL
-    // For now, we'll just return a simple mock
-    Ok(format!("OpenAPI content from {}", url))
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
+
+    let response = client
+        .get(url)
+        .header("User-Agent", "Nibleaf-CMS/1.0")
+        .send()
+        .await
+        .map_err(|e| format!("HTTP request failed: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("HTTP error status: {}", response.status()));
+    }
+
+    let text = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read response body: {}", e))?;
+
+    if text.len() > 5 * 1024 * 1024 {
+        return Err("OpenAPI document exceeds maximum size limit (5MB)".to_string());
+    }
+
+    Ok(text)
 }
 
-/// Helper function to count OpenAPI paths (placeholder)
+/// Parse OpenAPI content to count endpoints defined in `paths`
 fn count_openapi_paths(content: &str) -> i32 {
-    // In a real implementation, this would parse the OpenAPI spec and count paths
-    // For now, return a mock count
-    5
+    if let Ok(val) = serde_json::from_str::<serde_json::Value>(content) {
+        if let Some(paths) = val.get("paths").and_then(|p| p.as_object()) {
+            return paths.len() as i32;
+        }
+    }
+    0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_count_openapi_paths() {
+        let json_spec = r#"{
+            "openapi": "3.0.0",
+            "info": { "title": "Test", "version": "1.0" },
+            "paths": {
+                "/users": {},
+                "/users/{id}": {},
+                "/posts": {}
+            }
+        }"#;
+
+        assert_eq!(count_openapi_paths(json_spec), 3);
+    }
 }

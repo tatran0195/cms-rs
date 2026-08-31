@@ -12,11 +12,7 @@ use ammonia::Builder;
 use cms_entity::{page::Page, project::Project};
 use lazy_static::lazy_static;
 use pulldown_cmark::{html, CodeBlockKind, Event, Options, Parser, Tag, TagEnd};
-use syntect::{
-    highlighting::ThemeSet,
-    html::highlighted_html_for_string,
-    parsing::SyntaxSet,
-};
+use syntect::{highlighting::ThemeSet, html::highlighted_html_for_string, parsing::SyntaxSet};
 
 // ---------------------------------------------------------------------------
 // Global, lazily-initialized syntax/theme sets (expensive to construct)
@@ -150,10 +146,7 @@ impl MarkdownRenderer {
     /// the language is unknown or highlighting fails.
     pub fn highlight_code(&self, code: &str, language: Option<&str>) -> String {
         if !self.config.enable_syntax_highlighting {
-            return format!(
-                "<pre><code>{}</code></pre>",
-                self.escape_html(code)
-            );
+            return format!("<pre><code>{}</code></pre>", self.escape_html(code));
         }
 
         self.do_highlight(code, language)
@@ -202,7 +195,11 @@ impl MarkdownRenderer {
                     current_lang = match kind {
                         CodeBlockKind::Fenced(lang) => {
                             let s = lang.as_ref().trim().to_owned();
-                            if s.is_empty() { None } else { Some(s) }
+                            if s.is_empty() {
+                                None
+                            } else {
+                                Some(s)
+                            }
                         }
                         CodeBlockKind::Indented => None,
                     };

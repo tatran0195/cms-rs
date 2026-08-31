@@ -160,7 +160,23 @@ impl ThemeService {
         project_id: &str,
         theme_id: &str,
     ) -> Result<ThemeResponse, AppError> {
+        ctx.access_control
+            .require_project_role(user_id, project_id, MemberRole::Admin)
+            .await?;
+
         let theme = Self::get_theme(ctx, user_id, theme_id).await?;
+
+        cms_db::project::ProjectSettingsQueries::upsert(
+            &ctx.pool,
+            project_id,
+            Some(theme_id),
+            None,
+            None,
+            None,
+            None,
+        )
+        .await?;
+
         Ok(theme)
     }
 }

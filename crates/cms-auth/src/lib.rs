@@ -183,8 +183,9 @@ where
             .cloned()
             .ok_or_else(|| AppError::Internal(anyhow::anyhow!("AuthService not available")))?;
 
-        // Look up the API key directly
-        let key = ApiKeyQueries::get_by_key(&auth_service.pool, api_key)
+        // Look up the API key by hashed value
+        let hashed = api_key::hash_key(api_key);
+        let key = ApiKeyQueries::get_by_key(&auth_service.pool, &hashed)
             .await
             .map_err(|_| AppError::InvalidApiKey)?
             .ok_or(AppError::InvalidApiKey)?;
@@ -199,18 +200,15 @@ where
     }
 }
 
+use sha2::{Digest, Sha256};
+
 /// Helper to hash API keys using SHA-256 (simpler and faster than Argon2 for key lookup)
 pub fn hash_api_key(api_key: &str, prefix: &str) -> Result<String, AppError> {
-    use std::{
-        collections::hash_map::DefaultHasher,
-        hash::{Hash, Hasher},
-    };
-
-    // Use a deterministic hash for API key lookup (stored separately from user passwords)
     let combined = format!("{}-{}", prefix, api_key);
-    let mut hasher = DefaultHasher::new();
-    combined.hash(&mut hasher);
-    Ok(format!("{:x}", hasher.finish()))
+    let mut hasher = Sha256::new();
+    hasher.update(combined.as_bytes());
+    let result = hasher.finalize();
+    Ok(format!("sha256:{}", hex::encode(result)))
 }
 
 /// Verify an API key against a hash

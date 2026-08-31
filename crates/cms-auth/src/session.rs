@@ -49,7 +49,6 @@ impl SessionService {
         user_id: &str,
         auth_service: &AuthService,
     ) -> Result<SessionWithToken, AppError> {
-        let session_id = Uuid::new_v4().to_string();
         let session_token = Uuid::new_v4().to_string();
         let expires_at =
             Utc::now() + Duration::hours(auth_service.config().session_expiration_hours);
@@ -57,8 +56,8 @@ impl SessionService {
         // Create the session in the database
         let session = SessionQueries::create(pool, user_id, &session_token, expires_at).await?;
 
-        // Create JWT token
-        let claims = SessionClaims::new(user_id, &session_id, expires_at);
+        // Create JWT token embedding the real database session id
+        let claims = SessionClaims::new(user_id, &session.id, expires_at);
 
         let header = Header {
             kid: None,
@@ -81,40 +80,36 @@ impl SessionService {
         })
     }
 
-    /// Validate a session token
+    /// Validate a session token (JWT or raw token)
     pub async fn validate(
         pool: &PgPool,
         token: &str,
         auth_service: &AuthService,
     ) -> Result<Session, AppError> {
-        // Decode the JWT
-        let claims: SessionClaims = decode::<SessionClaims>(
+        // First try to decode as JWT session token
+        if let Ok(token_data) = decode::<SessionClaims>(
             token,
             auth_service.decoding_key(),
             &auth_service.jwt_validation(),
-        )
-        .map(|td| td.claims)
-        .map_err(|e| {
-            tracing::debug!("Session token decode failed: {}", e);
-            AppError::InvalidSession
-        })?;
-
-        // Get the session from the database
-        let session = SessionQueries::get_by_id(pool, &claims.session_id)
-            .await?
-            .ok_or(AppError::InvalidSession)?;
-
-        // Verify the session token matches
-        if session.session_token != token {
-            return Err(AppError::InvalidSession);
+        ) {
+            let claims = token_data.claims;
+            if let Some(session) = SessionQueries::get_by_id(pool, &claims.session_id).await? {
+                if session.expires_at < Utc::now() {
+                    return Err(AppError::TokenExpired);
+                }
+                return Ok(session);
+            }
         }
 
-        // Verify the session hasn't expired
-        if session.expires_at < Utc::now() {
-            return Err(AppError::TokenExpired);
+        // Fallback: look up directly by session_token (cookie / raw token)
+        if let Some(session) = SessionQueries::get_by_token(pool, token).await? {
+            if session.expires_at < Utc::now() {
+                return Err(AppError::TokenExpired);
+            }
+            return Ok(session);
         }
 
-        Ok(session)
+        Err(AppError::InvalidSession)
     }
 
     /// Invalidate a session (logout)
