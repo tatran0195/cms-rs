@@ -1,7 +1,7 @@
 //! CMS Configuration
 //!
 //! This crate provides typed configuration for the CMS application,
-//! following AppFlowy's pattern of a single Config struct with env-file split
+//! following pattern of a single Config struct with env-file split
 //! for dev vs. deploy.
 //!
 //! Configuration is loaded from:
@@ -827,11 +827,15 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use std::env;
+    use std::sync::Mutex;
 
     use super::*;
 
+    static ENV_MUTEX: Mutex<()> = Mutex::new(());
+
     #[test]
     fn test_default_config() {
+        let _guard = ENV_MUTEX.lock().unwrap();
         // Temporarily clear environment
         env::remove_var("CMS_ENV");
         env::remove_var("CMS_CONFIG_PATH");
@@ -839,12 +843,18 @@ mod tests {
         let config = Config::default();
         assert_eq!(config.server.port, 3000);
         assert_eq!(config.server.host, "0.0.0.0");
-        assert_eq!(config.database.url, "postgres://postgres:postgres@localhost:5432/cms");
+        assert_eq!(
+            config.database.url,
+            "postgres://postgres:postgres@localhost:5432/cms"
+        );
         assert_eq!(config.storage.backend, "local");
         assert_eq!(config.search.backend, "pgvector");
         assert_eq!(config.queue.backend, "memory");
         assert_eq!(config.analytics.backend, "postgres");
-        assert_eq!(config.auth.session_secret, "dev_session_secret_change_in_production");
+        assert_eq!(
+            config.auth.session_secret,
+            "dev_session_secret_change_in_production"
+        );
         assert!(!config.mcp.enabled);
         assert!(config.rate_limit.enabled);
         assert!(config.security_headers.enable_hsts);
@@ -916,7 +926,9 @@ mod tests {
         let admin_origin = AdminOriginConfig::default();
         assert!(admin_origin.enforce);
         assert!(admin_origin.allow_localhost);
-        assert!(admin_origin.allowed_origins.contains(&"https://admin.cms.com".to_string()));
+        assert!(admin_origin
+            .allowed_origins
+            .contains(&"https://admin.cms.com".to_string()));
     }
 
     #[test]
@@ -940,16 +952,19 @@ mod tests {
             requests_per_second = 500
         "#;
 
-        let builder = ConfigLib::builder().add_source(config::File::from_str(
-            toml_data,
-            config::FileFormat::Toml,
-        ));
+        let builder = ConfigLib::builder()
+            .add_source(config::File::from_str(toml_data, config::FileFormat::Toml));
         let settings = builder.build().expect("should parse toml data");
-        let config: Config = settings.try_deserialize().expect("should deserialize Config");
+        let config: Config = settings
+            .try_deserialize()
+            .expect("should deserialize Config");
 
         assert_eq!(config.server.port, 8080);
         assert_eq!(config.server.host, "127.0.0.1");
-        assert_eq!(config.database.url, "postgres://custom:custom@localhost:5432/custom_db");
+        assert_eq!(
+            config.database.url,
+            "postgres://custom:custom@localhost:5432/custom_db"
+        );
         assert_eq!(config.database.max_pool_size, 50);
         assert_eq!(config.storage.backend, "s3");
         assert_eq!(config.storage.s3_bucket.as_deref(), Some("my-bucket"));
@@ -966,7 +981,11 @@ mod tests {
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
         let deploy_path = format!("{}/../../config/deploy.toml", manifest_dir);
         let config = Config::load_from_path(&deploy_path);
-        assert!(config.is_ok(), "loading config/deploy.toml should succeed: {:?}", config.err());
+        assert!(
+            config.is_ok(),
+            "loading config/deploy.toml should succeed: {:?}",
+            config.err()
+        );
         let config = config.unwrap();
         assert_eq!(config.database.max_pool_size, 30);
         assert_eq!(config.queue.workers, 8);
@@ -976,6 +995,7 @@ mod tests {
 
     #[test]
     fn test_env_var_override() {
+        let _guard = ENV_MUTEX.lock().unwrap();
         // Set an env var
         env::set_var("CMS_SERVER__PORT", "9999");
         env::set_var("CMS_DATABASE__MAX_POOL_SIZE", "77");
@@ -991,9 +1011,13 @@ mod tests {
 
     #[test]
     fn test_load_cascading() {
+        let _guard = ENV_MUTEX.lock().unwrap();
         let config = Config::load().expect("Config::load should succeed");
         assert_eq!(config.server.port, 3000);
-        assert_eq!(config.database.url, "postgres://postgres:postgres@localhost:5432/cms");
+        assert_eq!(
+            config.database.url,
+            "postgres://postgres:postgres@localhost:5432/cms"
+        );
         assert_eq!(config.storage.backend, "local");
     }
 }

@@ -181,7 +181,8 @@ pub mod app_state {
                 cms_storage::create_storage(&config.storage).await?.into();
 
             // Initialize search engine
-            let search = cms_search::create_search_engine(&config.search).await?;
+            let search =
+                cms_search::create_search_engine_with_pool(&config.search, db.clone()).await?;
 
             // Initialize analytics store (pass pool so it can query the DB)
             let analytics =

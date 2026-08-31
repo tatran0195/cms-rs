@@ -40,14 +40,59 @@ pub trait SearchEngine: Send + Sync {
     async fn rag_answer(&self, project_id: &str, question: &str) -> Result<RagAnswer, AppError>;
 }
 
-/// Create a SearchEngine implementation based on configuration
-pub async fn create_search_engine(
+/// Create a SearchEngine implementation based on configuration and optional existing PgPool
+pub async fn create_search_engine_with_pool(
     config: &SearchConfig,
+    pool: PgPool,
 ) -> Result<Arc<dyn SearchEngine>, AppError> {
     match config.backend.as_str() {
         "pgvector" => {
-            let engine =
-                PgVectorSearchEngine::new(config.pgvector_url.clone().unwrap_or_default()).await?;
+            let engine = match &config.pgvector_url {
+                Some(url) if !url.trim().is_empty() => {
+                    PgVectorSearchEngine::new(url.clone()).await?
+                }
+                _ => PgVectorSearchEngine::from_pool(pool),
+            };
+            Ok(Arc::new(engine))
+        }
+        "qdrant" => {
+            #[cfg(feature = "qdrant")]
+            {
+                let engine = QdrantSearchEngine::new(
+                    config.qdrant_host.clone().unwrap_or_default(),
+                    config.qdrant_port,
+                    config.qdrant_api_key.clone(),
+                )
+                .await?;
+                Ok(Arc::new(engine))
+            }
+            #[cfg(not(feature = "qdrant"))]
+            {
+                Err(AppError::SearchUnavailable(
+                    "Qdrant backend requires the 'qdrant' feature".to_string(),
+                ))
+            }
+        }
+        _ => Err(AppError::SearchUnavailable(format!(
+            "Unknown search backend: {}",
+            config.backend
+        ))),
+    }
+}
+
+/// Create a SearchEngine implementation based on configuration and default database URL
+pub async fn create_search_engine(
+    config: &SearchConfig,
+    default_db_url: &str,
+) -> Result<Arc<dyn SearchEngine>, AppError> {
+    match config.backend.as_str() {
+        "pgvector" => {
+            let url = config
+                .pgvector_url
+                .as_deref()
+                .filter(|u| !u.trim().is_empty())
+                .unwrap_or(default_db_url);
+            let engine = PgVectorSearchEngine::new(url.to_string()).await?;
             Ok(Arc::new(engine))
         }
         "qdrant" => {
@@ -87,6 +132,11 @@ impl PgVectorSearchEngine {
         let tokenizer = JapaneseTokenizer::new();
 
         Ok(Self { pool, tokenizer })
+    }
+
+    pub fn from_pool(pool: PgPool) -> Self {
+        let tokenizer = JapaneseTokenizer::new();
+        Self { pool, tokenizer }
     }
 }
 
