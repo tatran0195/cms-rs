@@ -1,7 +1,7 @@
 //! CMS API Layer
 //!
 //! This crate contains Axum routers and handlers for the CMS REST API.
-//! Following AppFlowy's pattern, handlers are thin and delegate to biz functions.
+//! Handlers are thin and delegate to biz functions.
 //!
 //! The API is organized by domain, matching the structure of `apps/server/src/modules/app`
 //! in the original TypeScript monorepo.

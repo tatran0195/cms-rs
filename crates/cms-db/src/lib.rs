@@ -4,8 +4,7 @@
 
 //! CMS Database Layer
 //!
-//! This crate provides hand-written SQLx queries organized by domain,
-//! matching AppFlowy's libs/database pattern.
+//! This crate provides hand-written SQLx queries organized by domain
 //!
 //! Each domain has its own module with query functions that return
 //! either row structs from cms-entity or Result<T, AppError>.

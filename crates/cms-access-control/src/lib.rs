@@ -1,7 +1,7 @@
 //! CMS Access Control
 //!
-//! This crate provides trait-based access control following AppFlowy's pattern,
-//! but with CMS's actual enumerable rules instead of Casbin.
+//! This crate provides trait-based access control,
+//! with CMS's actual enumerable rules instead of Casbin.
 //!
 //! CMS's authorization rules are:
 //! - Organization membership check

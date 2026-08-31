@@ -21,7 +21,7 @@ CMS is a modern, fast, and searchable documentation platform built with Rust and
 
 ## 🏗️ Architecture
 
-Following AppFlowy's layering discipline:
+Following layering discipline:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -352,7 +352,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Inspired by [AppFlowy](https://github.com/AppFlowy-IO/AppFlowy)
 - Built with [Rust](https://www.rust-lang.org/) and [React](https://react.dev/)
 - Uses [Axum](https://github.com/tokio-rs/axum) for async web
 - Uses [SQLx](https://github.com/launchbadge/sqlx) for database access

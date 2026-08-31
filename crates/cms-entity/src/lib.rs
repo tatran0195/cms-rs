@@ -1,12 +1,10 @@
 //! CMS Entity Types
 //!
 //! This crate contains wire-shape DTOs (request/response types) with zero
-//! database dependency, following AppFlowy's database-entity pattern.
+//! database dependency, following database-entity pattern.
 //!
-//! Unlike AppFlowy which has two DTO layers (database-entity for storage
-//! shape and shared-entity for wire shape), CMS uses a single crate
-//! since the Prisma-generated types already serve as both storage and API
-//! shapes with no friction.
+//! CMS uses a single crate since the Prisma-generated types already serve
+//! as both storage and API shapes with no friction.
 //!
 //! This crate exists so that cms-api and any future codegen tooling
 //! can depend on the same types without pulling in the database crate.

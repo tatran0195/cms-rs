@@ -1,7 +1,7 @@
 //! CMS Middleware
 //!
 //! This crate contains cross-cutting Tower layers for the CMS API.
-//! Following AppFlowy's pattern, middleware is organized as Tower layers.
+//! Middleware is organized as Tower layers.
 //!
 //! # Production-Ready Features
 //!

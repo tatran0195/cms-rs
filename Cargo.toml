@@ -7,7 +7,7 @@
 # - cms-*: Library crates (entity, db, biz, api, middleware, etc.)
 # - cms-server: Binary crate (composition root)
 #
-# Layering (AppFlowy-inspired):
+# Layering:
 #   API Layer (cms-api) → Biz Layer (cms-biz) → DB Layer (cms-db)
 #   No circular dependencies allowed
 #
@@ -139,7 +139,7 @@ qdrant-client = { version = "1.19.0" }
 
 [workspace.metadata]
 # Configuration for cargo tools
-# This workspace follows AppFlowy's layering discipline
+# This workspace follows layering discipline
 # All dependencies flow downward: api → biz → db
 # No circular dependencies allowed
 

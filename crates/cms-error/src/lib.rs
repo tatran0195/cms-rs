@@ -1,7 +1,7 @@
 //! CMS Error Types
 //!
 //! This crate provides a single AppError enum that represents all possible
-//! errors in the CMS system, following AppFlowy's pattern of a single
+//! errors in the CMS system, following pattern of a single
 //! error type with one conversion point to HTTP responses.
 //!
 //! The error variants map directly to CMS's existing closed ErrorCode union:

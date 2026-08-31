@@ -288,7 +288,7 @@ frontend/
 
 ### **Architecture**
 
-✅ **AppFlowy-inspired layering** (api → biz → db)  
+✅ **Layering** (api → biz → db)  
 ✅ **Trait-based dependency injection**  
 ✅ **Pluggable backends** for all infrastructure  
 ✅ **No circular dependencies**  

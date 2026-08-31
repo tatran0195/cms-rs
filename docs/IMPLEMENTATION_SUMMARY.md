@@ -82,7 +82,7 @@ cms-rs/
 **23 files** with SQLx queries:
 
 - All domain modules with CRUD operations
-- Hand-written SQL queries matching AppFlowy's libs/database pattern
+- Hand-written SQL queries
 - Proper error handling with AppError
 - QueryBuilder usage for dynamic queries
 - All table operations covered
@@ -101,7 +101,6 @@ cms-rs/
 - Thin functions taking resolved dependencies (pool, identity, access-control)
 - Orchestration of multi-step operations
 - Delegation to database layer
-- Following AppFlowy's pattern for testability
 
 **All domain modules present:**
 
