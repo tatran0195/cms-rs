@@ -84,3 +84,19 @@ pub async fn test_connection(pool: &PgPool) -> Result<(), AppError> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_run_migrations() {
+        let url = std::env::var("CMS_DATABASE__URL")
+            .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/cms".to_string());
+        if let Ok(pool) = create_pool(&url).await {
+            let res = run_migrations(&pool).await;
+            assert!(res.is_ok(), "Migration should succeed: {:?}", res.err());
+        }
+    }
+}
+

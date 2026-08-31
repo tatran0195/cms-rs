@@ -293,7 +293,7 @@ impl UsagePlanMeterQueries {
 
         let row = sqlx::query_as::<_, UsagePlanMeterRow>(
             r#"
-            INSERT INTO "UsagePlanMeter" (id, usage_plan_id, usage_meter_id, limit, created_at)
+            INSERT INTO "UsagePlanMeter" (id, usage_plan_id, usage_meter_id, "limit", created_at)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING *
             "#,

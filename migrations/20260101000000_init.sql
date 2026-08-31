@@ -4,7 +4,7 @@
 
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgvector";
+
 
 -- ============================================
 -- Identity & Authentication
@@ -203,6 +203,36 @@ CREATE TABLE IF NOT EXISTS "Page" (
 );
 
 -- ============================================
+-- Publishing & Deployments
+-- ============================================
+
+CREATE TYPE "DeploymentStatus" AS ENUM ('PENDING', 'BUILDING', 'DEPLOYING', 'ACTIVE', 'FAILED', 'DELETED');
+
+CREATE TABLE IF NOT EXISTS "Deployment" (
+    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id TEXT NOT NULL REFERENCES "Project"(id) ON DELETE CASCADE,
+    branch_id TEXT REFERENCES "Branch"(id) ON DELETE SET NULL,
+    status "DeploymentStatus" NOT NULL DEFAULT 'PENDING',
+    build_logs TEXT,
+    error_message TEXT,
+    deployed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS "Domain" (
+    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4(),
+    deployment_id TEXT NOT NULL REFERENCES "Deployment"(id) ON DELETE CASCADE,
+    hostname TEXT NOT NULL UNIQUE,
+    is_primary BOOLEAN NOT NULL DEFAULT false,
+    ssl_certificate TEXT,
+    ssl_certificate_expires_at TIMESTAMPTZ,
+    verified_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ============================================
 -- Git Integration
 -- ============================================
 
@@ -338,36 +368,6 @@ CREATE TABLE IF NOT EXISTS "IntegrationIdempotencyRecord" (
 );
 
 -- ============================================
--- Publishing & Deployments
--- ============================================
-
-CREATE TYPE "DeploymentStatus" AS ENUM ('PENDING', 'BUILDING', 'DEPLOYING', 'ACTIVE', 'FAILED', 'DELETED');
-
-CREATE TABLE IF NOT EXISTS "Deployment" (
-    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4(),
-    project_id TEXT NOT NULL REFERENCES "Project"(id) ON DELETE CASCADE,
-    branch_id TEXT REFERENCES "Branch"(id) ON DELETE SET NULL,
-    status "DeploymentStatus" NOT NULL DEFAULT 'PENDING',
-    build_logs TEXT,
-    error_message TEXT,
-    deployed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS "Domain" (
-    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4(),
-    deployment_id TEXT NOT NULL REFERENCES "Deployment"(id) ON DELETE CASCADE,
-    hostname TEXT NOT NULL UNIQUE,
-    is_primary BOOLEAN NOT NULL DEFAULT false,
-    ssl_certificate TEXT,
-    ssl_certificate_expires_at TIMESTAMPTZ,
-    verified_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- ============================================
 -- Reader Access (Private Documentation)
 -- ============================================
 
@@ -490,14 +490,14 @@ CREATE TABLE IF NOT EXISTS "SearchIndexRun" (
 );
 
 -- ============================================
--- Vector store for pgvector backend
+-- Vector store for pgvector / embeddings backend
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS "PageEmbedding" (
     id TEXT PRIMARY KEY DEFAULT uuid_generate_v4(),
     page_id TEXT NOT NULL REFERENCES "Page"(id) ON DELETE CASCADE,
     project_id TEXT NOT NULL REFERENCES "Project"(id) ON DELETE CASCADE,
-    embedding vector(1536) NOT NULL, -- Dimension for text-embedding-ada-002
+    embedding REAL[] NOT NULL, -- Dimension for text-embedding-ada-002 (1536 float32 values)
     chunk_text TEXT NOT NULL,
     chunk_index INTEGER NOT NULL DEFAULT 0,
     metadata JSONB NOT NULL DEFAULT '{}',
@@ -505,8 +505,9 @@ CREATE TABLE IF NOT EXISTS "PageEmbedding" (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Create index for vector search
-CREATE INDEX IF NOT EXISTS idx_page_embedding_vector ON "PageEmbedding" USING ivfflat (embedding vector_l2_ops) WITH (lists = 100);
+-- Create indices for embedding lookups
+CREATE INDEX IF NOT EXISTS idx_page_embedding_project_page ON "PageEmbedding"(project_id, page_id);
+CREATE INDEX IF NOT EXISTS idx_page_embedding_page ON "PageEmbedding"(page_id);
 
 -- ============================================
 -- Exports
@@ -658,7 +659,7 @@ CREATE TABLE IF NOT EXISTS "UsagePlanMeter" (
     id TEXT PRIMARY KEY DEFAULT uuid_generate_v4(),
     usage_plan_id TEXT NOT NULL REFERENCES "UsagePlan"(id) ON DELETE CASCADE,
     usage_meter_id TEXT NOT NULL REFERENCES "UsageMeter"(id) ON DELETE CASCADE,
-    limit INTEGER NOT NULL DEFAULT 0,
+    "limit" INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
