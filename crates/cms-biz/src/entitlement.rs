@@ -20,7 +20,7 @@ impl EntitlementService {
         description: Option<&str>,
         is_enabled: bool,
     ) -> Result<UsageEntitlement, AppError> {
-        ctx.access_control.require_system_admin(user_id).await?;
+        ctx.authz.require_system_admin(user_id).await?;
 
         let entitlement = UsageEntitlementQueries::create(
             &ctx.pool,
@@ -55,7 +55,7 @@ impl EntitlementService {
         description: Option<&str>,
         is_enabled: Option<bool>,
     ) -> Result<UsageEntitlement, AppError> {
-        ctx.access_control.require_system_admin(user_id).await?;
+        ctx.authz.require_system_admin(user_id).await?;
 
         let entitlement = UsageEntitlementQueries::update(
             &ctx.pool,
@@ -75,7 +75,7 @@ impl EntitlementService {
         user_id: &str,
         entitlement_id: &str,
     ) -> Result<bool, AppError> {
-        ctx.access_control.require_system_admin(user_id).await?;
+        ctx.authz.require_system_admin(user_id).await?;
 
         UsageEntitlementQueries::delete(&ctx.pool, entitlement_id).await
     }

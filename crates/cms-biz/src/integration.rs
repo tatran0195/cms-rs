@@ -2,7 +2,7 @@
 //!
 //! This module contains business logic for project integrations.
 
-use cms_access_control::AccessControl;
+use cms_authz::Authz;
 use cms_db::integration::{
     IntegrationAuditEventQueries, IntegrationConfirmationQueries,
     IntegrationIdempotencyRecordQueries, IntegrationWebhookDeliveryQueries,
@@ -29,7 +29,7 @@ impl IntegrationService {
         request: CreateProjectIntegrationRequest,
     ) -> Result<ProjectIntegrationResponse, AppError> {
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_access(user_id, &request.project_id)
             .await?;
 
@@ -71,7 +71,7 @@ impl IntegrationService {
             .ok_or_else(|| AppError::NotFound("Integration not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_access(user_id, &integration.project_id)
             .await?;
 
@@ -85,7 +85,7 @@ impl IntegrationService {
         project_id: &str,
     ) -> Result<Vec<ProjectIntegrationResponse>, AppError> {
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_access(user_id, project_id)
             .await?;
 
@@ -106,7 +106,7 @@ impl IntegrationService {
             .ok_or_else(|| AppError::NotFound("Integration not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_access(user_id, &integration.project_id)
             .await?;
 
@@ -149,7 +149,7 @@ impl IntegrationService {
             .ok_or_else(|| AppError::NotFound("Integration not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_access(user_id, &integration.project_id)
             .await?;
 
@@ -181,7 +181,7 @@ impl IntegrationService {
         provider: IntegrationProvider,
     ) -> Result<Vec<ProjectIntegrationResponse>, AppError> {
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_access(user_id, project_id)
             .await?;
 

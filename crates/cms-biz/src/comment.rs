@@ -28,7 +28,7 @@ impl CommentService {
             .ok_or_else(|| AppError::NotFound("Page not found".to_string()))?;
 
         // Check if user has access to view the page
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &page.project_id, MemberRole::Viewer)
             .await?;
 
@@ -67,7 +67,7 @@ impl CommentService {
             .await?
             .ok_or_else(|| AppError::NotFound("Page not found".to_string()))?;
 
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &page.project_id, MemberRole::Viewer)
             .await?;
 
@@ -90,7 +90,7 @@ impl CommentService {
             .ok_or_else(|| AppError::NotFound("Page not found".to_string()))?;
 
         // Check if user has access to the page
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &_page_entity.project_id, MemberRole::Viewer)
             .await?;
 
@@ -132,7 +132,7 @@ impl CommentService {
                 .await?
                 .ok_or_else(|| AppError::NotFound("Page not found".to_string()))?;
 
-            ctx.access_control
+            ctx.authz
                 .require_project_role(user_id, &page.project_id, MemberRole::Admin)
                 .await?;
         }
@@ -165,7 +165,7 @@ impl CommentService {
                 .await?
                 .ok_or_else(|| AppError::NotFound("Page not found".to_string()))?;
 
-            ctx.access_control
+            ctx.authz
                 .require_project_role(user_id, &page.project_id, MemberRole::Admin)
                 .await?;
         }
@@ -188,7 +188,7 @@ impl CommentService {
             .await?
             .ok_or_else(|| AppError::NotFound("Page not found".to_string()))?;
 
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &page.project_id, MemberRole::Admin)
             .await?;
 
@@ -212,7 +212,7 @@ impl CommentService {
             .await?
             .ok_or_else(|| AppError::NotFound("Page not found".to_string()))?;
 
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &page.project_id, MemberRole::Admin)
             .await?;
 

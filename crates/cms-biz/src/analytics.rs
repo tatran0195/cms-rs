@@ -47,7 +47,7 @@ impl AnalyticsService {
         page_size: u64,
     ) -> Result<AnalyticsQueryResponse, AppError> {
         // Check if user has admin role in the organization
-        ctx.access_control
+        ctx.authz
             .require_org_admin(user_id, org_id)
             .await?;
 
@@ -89,7 +89,7 @@ impl AnalyticsService {
         end_date: chrono::DateTime<chrono::Utc>,
     ) -> Result<serde_json::Value, AppError> {
         // Check if user has admin role in the organization
-        ctx.access_control
+        ctx.authz
             .require_org_admin(user_id, org_id)
             .await?;
 
@@ -150,7 +150,7 @@ impl AnalyticsService {
         user_id: &str,
         project_id: &str,
     ) -> Result<AnalyticsDashboardResponse, AppError> {
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 

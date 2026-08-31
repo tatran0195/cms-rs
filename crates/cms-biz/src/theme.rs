@@ -29,7 +29,7 @@ impl ThemeService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Admin)
             .await?;
 
@@ -56,7 +56,7 @@ impl ThemeService {
             .ok_or_else(|| AppError::NotFound("Theme not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &theme.project_id, MemberRole::Viewer)
             .await?;
 
@@ -74,7 +74,7 @@ impl ThemeService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 
@@ -95,7 +95,7 @@ impl ThemeService {
             .ok_or_else(|| AppError::NotFound("Theme not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &theme.project_id, MemberRole::Admin)
             .await?;
 
@@ -122,7 +122,7 @@ impl ThemeService {
             .ok_or_else(|| AppError::NotFound("Theme not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &theme.project_id, MemberRole::Admin)
             .await?;
 
@@ -146,7 +146,7 @@ impl ThemeService {
             .await?
             .ok_or_else(|| AppError::NotFound("Theme not found".to_string()))?;
 
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &theme.project_id, MemberRole::Viewer)
             .await?;
 
@@ -160,7 +160,7 @@ impl ThemeService {
         project_id: &str,
         theme_id: &str,
     ) -> Result<ThemeResponse, AppError> {
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Admin)
             .await?;
 

@@ -3,7 +3,7 @@
 //! This module contains business logic for OpenAPI document management.
 
 use chrono::Utc;
-use cms_access_control::AccessControl;
+use cms_authz::Authz;
 use cms_db::openapi::OpenApiDocumentQueries;
 use cms_entity::{
     common::Id,
@@ -26,7 +26,7 @@ impl OpenApiService {
         request: CreateOpenApiDocumentRequest,
     ) -> Result<OpenApiDocumentResponse, AppError> {
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_access(user_id, &request.project_id)
             .await?;
 
@@ -63,7 +63,7 @@ impl OpenApiService {
             .ok_or_else(|| AppError::NotFound("OpenAPI document not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_access(user_id, &document.project_id)
             .await?;
 
@@ -77,7 +77,7 @@ impl OpenApiService {
         project_id: &str,
     ) -> Result<Vec<OpenApiDocumentResponse>, AppError> {
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_access(user_id, project_id)
             .await?;
 
@@ -98,7 +98,7 @@ impl OpenApiService {
             .ok_or_else(|| AppError::NotFound("OpenAPI document not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_access(user_id, &document.project_id)
             .await?;
 
@@ -124,7 +124,7 @@ impl OpenApiService {
             .ok_or_else(|| AppError::NotFound("OpenAPI document not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_access(user_id, &document.project_id)
             .await?;
 
@@ -142,7 +142,7 @@ impl OpenApiService {
             .ok_or_else(|| AppError::NotFound("OpenAPI document not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_access(user_id, &document.project_id)
             .await?;
 
@@ -196,7 +196,7 @@ impl OpenApiService {
             .ok_or_else(|| AppError::NotFound("OpenAPI document not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_access(user_id, &document.project_id)
             .await?;
 
@@ -213,7 +213,7 @@ impl OpenApiService {
             .await?
             .ok_or_else(|| AppError::NotFound("OpenAPI document not found".to_string()))?;
 
-        ctx.access_control
+        ctx.authz
             .require_project_access(user_id, &document.project_id)
             .await?;
 

@@ -32,7 +32,7 @@ impl ProjectService {
         request: CreateProjectRequest,
     ) -> Result<ProjectWithOrgResponse, AppError> {
         // Check if user is a member of the organization
-        ctx.access_control
+        ctx.authz
             .require_org_member(user_id, org_id)
             .await?;
 
@@ -100,7 +100,7 @@ impl ProjectService {
 
         // Check if user has access to the project
         // Either through organization membership or reader access
-        ctx.access_control
+        ctx.authz
             .require_org_member(user_id, &project.organization_id)
             .await?;
 
@@ -144,7 +144,7 @@ impl ProjectService {
             .ok_or_else(|| AppError::NotFound("Organization not found".to_string()))?;
 
         // Check if user has access to the organization
-        ctx.access_control
+        ctx.authz
             .require_org_member(user_id, &org.id)
             .await?;
 
@@ -170,7 +170,7 @@ impl ProjectService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has admin role in the organization
-        ctx.access_control
+        ctx.authz
             .require_org_admin(user_id, &project.organization_id)
             .await?;
 
@@ -198,7 +198,7 @@ impl ProjectService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Only organization owner can delete a project
-        ctx.access_control
+        ctx.authz
             .require_org_owner(user_id, &project.organization_id)
             .await?;
 
@@ -215,7 +215,7 @@ impl ProjectService {
         page_size: u64,
     ) -> Result<ListProjectsResponse, AppError> {
         // Check if user is a member of the organization
-        ctx.access_control
+        ctx.authz
             .require_org_member(user_id, org_id)
             .await?;
 
@@ -285,7 +285,7 @@ impl ProjectService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Admin)
             .await?;
 
@@ -317,7 +317,7 @@ impl ProjectService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Admin)
             .await?;
 
@@ -346,7 +346,7 @@ impl ProjectService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_org_member(user_id, &project.organization_id)
             .await?;
 
@@ -369,7 +369,7 @@ impl ProjectService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Admin)
             .await?;
 
@@ -393,7 +393,7 @@ impl ProjectService {
             .ok_or_else(|| AppError::NotFound("Addon not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &addon.project_id, MemberRole::Admin)
             .await?;
 
@@ -413,7 +413,7 @@ impl ProjectService {
             .ok_or_else(|| AppError::NotFound("Addon not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &addon.project_id, MemberRole::Admin)
             .await?;
 

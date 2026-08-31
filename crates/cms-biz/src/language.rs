@@ -38,7 +38,7 @@ impl LanguageService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &request.project_id, MemberRole::Admin)
             .await?;
 
@@ -86,7 +86,7 @@ impl LanguageService {
             .ok_or_else(|| AppError::NotFound("Language not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &language.project_id, MemberRole::Viewer)
             .await?;
 
@@ -105,7 +105,7 @@ impl LanguageService {
             .ok_or_else(|| AppError::NotFound("Language not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &language.project_id, MemberRole::Admin)
             .await?;
 
@@ -134,7 +134,7 @@ impl LanguageService {
             .ok_or_else(|| AppError::NotFound("Language not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &language.project_id, MemberRole::Admin)
             .await?;
 
@@ -174,7 +174,7 @@ impl LanguageService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &query.project_id, MemberRole::Viewer)
             .await?;
 
@@ -207,7 +207,7 @@ impl LanguageService {
             .ok_or_else(|| AppError::NotFound("Language not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &language.project_id, MemberRole::Admin)
             .await?;
 
@@ -227,7 +227,7 @@ impl LanguageService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 
@@ -250,7 +250,7 @@ impl LanguageService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Admin)
             .await?;
 
@@ -288,7 +288,7 @@ impl LanguageService {
             .ok_or_else(|| AppError::NotFound("Translation not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &translation.project_id, MemberRole::Admin)
             .await?;
 

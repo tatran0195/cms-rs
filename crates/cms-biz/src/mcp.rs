@@ -29,7 +29,7 @@ impl McpService {
                 .await?
                 .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
             if let Some(uid) = user_id {
-                ctx.access_control
+                ctx.authz
                     .require_project_role(uid, pid, MemberRole::Viewer)
                     .await?;
             } else if !project.is_public {
@@ -164,7 +164,7 @@ impl McpService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         if let Some(uid) = user_id {
-            ctx.access_control
+            ctx.authz
                 .require_project_role(uid, project_id, MemberRole::Viewer)
                 .await?;
         } else if !project.is_public {
@@ -236,7 +236,7 @@ impl McpService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         if let Some(uid) = user_id {
-            ctx.access_control
+            ctx.authz
                 .require_project_role(uid, project_id, MemberRole::Viewer)
                 .await?;
         } else if !project.is_public {
@@ -286,7 +286,7 @@ impl McpService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         if let Some(uid) = user_id {
-            ctx.access_control
+            ctx.authz
                 .require_project_role(uid, project_id, MemberRole::Viewer)
                 .await?;
         } else if !project.is_public {
@@ -352,7 +352,7 @@ impl McpService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         if let Some(uid) = user_id {
-            ctx.access_control
+            ctx.authz
                 .require_project_role(uid, project_id, MemberRole::Viewer)
                 .await?;
         } else if !project.is_public {
@@ -494,7 +494,7 @@ impl McpService {
         let project_id = parts[0];
         let page_path = parts[1];
 
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 

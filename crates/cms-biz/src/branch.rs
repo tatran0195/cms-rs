@@ -31,7 +31,7 @@ impl BranchService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has access to create branches in this project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Editor)
             .await?;
 
@@ -86,7 +86,7 @@ impl BranchService {
             .ok_or_else(|| AppError::NotFound("Branch not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &branch.project_id, MemberRole::Viewer)
             .await?;
 
@@ -112,7 +112,7 @@ impl BranchService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 
@@ -138,7 +138,7 @@ impl BranchService {
             .ok_or_else(|| AppError::NotFound("Branch not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &branch.project_id, MemberRole::Admin)
             .await?;
 
@@ -193,7 +193,7 @@ impl BranchService {
             .ok_or_else(|| AppError::NotFound("Branch not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &branch.project_id, MemberRole::Admin)
             .await?;
 
@@ -235,7 +235,7 @@ impl BranchService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &query.project_id, MemberRole::Viewer)
             .await?;
 
@@ -271,7 +271,7 @@ impl BranchService {
             .ok_or_else(|| AppError::NotFound("Branch not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &branch.project_id, MemberRole::Admin)
             .await?;
 
@@ -296,7 +296,7 @@ impl BranchService {
             .ok_or_else(|| AppError::NotFound("Source branch not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &source_branch.project_id, MemberRole::Editor)
             .await?;
 

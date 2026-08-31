@@ -47,7 +47,7 @@ impl DeploymentService {
             .ok_or_else(|| AppError::NotFound("Branch not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Admin)
             .await?;
 
@@ -72,7 +72,7 @@ impl DeploymentService {
             .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &deployment.project_id, MemberRole::Viewer)
             .await?;
 
@@ -92,7 +92,7 @@ impl DeploymentService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 
@@ -126,7 +126,7 @@ impl DeploymentService {
             .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &deployment.project_id, MemberRole::Admin)
             .await?;
 
@@ -155,7 +155,7 @@ impl DeploymentService {
             .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &deployment.project_id, MemberRole::Admin)
             .await?;
 
@@ -182,7 +182,7 @@ impl DeploymentService {
             .await?
             .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
 
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &deployment.project_id, MemberRole::Admin)
             .await?;
 
@@ -204,7 +204,7 @@ impl DeploymentService {
             .await?
             .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
 
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &deployment.project_id, MemberRole::Admin)
             .await?;
 
@@ -240,7 +240,7 @@ impl DeploymentService {
             .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &deployment.project_id, MemberRole::Admin)
             .await?;
 
@@ -276,7 +276,7 @@ impl DeploymentService {
             .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &deployment.project_id, MemberRole::Viewer)
             .await?;
 
@@ -294,7 +294,7 @@ impl DeploymentService {
             .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &deployment.project_id, MemberRole::Viewer)
             .await?;
 
@@ -319,7 +319,7 @@ impl DeploymentService {
             .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &deployment.project_id, MemberRole::Admin)
             .await?;
 
@@ -355,7 +355,7 @@ impl DeploymentService {
             .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &deployment.project_id, MemberRole::Admin)
             .await?;
 

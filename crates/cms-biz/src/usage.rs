@@ -126,7 +126,7 @@ impl UsageService {
         ends_at: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<OrganizationUsagePlanResponse, AppError> {
         // Check if user has admin permissions for the organization
-        ctx.access_control
+        ctx.authz
             .require_org_admin(user_id, org_id)
             .await?;
 
@@ -156,7 +156,7 @@ impl UsageService {
         org_id: &str,
     ) -> Result<Option<OrganizationUsagePlanResponse>, AppError> {
         // Check if user has access to the organization
-        ctx.access_control
+        ctx.authz
             .require_org_member(user_id, org_id)
             .await?;
 
@@ -172,7 +172,7 @@ impl UsageService {
         org_id: &str,
         usage_plan_id: &str,
     ) -> Result<OrganizationUsagePlanResponse, AppError> {
-        ctx.access_control
+        ctx.authz
             .require_org_admin(user_id, org_id)
             .await?;
 
@@ -205,7 +205,7 @@ impl UsageService {
         limit_value: Option<i64>,
     ) -> Result<UsageEntitlementResponse, AppError> {
         // Check if user has admin permissions for the organization
-        ctx.access_control
+        ctx.authz
             .require_org_admin(user_id, org_id)
             .await?;
 
@@ -281,7 +281,7 @@ impl UsageService {
         user_id: &str,
         org_id: &str,
     ) -> Result<serde_json::Value, AppError> {
-        ctx.access_control
+        ctx.authz
             .require_org_admin(user_id, org_id)
             .await?;
         let plan = Self::get_organization_usage_plan(ctx, user_id, org_id).await?;

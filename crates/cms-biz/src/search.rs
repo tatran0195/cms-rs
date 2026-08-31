@@ -130,7 +130,7 @@ impl SearchService {
             AppError::InvalidInput("project_id query param is required".to_string())
         })?;
 
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 
@@ -162,7 +162,7 @@ impl SearchService {
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Search index run not found: {}", run_id)))?;
 
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &run.project_id, MemberRole::Viewer)
             .await?;
 
@@ -175,7 +175,7 @@ impl SearchService {
         user_id: &str,
         project_id: &str,
     ) -> Result<serde_json::Value, AppError> {
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 
@@ -203,7 +203,7 @@ impl SearchService {
         user_id: &str,
         request: ReindexRequest,
     ) -> Result<SearchIndexRunResponse, AppError> {
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &request.project_id, MemberRole::Admin)
             .await?;
 

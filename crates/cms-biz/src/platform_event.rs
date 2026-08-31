@@ -45,7 +45,7 @@ impl PlatformEventService {
         page_size: u64,
     ) -> Result<PaginatedResponse<PlatformEventResponse>, AppError> {
         // Check if user has admin role in the organization
-        ctx.access_control
+        ctx.authz
             .require_org_admin(user_id, org_id)
             .await?;
 
@@ -80,7 +80,7 @@ impl PlatformEventService {
             .await?
             .ok_or_else(|| AppError::NotFound("Event not found".to_string()))?;
         if let Some(org_id) = &event.organization_id {
-            ctx.access_control
+            ctx.authz
                 .require_org_admin(user_id, org_id)
                 .await?;
         }

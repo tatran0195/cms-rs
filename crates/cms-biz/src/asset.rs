@@ -43,7 +43,7 @@ impl AssetService {
         }
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Editor)
             .await?;
 
@@ -91,7 +91,7 @@ impl AssetService {
             .ok_or_else(|| AppError::NotFound("Asset not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &asset.project_id, MemberRole::Viewer)
             .await?;
 
@@ -111,7 +111,7 @@ impl AssetService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 
@@ -144,7 +144,7 @@ impl AssetService {
             .ok_or_else(|| AppError::NotFound("Page not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &page.project_id, MemberRole::Viewer)
             .await?;
 
@@ -165,7 +165,7 @@ impl AssetService {
             .ok_or_else(|| AppError::NotFound("Asset not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &asset.project_id, MemberRole::Editor)
             .await?;
 
@@ -186,7 +186,7 @@ impl AssetService {
             .ok_or_else(|| AppError::NotFound("Asset not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &asset.project_id, MemberRole::Editor)
             .await?;
 
@@ -207,7 +207,7 @@ impl AssetService {
         content_type: &str,
         alt_text: Option<&str>,
     ) -> Result<AssetResponse, AppError> {
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Editor)
             .await?;
         let storage_key = format!(

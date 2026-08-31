@@ -44,7 +44,7 @@ impl GitService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Admin)
             .await?;
 
@@ -76,7 +76,7 @@ impl GitService {
         project_id: &str,
     ) -> Result<Option<GitConnectionResponse>, AppError> {
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 
@@ -97,7 +97,7 @@ impl GitService {
             .ok_or_else(|| AppError::NotFound("Git connection not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &connection.project_id, MemberRole::Admin)
             .await?;
 
@@ -124,7 +124,7 @@ impl GitService {
             .ok_or_else(|| AppError::NotFound("Git connection not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &connection.project_id, MemberRole::Admin)
             .await?;
 
@@ -143,7 +143,7 @@ impl GitService {
             .ok_or_else(|| AppError::NotFound("Git connection not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &connection.project_id, MemberRole::Editor)
             .await?;
 
@@ -173,7 +173,7 @@ impl GitService {
             .ok_or_else(|| AppError::NotFound("Git connection not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &connection.project_id, MemberRole::Viewer)
             .await?;
 
@@ -193,7 +193,7 @@ impl GitService {
             .ok_or_else(|| AppError::NotFound("Git connection not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &connection.project_id, MemberRole::Viewer)
             .await?;
 
@@ -223,7 +223,7 @@ impl GitService {
         path: &str,
     ) -> Result<Option<GitFileState>, AppError> {
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 
@@ -239,7 +239,7 @@ impl GitService {
         page_size: u64,
     ) -> Result<PaginatedResponse<GitConflict>, AppError> {
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Editor)
             .await?;
 
@@ -273,7 +273,7 @@ impl GitService {
             .ok_or_else(|| AppError::NotFound("Conflict not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &conflict.project_id, MemberRole::Editor)
             .await?;
 
@@ -296,7 +296,7 @@ impl GitService {
             .ok_or_else(|| AppError::NotFound("Git connection not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &connection.project_id, MemberRole::Viewer)
             .await?;
 
@@ -328,7 +328,7 @@ impl GitService {
             .ok_or_else(|| AppError::NotFound("Git connection not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &connection.project_id, MemberRole::Viewer)
             .await?;
 
@@ -351,7 +351,7 @@ impl GitService {
         user_id: &str,
         project_id: &str,
     ) -> Result<serde_json::Value, AppError> {
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 

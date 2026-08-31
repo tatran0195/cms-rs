@@ -42,7 +42,7 @@ impl ExportService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &request.project_id, MemberRole::Viewer)
             .await?;
 
@@ -68,7 +68,7 @@ impl ExportService {
             .ok_or_else(|| AppError::NotFound("Export snapshot not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &snapshot.project_id, MemberRole::Viewer)
             .await?;
 
@@ -88,7 +88,7 @@ impl ExportService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 
@@ -122,7 +122,7 @@ impl ExportService {
             .ok_or_else(|| AppError::NotFound("Export snapshot not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &snapshot.project_id, MemberRole::Viewer)
             .await?;
 
@@ -147,7 +147,7 @@ impl ExportService {
             .ok_or_else(|| AppError::NotFound("Export snapshot not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &snapshot.project_id, MemberRole::Viewer)
             .await?;
 
@@ -167,7 +167,7 @@ impl ExportService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 
@@ -199,7 +199,7 @@ impl ExportService {
             .ok_or_else(|| AppError::NotFound("Export snapshot not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &snapshot.project_id, MemberRole::Viewer)
             .await?;
 
@@ -223,7 +223,7 @@ impl ExportService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Admin)
             .await?;
 
@@ -253,7 +253,7 @@ impl ExportService {
             .ok_or_else(|| AppError::NotFound("Export schedule not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &schedule.project_id, MemberRole::Viewer)
             .await?;
 
@@ -271,7 +271,7 @@ impl ExportService {
             .ok_or_else(|| AppError::NotFound("Export schedule not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &schedule.project_id, MemberRole::Admin)
             .await?;
 
@@ -300,7 +300,7 @@ impl ExportService {
         user_id: &str,
         project_id: &str,
     ) -> Result<Vec<ExportSchedule>, AppError> {
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
         ExportScheduleQueries::get_by_project(&ctx.pool, project_id).await
@@ -316,7 +316,7 @@ impl ExportService {
         let schedule = ExportScheduleQueries::get_by_id(&ctx.pool, schedule_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Export schedule not found".to_string()))?;
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &schedule.project_id, MemberRole::Admin)
             .await?;
         let updated = ExportScheduleQueries::update(

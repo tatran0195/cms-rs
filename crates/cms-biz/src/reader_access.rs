@@ -93,7 +93,7 @@ impl ReaderAccessService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Admin)
             .await?;
 
@@ -119,7 +119,7 @@ impl ReaderAccessService {
             .ok_or_else(|| AppError::NotFound("Audience not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &audience.project_id, MemberRole::Viewer)
             .await?;
 
@@ -137,7 +137,7 @@ impl ReaderAccessService {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 
@@ -159,7 +159,7 @@ impl ReaderAccessService {
             .ok_or_else(|| AppError::NotFound("Audience not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &audience.project_id, MemberRole::Admin)
             .await?;
 
@@ -179,7 +179,7 @@ impl ReaderAccessService {
             .ok_or_else(|| AppError::NotFound("Audience not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &audience.project_id, MemberRole::Admin)
             .await?;
 
@@ -198,7 +198,7 @@ impl ReaderAccessService {
             .ok_or_else(|| AppError::NotFound("Audience not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &audience.project_id, MemberRole::Admin)
             .await?;
 
@@ -220,7 +220,7 @@ impl ReaderAccessService {
             .ok_or_else(|| AppError::NotFound("Audience not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &audience.project_id, MemberRole::Admin)
             .await?;
 
@@ -241,7 +241,7 @@ impl ReaderAccessService {
             .ok_or_else(|| AppError::NotFound("Audience not found".to_string()))?;
 
         // Check if user has admin role in the audience's source project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &audience.project_id, MemberRole::Admin)
             .await?;
 
@@ -263,7 +263,7 @@ impl ReaderAccessService {
         }
 
         // Check if user has admin role in the target project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, MemberRole::Admin)
             .await?;
 
@@ -318,7 +318,7 @@ impl ReaderAccessService {
             .ok_or_else(|| AppError::NotFound("Audience not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &audience.project_id, MemberRole::Admin)
             .await?;
 
@@ -337,7 +337,7 @@ impl ReaderAccessService {
             .ok_or_else(|| AppError::NotFound("Audience not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &audience.project_id, MemberRole::Admin)
             .await?;
 
@@ -410,7 +410,7 @@ impl ReaderAccessService {
             .ok_or_else(|| AppError::NotFound("Audience not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &audience.project_id, MemberRole::Admin)
             .await?;
 
@@ -429,7 +429,7 @@ impl ReaderAccessService {
             .await?
             .ok_or_else(|| AppError::NotFound("Audience not found".to_string()))?;
 
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &audience.project_id, MemberRole::Viewer)
             .await?;
 
@@ -470,7 +470,7 @@ impl ReaderAccessService {
             .ok_or_else(|| AppError::NotFound("Audience not found".to_string()))?;
 
         // Check if user has admin role in the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &audience.project_id, MemberRole::Admin)
             .await?;
 

@@ -33,7 +33,7 @@ impl DomainService {
                 .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &deployment.project_id, MemberRole::Admin)
             .await?;
 
@@ -139,7 +139,7 @@ impl DomainService {
         let deployment = cms_db::deployment::DeploymentQueries::get_by_id(&ctx.pool, deployment_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, &deployment.project_id, MemberRole::Admin)
             .await?;
         let updated =

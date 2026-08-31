@@ -37,7 +37,7 @@ impl PageService {
             .ok_or_else(|| AppError::NotFound("Branch not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, cms_entity::common::MemberRole::Member)
             .await?;
 
@@ -119,7 +119,7 @@ impl PageService {
             .ok_or_else(|| AppError::NotFound("Page not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(
                 user_id,
                 &page.project_id,
@@ -148,7 +148,7 @@ impl PageService {
             .ok_or_else(|| AppError::NotFound("Branch not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, cms_entity::common::MemberRole::Viewer)
             .await?;
 
@@ -177,7 +177,7 @@ impl PageService {
             .ok_or_else(|| AppError::NotFound("Branch not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(
                 user_id,
                 &query.project_id,
@@ -228,7 +228,7 @@ impl PageService {
             .ok_or_else(|| AppError::NotFound("Branch not found".to_string()))?;
 
         // Check if user has access to the project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, cms_entity::common::MemberRole::Viewer)
             .await?;
 
@@ -249,7 +249,7 @@ impl PageService {
             .ok_or_else(|| AppError::NotFound("Page not found".to_string()))?;
 
         // Check if user has access to edit the page
-        ctx.access_control
+        ctx.authz
             .require_project_role(
                 user_id,
                 &page.project_id,
@@ -313,7 +313,7 @@ impl PageService {
             .ok_or_else(|| AppError::NotFound("Page not found".to_string()))?;
 
         // Check if user has access to delete the page
-        ctx.access_control
+        ctx.authz
             .require_project_role(
                 user_id,
                 &page.project_id,
@@ -348,7 +348,7 @@ impl PageService {
         }
 
         // Check if user has access to edit pages in this project
-        ctx.access_control
+        ctx.authz
             .require_project_role(user_id, project_id, cms_entity::common::MemberRole::Editor)
             .await?;
 
