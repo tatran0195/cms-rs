@@ -22,7 +22,7 @@ members = [
     "crates/cms-entity",
     "crates/cms-db",
     "crates/cms-auth",
-    "crates/cms-access-control",
+    "crates/cms-authz",
     "crates/cms-storage",
     "crates/cms-search",
     "crates/cms-queue",
@@ -44,7 +44,7 @@ cms-error = { path = "crates/cms-error" }
 cms-entity = { path = "crates/cms-entity" }
 cms-db = { path = "crates/cms-db" }
 cms-auth = { path = "crates/cms-auth" }
-cms-access-control = { path = "crates/cms-access-control" }
+cms-authz = { path = "crates/cms-authz" }
 cms-storage = { path = "crates/cms-storage" }
 cms-search = { path = "crates/cms-search" }
 cms-queue = { path = "crates/cms-queue" }

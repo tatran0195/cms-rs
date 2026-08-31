@@ -15,7 +15,7 @@ cms-entity = { path = "../cms-entity" }
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }
 cms-db = { path = "../cms-db" }
-cms-access-control = { path = "../cms-access-control" }
+cms-authz = { path = "../cms-authz" }
 
 [lints]
 workspace = true

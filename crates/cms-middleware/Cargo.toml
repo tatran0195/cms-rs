@@ -14,7 +14,7 @@ cms-db = { path = "../cms-db" }
 cms-storage = { path = "../cms-storage" }
 cms-queue = { path = "../cms-queue" }
 cms-search = { path = "../cms-search" }
-cms-access-control = { path = "../cms-access-control" }
+cms-authz = { path = "../cms-authz" }
 
 # External dependencies
 axum = { workspace = true }

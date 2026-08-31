@@ -1,5 +1,5 @@
 [package]
-name = "cms-access-control"
+name = "cms-authz"
 version = "0.1.0"
 edition = "2021"
 

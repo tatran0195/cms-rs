@@ -13,7 +13,7 @@ cms-auth = { path = "../cms-auth" }
 cms-storage = { path = "../cms-storage" }
 cms-search = { path = "../cms-search" }
 cms-queue = { path = "../cms-queue" }
-cms-access-control = { path = "../cms-access-control" }
+cms-authz = { path = "../cms-authz" }
 bytes = { workspace = true }
 
 # Async
