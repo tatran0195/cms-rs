@@ -2,17 +2,24 @@
 //!
 //! This module contains the actual implementation of integration handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::integration::IntegrationService;
-use cms_entity::integration::{CreateProjectIntegrationRequest, UpdateProjectIntegrationRequest, ProjectIntegrationResponse, ListIntegrationsQuery};
-use cms_entity::common::Id;
+use cms_entity::{
+    common::Id,
+    integration::{
+        CreateProjectIntegrationRequest, ListIntegrationsQuery, ProjectIntegrationResponse,
+        UpdateProjectIntegrationRequest,
+    },
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// List integrations for a project
@@ -44,12 +51,10 @@ pub async fn list_integrations_handler(
     Query(query): Query<ListIntegrationsQuery>,
 ) -> Result<Json<Vec<ProjectIntegrationResponse>>, AppError> {
     let project_id = query.project_id.as_deref().unwrap_or("");
-    let integrations = IntegrationService::list_integrations(
-        &state.biz_context,
-        &auth.user.id,
-        project_id,
-    ).await?;
-    
+    let integrations =
+        IntegrationService::list_integrations(&state.biz_context, &auth.user.id, project_id)
+            .await?;
+
     Ok(Json(integrations))
 }
 
@@ -78,12 +83,9 @@ pub async fn create_integration_handler(
     auth: AuthExtractor,
     Json(request): Json<CreateProjectIntegrationRequest>,
 ) -> Result<Json<ProjectIntegrationResponse>, AppError> {
-    let integration = IntegrationService::create_integration(
-        &state.biz_context,
-        &auth.user.id,
-        request,
-    ).await?;
-    
+    let integration =
+        IntegrationService::create_integration(&state.biz_context, &auth.user.id, request).await?;
+
     Ok(Json(integration))
 }
 
@@ -113,12 +115,10 @@ pub async fn get_integration_handler(
     auth: AuthExtractor,
     Path(integration_id): Path<Id>,
 ) -> Result<Json<ProjectIntegrationResponse>, AppError> {
-    let integration = IntegrationService::get_integration(
-        &state.biz_context,
-        &auth.user.id,
-        &integration_id,
-    ).await?;
-    
+    let integration =
+        IntegrationService::get_integration(&state.biz_context, &auth.user.id, &integration_id)
+            .await?;
+
     Ok(Json(integration))
 }
 
@@ -157,8 +157,9 @@ pub async fn update_integration_handler(
         &auth.user.id,
         &integration_id,
         request,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(integration))
 }
 
@@ -189,13 +190,12 @@ pub async fn delete_integration_handler(
     auth: AuthExtractor,
     Path(integration_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    IntegrationService::delete_integration(
-        &state.biz_context,
-        &auth.user.id,
-        &integration_id,
-    ).await?;
-    
-    Ok(Json(serde_json::json!({"success": true, "id": integration_id})))
+    IntegrationService::delete_integration(&state.biz_context, &auth.user.id, &integration_id)
+        .await?;
+
+    Ok(Json(
+        serde_json::json!({"success": true, "id": integration_id}),
+    ))
 }
 
 /// Enable an integration
@@ -225,12 +225,10 @@ pub async fn enable_integration_handler(
     auth: AuthExtractor,
     Path(integration_id): Path<Id>,
 ) -> Result<Json<ProjectIntegrationResponse>, AppError> {
-    let integration = IntegrationService::enable_integration(
-        &state.biz_context,
-        &auth.user.id,
-        &integration_id,
-    ).await?;
-    
+    let integration =
+        IntegrationService::enable_integration(&state.biz_context, &auth.user.id, &integration_id)
+            .await?;
+
     Ok(Json(integration))
 }
 
@@ -261,12 +259,10 @@ pub async fn disable_integration_handler(
     auth: AuthExtractor,
     Path(integration_id): Path<Id>,
 ) -> Result<Json<ProjectIntegrationResponse>, AppError> {
-    let integration = IntegrationService::disable_integration(
-        &state.biz_context,
-        &auth.user.id,
-        &integration_id,
-    ).await?;
-    
+    let integration =
+        IntegrationService::disable_integration(&state.biz_context, &auth.user.id, &integration_id)
+            .await?;
+
     Ok(Json(integration))
 }
 
@@ -297,11 +293,9 @@ pub async fn test_integration_handler(
     auth: AuthExtractor,
     Path(integration_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let result = IntegrationService::test_integration(
-        &state.biz_context,
-        &auth.user.id,
-        &integration_id,
-    ).await?;
-    
+    let result =
+        IntegrationService::test_integration(&state.biz_context, &auth.user.id, &integration_id)
+            .await?;
+
     Ok(Json(serde_json::json!(result)))
 }

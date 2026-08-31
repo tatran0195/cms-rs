@@ -184,8 +184,9 @@ impl ReaderJwtService {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use cms_config::AuthConfig;
+
+    use super::*;
 
     // Helper to create an AuthService for testing
     fn create_test_auth_service() -> AuthService {
@@ -200,14 +201,14 @@ mod tests {
 
         // We need a PgPool but for tests we can use a dummy one
         // In real usage, this would be a real connection pool
-        let pool = cms_db::PgPool::connect_lazy(&"postgres://user:pass@localhost/db")
+        let pool = cms_db::PgPool::connect_lazy("postgres://user:pass@localhost/db")
             .expect("Failed to create test pool");
 
         AuthService::new(config, pool)
     }
 
-    #[test]
-    fn test_reader_jwt_roundtrip() {
+    #[tokio::test]
+    async fn test_reader_jwt_roundtrip() {
         let auth_service = create_test_auth_service();
 
         let token =
@@ -221,8 +222,8 @@ mod tests {
         assert_eq!(claims.audience_id, "audience-1");
     }
 
-    #[test]
-    fn test_api_key_jwt_roundtrip() {
+    #[tokio::test]
+    async fn test_api_key_jwt_roundtrip() {
         let auth_service = create_test_auth_service();
 
         let token = JwtService::create_api_key_jwt("key-1", "user-1", Some("org-1"), &auth_service)

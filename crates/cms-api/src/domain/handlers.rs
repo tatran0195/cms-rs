@@ -2,17 +2,24 @@
 //!
 //! This module contains the actual implementation of domain handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::domain::DomainService;
-use cms_entity::domain::{CreateDomainRequest, UpdateDomainRequest, DomainResponse, ListDomainsQuery, VerifyDomainRequest, DomainVerificationResult};
-use cms_entity::common::{Id, PaginatedResponse};
+use cms_entity::{
+    common::{Id, PaginatedResponse},
+    domain::{
+        CreateDomainRequest, DomainResponse, DomainVerificationResult, ListDomainsQuery,
+        UpdateDomainRequest, VerifyDomainRequest,
+    },
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// List domains
@@ -49,8 +56,9 @@ pub async fn list_domains_handler(
         query.deployment_id.as_deref(),
         query.is_primary,
         query.is_verified,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(domains))
 }
 
@@ -79,12 +87,8 @@ pub async fn create_domain_handler(
     auth: AuthExtractor,
     Json(request): Json<CreateDomainRequest>,
 ) -> Result<Json<DomainResponse>, AppError> {
-    let domain = DomainService::create_domain(
-        &state.biz_context,
-        &auth.user.id,
-        request,
-    ).await?;
-    
+    let domain = DomainService::create_domain(&state.biz_context, &auth.user.id, request).await?;
+
     Ok(Json(domain))
 }
 
@@ -114,12 +118,8 @@ pub async fn get_domain_handler(
     auth: AuthExtractor,
     Path(domain_id): Path<Id>,
 ) -> Result<Json<DomainResponse>, AppError> {
-    let domain = DomainService::get_domain(
-        &state.biz_context,
-        &auth.user.id,
-        &domain_id,
-    ).await?;
-    
+    let domain = DomainService::get_domain(&state.biz_context, &auth.user.id, &domain_id).await?;
+
     Ok(Json(domain))
 }
 
@@ -153,13 +153,10 @@ pub async fn update_domain_handler(
     Path(domain_id): Path<Id>,
     Json(request): Json<UpdateDomainRequest>,
 ) -> Result<Json<DomainResponse>, AppError> {
-    let domain = DomainService::update_domain(
-        &state.biz_context,
-        &auth.user.id,
-        &domain_id,
-        request,
-    ).await?;
-    
+    let domain =
+        DomainService::update_domain(&state.biz_context, &auth.user.id, &domain_id, request)
+            .await?;
+
     Ok(Json(domain))
 }
 
@@ -190,12 +187,8 @@ pub async fn delete_domain_handler(
     auth: AuthExtractor,
     Path(domain_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    DomainService::delete_domain(
-        &state.biz_context,
-        &auth.user.id,
-        &domain_id,
-    ).await?;
-    
+    DomainService::delete_domain(&state.biz_context, &auth.user.id, &domain_id).await?;
+
     Ok(Json(serde_json::json!({"success": true, "id": domain_id})))
 }
 
@@ -233,8 +226,9 @@ pub async fn verify_domain_handler(
         &auth.user.id,
         &domain_id,
         &request.verification_token,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(result))
 }
 
@@ -264,12 +258,11 @@ pub async fn check_domain_availability_handler(
     auth: AuthExtractor,
     Path(hostname): Path<String>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let is_available = DomainService::is_domain_available(
-        &state.biz_context,
-        &hostname,
-    ).await?;
-    
-    Ok(Json(serde_json::json!({"available": is_available, "hostname": hostname})))
+    let is_available = DomainService::is_domain_available(&state.biz_context, &hostname).await?;
+
+    Ok(Json(
+        serde_json::json!({"available": is_available, "hostname": hostname}),
+    ))
 }
 
 /// Set primary domain for a deployment
@@ -302,15 +295,21 @@ pub async fn set_primary_domain_handler(
     Path(deployment_id): Path<Id>,
     Json(request): Json<serde_json::Value>,
 ) -> Result<Json<DomainResponse>, AppError> {
-    let domain_id: String = serde_json::from_value(request.get("domain_id").cloned().unwrap_or(serde_json::Value::Null))
-        .map_err(|_| AppError::BadRequest("Invalid domain_id".to_string()))?;
-    
+    let domain_id: String = serde_json::from_value(
+        request
+            .get("domain_id")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null),
+    )
+    .map_err(|_| AppError::BadRequest("Invalid domain_id".to_string()))?;
+
     let domain = DomainService::set_primary_domain(
         &state.biz_context,
         &auth.user.id,
         &deployment_id,
         &domain_id,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(domain))
 }

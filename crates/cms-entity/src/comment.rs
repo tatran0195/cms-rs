@@ -61,7 +61,11 @@ impl From<Comment> for CommentResponse {
 pub struct CreateCommentRequest {
     #[validate(length(min = 1, message = "Page ID is required"))]
     pub page_id: String,
-    #[validate(length(min = 1, max = 5000, message = "Content must be between 1 and 5000 characters"))]
+    #[validate(length(
+        min = 1,
+        max = 5000,
+        message = "Content must be between 1 and 5000 characters"
+    ))]
     pub content: String,
     #[serde(default)]
     pub parent_id: Option<Id>,

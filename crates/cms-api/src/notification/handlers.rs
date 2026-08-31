@@ -2,17 +2,24 @@
 //!
 //! This module contains the actual implementation of notification handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::notification::NotificationService;
-use cms_entity::notification::{NotificationResponse, ListNotificationsQuery, MarkNotificationReadRequest, ArchiveNotificationRequest, NotificationCountResponse};
-use cms_entity::common::{Id, PaginatedResponse};
+use cms_entity::{
+    common::{Id, PaginatedResponse},
+    notification::{
+        ArchiveNotificationRequest, ListNotificationsQuery, MarkNotificationReadRequest,
+        NotificationCountResponse, NotificationResponse,
+    },
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// List notifications for the authenticated user
@@ -50,8 +57,9 @@ pub async fn list_notifications_handler(
         query.status,
         query.limit.unwrap_or(1) as u64,
         query.offset.unwrap_or(20) as u64,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(result))
 }
 
@@ -81,12 +89,10 @@ pub async fn get_notification_handler(
     auth: AuthExtractor,
     Path(notification_id): Path<Id>,
 ) -> Result<Json<NotificationResponse>, AppError> {
-    let notification = NotificationService::get_notification(
-        &state.biz_context,
-        &auth.user.id,
-        &notification_id,
-    ).await?;
-    
+    let notification =
+        NotificationService::get_notification(&state.biz_context, &auth.user.id, &notification_id)
+            .await?;
+
     Ok(Json(notification))
 }
 
@@ -118,8 +124,9 @@ pub async fn mark_notification_read_handler(
         &state.biz_context,
         &auth.user.id,
         &request.notification_ids,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(serde_json::json!({"success": true})))
 }
 
@@ -144,11 +151,8 @@ pub async fn mark_all_notifications_read_handler(
     State(state): State<Arc<AppState>>,
     auth: AuthExtractor,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    NotificationService::mark_all_notifications_read(
-        &state.biz_context,
-        &auth.user.id,
-    ).await?;
-    
+    NotificationService::mark_all_notifications_read(&state.biz_context, &auth.user.id).await?;
+
     Ok(Json(serde_json::json!({"success": true})))
 }
 
@@ -180,12 +184,9 @@ pub async fn archive_notification_handler(
     Path(notification_id): Path<Id>,
     Json(request): Json<ArchiveNotificationRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    NotificationService::archive_notification(
-        &state.biz_context,
-        &auth.user.id,
-        &notification_id,
-    ).await?;
-    
+    NotificationService::archive_notification(&state.biz_context, &auth.user.id, &notification_id)
+        .await?;
+
     Ok(Json(serde_json::json!({"success": true})))
 }
 
@@ -210,10 +211,8 @@ pub async fn get_notification_count_handler(
     State(state): State<Arc<AppState>>,
     auth: AuthExtractor,
 ) -> Result<Json<NotificationCountResponse>, AppError> {
-    let count = NotificationService::get_notification_count(
-        &state.biz_context,
-        &auth.user.id,
-    ).await?;
-    
+    let count =
+        NotificationService::get_notification_count(&state.biz_context, &auth.user.id).await?;
+
     Ok(Json(count))
 }

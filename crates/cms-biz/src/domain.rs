@@ -4,11 +4,13 @@
 //! Note: Most domain logic is in the deployment module, this is for
 //! domain-specific operations that don't involve deployments.
 
-use crate::{BizContext, AppError};
-use cms_db::domain::DomainQueries;
-use cms_db::project::ProjectQueries;
-use cms_entity::domain::{Domain, DomainResponse};
-use cms_entity::common::{Id, MemberRole};
+use cms_db::{domain::DomainQueries, project::ProjectQueries};
+use cms_entity::{
+    common::{Id, MemberRole},
+    domain::{Domain, DomainResponse},
+};
+
+use crate::{AppError, BizContext};
 
 /// Domain service
 pub struct DomainService;
@@ -24,36 +26,30 @@ impl DomainService {
         let domain = DomainQueries::get_by_id(&ctx.pool, domain_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Domain not found".to_string()))?;
-        
-        let deployment = cms_db::deployment::DeploymentQueries::get_by_id(
-            &ctx.pool,
-            &domain.deployment_id,
-        ).await?
-            .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
-        
+
+        let deployment =
+            cms_db::deployment::DeploymentQueries::get_by_id(&ctx.pool, &domain.deployment_id)
+                .await?
+                .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
+
         // Check if user has access to the project
-        ctx.access_control.require_project_role(
-            user_id,
-            &deployment.project_id,
-            MemberRole::Admin,
-        ).await?;
-        
+        ctx.access_control
+            .require_project_role(user_id, &deployment.project_id, MemberRole::Admin)
+            .await?;
+
         // In a real implementation, this would verify DNS records
         // For now, we'll just mark it as verified
         DomainQueries::verify(&ctx.pool, domain_id).await?;
-        
+
         Ok(true)
     }
-    
+
     /// Check if a domain is available
-    pub async fn is_domain_available(
-        ctx: &BizContext,
-        hostname: &str,
-    ) -> Result<bool, AppError> {
+    pub async fn is_domain_available(ctx: &BizContext, hostname: &str) -> Result<bool, AppError> {
         let domain = DomainQueries::get_by_hostname(&ctx.pool, hostname).await?;
         Ok(domain.is_none())
     }
-    
+
     /// Get domain by hostname
     pub async fn get_domain_by_hostname(
         ctx: &BizContext,
@@ -82,7 +78,8 @@ impl DomainService {
         request: cms_entity::domain::CreateDomainRequest,
     ) -> Result<DomainResponse, AppError> {
         let deployment_id = request.deployment_id.clone();
-        crate::deployment::DeploymentService::create_domain(ctx, user_id, &deployment_id, request).await
+        crate::deployment::DeploymentService::create_domain(ctx, user_id, &deployment_id, request)
+            .await
     }
 
     /// Get domain
@@ -120,7 +117,8 @@ impl DomainService {
         domain_id: &str,
         verification_token: &str,
     ) -> Result<cms_entity::domain::DomainVerificationResult, AppError> {
-        let verified = Self::verify_domain_ownership(ctx, user_id, domain_id, verification_token).await?;
+        let verified =
+            Self::verify_domain_ownership(ctx, user_id, domain_id, verification_token).await?;
         let domain = DomainQueries::get_by_id(&ctx.pool, domain_id).await?;
         let hostname = domain.map(|d| d.hostname).unwrap_or_default();
         Ok(cms_entity::domain::DomainVerificationResult {
@@ -141,19 +139,11 @@ impl DomainService {
         let deployment = cms_db::deployment::DeploymentQueries::get_by_id(&ctx.pool, deployment_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
-        ctx.access_control.require_project_role(
-            user_id,
-            &deployment.project_id,
-            MemberRole::Admin,
-        ).await?;
-        let updated = DomainQueries::update(
-            &ctx.pool,
-            domain_id,
-            None,
-            Some(true),
-            None,
-            None,
-        ).await?;
+        ctx.access_control
+            .require_project_role(user_id, &deployment.project_id, MemberRole::Admin)
+            .await?;
+        let updated =
+            DomainQueries::update(&ctx.pool, domain_id, None, Some(true), None, None).await?;
         Ok(updated.into())
     }
 }

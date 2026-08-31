@@ -3,9 +3,7 @@
 //! This module provides SEO-related functionality for published sites.
 
 use chrono::{DateTime, Utc};
-use cms_entity::common::Id;
-use cms_entity::page::Page;
-use cms_entity::project::Project;
+use cms_entity::{common::Id, page::Page, project::Project};
 
 /// SEO metadata
 #[derive(Debug, Clone)]
@@ -122,10 +120,11 @@ impl SeoGenerator {
         let mut tags = Vec::new();
 
         // Basic meta tags
-        tags.push(format!("<meta charset=\"utf-8\">"));
-        tags.push(format!(
+        tags.push("<meta charset=\"utf-8\">".to_string());
+        tags.push(
             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
-        ));
+                .to_string(),
+        );
 
         // Description
         if let Some(description) = &metadata.description {
@@ -173,12 +172,8 @@ impl SeoGenerator {
                 "<meta property=\"og:image\" content=\"{}\">",
                 image
             ));
-            tags.push(format!(
-                "<meta property=\"og:image:width\" content=\"1200\">"
-            ));
-            tags.push(format!(
-                "<meta property=\"og:image:height\" content=\"630\">"
-            ));
+            tags.push("<meta property=\"og:image:width\" content=\"1200\">".to_string());
+            tags.push("<meta property=\"og:image:height\" content=\"630\">".to_string());
         }
 
         // Twitter
@@ -225,26 +220,22 @@ impl SeoGenerator {
             ));
         } else {
             // Default favicon
-            tags.push(format!(
-                "<link rel=\"icon\" type=\"image/x-icon\" href=\"/favicon.ico\">"
-            ));
+            tags.push(
+                "<link rel=\"icon\" type=\"image/x-icon\" href=\"/favicon.ico\">".to_string(),
+            );
         }
 
         // Manifest
-        tags.push(format!(
-            "<link rel=\"manifest\" href=\"/site.webmanifest\">"
-        ));
+        tags.push("<link rel=\"manifest\" href=\"/site.webmanifest\">".to_string());
 
         // Apple touch icon
-        tags.push(format!(
-            "<meta name=\"apple-mobile-web-app-capable\" content=\"yes\">"
-        ));
-        tags.push(format!(
-            "<meta name=\"apple-mobile-web-app-status-bar-style\" content=\"default\">"
-        ));
+        tags.push("<meta name=\"apple-mobile-web-app-capable\" content=\"yes\">".to_string());
+        tags.push(
+            "<meta name=\"apple-mobile-web-app-status-bar-style\" content=\"default\">".to_string(),
+        );
 
         // Theme color
-        tags.push(format!("<meta name=\"theme-color\" content=\"#ffffff\">"));
+        tags.push("<meta name=\"theme-color\" content=\"#ffffff\">".to_string());
 
         tags.join("\n")
     }
@@ -393,8 +384,9 @@ impl SitemapGenerator {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use chrono::Utc;
+
+    use super::*;
 
     #[test]
     fn test_seo_metadata_generation() {

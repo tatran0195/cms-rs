@@ -2,17 +2,21 @@
 //!
 //! This module contains the actual implementation of admin handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::org::OrgService;
-use cms_entity::common::{Id, PaginatedResponse};
-use cms_entity::org::OrganizationResponse;
+use cms_entity::{
+    common::{Id, PaginatedResponse},
+    org::OrganizationResponse,
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// List all organizations (admin only)
@@ -45,17 +49,17 @@ pub async fn list_all_organizations_handler(
 ) -> Result<Json<PaginatedResponse<OrganizationResponse>>, AppError> {
     // Check if user is admin
     // In a real implementation, this would check admin privileges
-    
+
     let page = query.get("page").and_then(|v| v.as_u64()).unwrap_or(1);
-    let page_size = query.get("page_size").and_then(|v| v.as_u64()).unwrap_or(20);
-    
-    let orgs = OrgService::list_all_organizations(
-        &state.biz_context,
-        &auth.user.id,
-        page,
-        page_size,
-    ).await?;
-    
+    let page_size = query
+        .get("page_size")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(20);
+
+    let orgs =
+        OrgService::list_all_organizations(&state.biz_context, &auth.user.id, page, page_size)
+            .await?;
+
     Ok(Json(orgs))
 }
 
@@ -88,12 +92,11 @@ pub async fn get_organization_stats_handler(
     Path(org_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     // Check if user is admin
-    
-    let stats = cms_biz::analytics::AnalyticsService::get_organization_stats(
-        &state.biz_context,
-        &org_id,
-    ).await?;
-    
+
+    let stats =
+        cms_biz::analytics::AnalyticsService::get_organization_stats(&state.biz_context, &org_id)
+            .await?;
+
     Ok(Json(serde_json::json!(stats)))
 }
 
@@ -121,11 +124,9 @@ pub async fn get_system_stats_handler(
     auth: AuthExtractor,
 ) -> Result<Json<serde_json::Value>, AppError> {
     // Check if user is admin
-    
-    let stats = cms_biz::analytics::AnalyticsService::get_system_stats(
-        &state.biz_context,
-    ).await?;
-    
+
+    let stats = cms_biz::analytics::AnalyticsService::get_system_stats(&state.biz_context).await?;
+
     Ok(Json(serde_json::json!(stats)))
 }
 
@@ -153,10 +154,10 @@ pub async fn get_system_health_handler(
     auth: AuthExtractor,
 ) -> Result<Json<serde_json::Value>, AppError> {
     // Check if user is admin
-    
-    let health = cms_biz::platform_event::PlatformEventService::get_system_health(
-        &state.biz_context,
-    ).await?;
-    
+
+    let health =
+        cms_biz::platform_event::PlatformEventService::get_system_health(&state.biz_context)
+            .await?;
+
     Ok(Json(serde_json::json!(health)))
 }

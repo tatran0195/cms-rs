@@ -2,17 +2,24 @@
 //!
 //! This module contains the actual implementation of usage handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::usage::UsageService;
-use cms_entity::usage::{UsagePlanResponse, UsageMeterResponse, UsageEntitlementResponse, OrganizationUsagePlanResponse, TrackAnalyticsEventRequest};
-use cms_entity::common::Id;
+use cms_entity::{
+    common::Id,
+    usage::{
+        OrganizationUsagePlanResponse, TrackAnalyticsEventRequest, UsageEntitlementResponse,
+        UsageMeterResponse, UsagePlanResponse,
+    },
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// List usage plans
@@ -36,12 +43,8 @@ pub async fn list_usage_plans_handler(
     State(state): State<Arc<AppState>>,
     _auth: AuthExtractor,
 ) -> Result<Json<Vec<UsagePlanResponse>>, AppError> {
-    let plans = UsageService::list_usage_plans(
-        &state.biz_context,
-        1,
-        100,
-    ).await?;
-    
+    let plans = UsageService::list_usage_plans(&state.biz_context, 1, 100).await?;
+
     Ok(Json(plans.data))
 }
 
@@ -71,11 +74,8 @@ pub async fn get_usage_plan_handler(
     _auth: AuthExtractor,
     Path(plan_id): Path<Id>,
 ) -> Result<Json<UsagePlanResponse>, AppError> {
-    let plan = UsageService::get_usage_plan(
-        &state.biz_context,
-        &plan_id,
-    ).await?;
-    
+    let plan = UsageService::get_usage_plan(&state.biz_context, &plan_id).await?;
+
     Ok(Json(plan))
 }
 
@@ -100,12 +100,8 @@ pub async fn list_usage_meters_handler(
     State(state): State<Arc<AppState>>,
     _auth: AuthExtractor,
 ) -> Result<Json<Vec<UsageMeterResponse>>, AppError> {
-    let meters = UsageService::list_usage_meters(
-        &state.biz_context,
-        1,
-        100,
-    ).await?;
-    
+    let meters = UsageService::list_usage_meters(&state.biz_context, 1, 100).await?;
+
     Ok(Json(meters.data))
 }
 
@@ -135,11 +131,8 @@ pub async fn get_usage_meter_handler(
     _auth: AuthExtractor,
     Path(meter_id): Path<Id>,
 ) -> Result<Json<UsageMeterResponse>, AppError> {
-    let meter = UsageService::get_usage_meter(
-        &state.biz_context,
-        &meter_id,
-    ).await?;
-    
+    let meter = UsageService::get_usage_meter(&state.biz_context, &meter_id).await?;
+
     Ok(Json(meter))
 }
 
@@ -164,11 +157,9 @@ pub async fn list_usage_entitlements_handler(
     State(state): State<Arc<AppState>>,
     auth: AuthExtractor,
 ) -> Result<Json<Vec<UsageEntitlementResponse>>, AppError> {
-    let entitlements = UsageService::list_usage_entitlements(
-        &state.biz_context,
-        &auth.user.id,
-    ).await?;
-    
+    let entitlements =
+        UsageService::list_usage_entitlements(&state.biz_context, &auth.user.id).await?;
+
     Ok(Json(entitlements))
 }
 
@@ -198,13 +189,11 @@ pub async fn get_organization_usage_plan_handler(
     auth: AuthExtractor,
     Path(org_id): Path<Id>,
 ) -> Result<Json<OrganizationUsagePlanResponse>, AppError> {
-    let plan = UsageService::get_organization_usage_plan(
-        &state.biz_context,
-        &auth.user.id,
-        &org_id,
-    ).await?
-    .ok_or_else(|| AppError::NotFound("Organization usage plan not found".to_string()))?;
-    
+    let plan =
+        UsageService::get_organization_usage_plan(&state.biz_context, &auth.user.id, &org_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Organization usage plan not found".to_string()))?;
+
     Ok(Json(plan))
 }
 
@@ -238,16 +227,22 @@ pub async fn update_organization_usage_plan_handler(
     Path(org_id): Path<Id>,
     Json(request): Json<serde_json::Value>,
 ) -> Result<Json<OrganizationUsagePlanResponse>, AppError> {
-    let usage_plan_id: String = serde_json::from_value(request.get("usage_plan_id").cloned().unwrap_or(serde_json::Value::Null))
-        .map_err(|_| AppError::BadRequest("Invalid usage_plan_id".to_string()))?;
-    
+    let usage_plan_id: String = serde_json::from_value(
+        request
+            .get("usage_plan_id")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null),
+    )
+    .map_err(|_| AppError::BadRequest("Invalid usage_plan_id".to_string()))?;
+
     let plan = UsageService::update_organization_usage_plan(
         &state.biz_context,
         &auth.user.id,
         &org_id,
         &usage_plan_id,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(plan))
 }
 
@@ -268,11 +263,8 @@ pub async fn track_usage_event_handler(
     State(state): State<Arc<AppState>>,
     Json(request): Json<TrackAnalyticsEventRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    UsageService::track_usage_event(
-        &state.biz_context,
-        request,
-    ).await?;
-    
+    UsageService::track_usage_event(&state.biz_context, request).await?;
+
     Ok(Json(serde_json::json!({"success": true})))
 }
 
@@ -302,11 +294,8 @@ pub async fn get_usage_summary_handler(
     auth: AuthExtractor,
     Path(org_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let summary = UsageService::get_usage_summary(
-        &state.biz_context,
-        &auth.user.id,
-        &org_id,
-    ).await?;
-    
+    let summary =
+        UsageService::get_usage_summary(&state.biz_context, &auth.user.id, &org_id).await?;
+
     Ok(Json(serde_json::json!(summary)))
 }

@@ -2,17 +2,24 @@
 //!
 //! This module contains the actual implementation of comment handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::comment::CommentService;
-use cms_entity::comment::{CreateCommentRequest, UpdateCommentRequest, CommentResponse, ListCommentsQuery, ResolveCommentRequest, CommentWithReplies};
-use cms_entity::common::{Id, PaginatedResponse};
+use cms_entity::{
+    comment::{
+        CommentResponse, CommentWithReplies, CreateCommentRequest, ListCommentsQuery,
+        ResolveCommentRequest, UpdateCommentRequest,
+    },
+    common::{Id, PaginatedResponse},
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// List comments
@@ -54,8 +61,9 @@ pub async fn list_comments_handler(
         query.resolved,
         query.limit.unwrap_or(1) as u64,
         query.offset.unwrap_or(20) as u64,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(result))
 }
 
@@ -85,13 +93,10 @@ pub async fn create_comment_handler(
     Json(request): Json<CreateCommentRequest>,
 ) -> Result<Json<CommentResponse>, AppError> {
     let page_id = request.page_id.clone();
-    let comment = CommentService::create_comment(
-        &state.biz_context,
-        &auth.user.id,
-        &page_id,
-        request,
-    ).await?;
-    
+    let comment =
+        CommentService::create_comment(&state.biz_context, &auth.user.id, &page_id, request)
+            .await?;
+
     Ok(Json(comment))
 }
 
@@ -121,12 +126,10 @@ pub async fn get_comment_handler(
     auth: AuthExtractor,
     Path(comment_id): Path<Id>,
 ) -> Result<Json<CommentWithReplies>, AppError> {
-    let comment = CommentService::get_comment_with_replies(
-        &state.biz_context,
-        &auth.user.id,
-        &comment_id,
-    ).await?;
-    
+    let comment =
+        CommentService::get_comment_with_replies(&state.biz_context, &auth.user.id, &comment_id)
+            .await?;
+
     Ok(Json(comment))
 }
 
@@ -160,13 +163,10 @@ pub async fn update_comment_handler(
     Path(comment_id): Path<Id>,
     Json(request): Json<UpdateCommentRequest>,
 ) -> Result<Json<CommentResponse>, AppError> {
-    let comment = CommentService::update_comment(
-        &state.biz_context,
-        &auth.user.id,
-        &comment_id,
-        request,
-    ).await?;
-    
+    let comment =
+        CommentService::update_comment(&state.biz_context, &auth.user.id, &comment_id, request)
+            .await?;
+
     Ok(Json(comment))
 }
 
@@ -197,12 +197,8 @@ pub async fn delete_comment_handler(
     auth: AuthExtractor,
     Path(comment_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    CommentService::delete_comment(
-        &state.biz_context,
-        &auth.user.id,
-        &comment_id,
-    ).await?;
-    
+    CommentService::delete_comment(&state.biz_context, &auth.user.id, &comment_id).await?;
+
     Ok(Json(serde_json::json!({"success": true, "id": comment_id})))
 }
 
@@ -237,19 +233,11 @@ pub async fn resolve_comment_handler(
     Json(request): Json<ResolveCommentRequest>,
 ) -> Result<Json<CommentResponse>, AppError> {
     let comment = if request.resolved {
-        CommentService::resolve_comment(
-            &state.biz_context,
-            &auth.user.id,
-            &comment_id,
-        ).await?
+        CommentService::resolve_comment(&state.biz_context, &auth.user.id, &comment_id).await?
     } else {
-        CommentService::unresolve_comment(
-            &state.biz_context,
-            &auth.user.id,
-            &comment_id,
-        ).await?
+        CommentService::unresolve_comment(&state.biz_context, &auth.user.id, &comment_id).await?
     };
-    
+
     Ok(Json(comment))
 }
 
@@ -292,7 +280,8 @@ pub async fn list_page_comments_handler(
         query.resolved,
         query.limit.unwrap_or(1) as u64,
         query.offset.unwrap_or(20) as u64,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(result))
 }

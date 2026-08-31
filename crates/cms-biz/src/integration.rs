@@ -2,19 +2,21 @@
 //!
 //! This module contains business logic for project integrations.
 
-use crate::{BizContext, AppError};
-use cms_db::integration::{
-    ProjectIntegrationQueries, IntegrationAuditEventQueries,
-    IntegrationConfirmationQueries, IntegrationWebhookDeliveryQueries,
-    IntegrationIdempotencyRecordQueries,
-};
-use cms_entity::integration::{
-    ProjectIntegration, ProjectIntegrationResponse,
-    IntegrationProvider, CreateProjectIntegrationRequest,
-    UpdateProjectIntegrationRequest,
-};
-use cms_entity::common::Id;
 use cms_access_control::AccessControl;
+use cms_db::integration::{
+    IntegrationAuditEventQueries, IntegrationConfirmationQueries,
+    IntegrationIdempotencyRecordQueries, IntegrationWebhookDeliveryQueries,
+    ProjectIntegrationQueries,
+};
+use cms_entity::{
+    common::Id,
+    integration::{
+        CreateProjectIntegrationRequest, IntegrationProvider, ProjectIntegration,
+        ProjectIntegrationResponse, UpdateProjectIntegrationRequest,
+    },
+};
+
+use crate::{AppError, BizContext};
 
 /// Integration service
 pub struct IntegrationService;
@@ -27,11 +29,10 @@ impl IntegrationService {
         request: CreateProjectIntegrationRequest,
     ) -> Result<ProjectIntegrationResponse, AppError> {
         // Check if user has access to the project
-        ctx.access_control.require_project_access(
-            user_id,
-            &request.project_id,
-        ).await?;
-        
+        ctx.access_control
+            .require_project_access(user_id, &request.project_id)
+            .await?;
+
         let integration = ProjectIntegrationQueries::create(
             &ctx.pool,
             &request.project_id,
@@ -39,8 +40,9 @@ impl IntegrationService {
             &request.name,
             request.config,
             request.webhook_url.as_deref(),
-        ).await?;
-        
+        )
+        .await?;
+
         // Log the creation
         IntegrationAuditEventQueries::create(
             &ctx.pool,
@@ -52,11 +54,12 @@ impl IntegrationService {
             }),
             "COMPLETED",
             None,
-        ).await?;
-        
+        )
+        .await?;
+
         Ok(integration.into())
     }
-    
+
     /// Get integration by ID
     pub async fn get_integration(
         ctx: &BizContext,
@@ -66,16 +69,15 @@ impl IntegrationService {
         let integration = ProjectIntegrationQueries::get_by_id(&ctx.pool, integration_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Integration not found".to_string()))?;
-        
+
         // Check if user has access to the project
-        ctx.access_control.require_project_access(
-            user_id,
-            &integration.project_id,
-        ).await?;
-        
+        ctx.access_control
+            .require_project_access(user_id, &integration.project_id)
+            .await?;
+
         Ok(integration.into())
     }
-    
+
     /// List integrations for a project
     pub async fn list_integrations(
         ctx: &BizContext,
@@ -83,14 +85,15 @@ impl IntegrationService {
         project_id: &str,
     ) -> Result<Vec<ProjectIntegrationResponse>, AppError> {
         // Check if user has access to the project
-        ctx.access_control.require_project_access(user_id, project_id).await?;
-        
-        let integrations = ProjectIntegrationQueries::get_by_project(&ctx.pool, project_id)
+        ctx.access_control
+            .require_project_access(user_id, project_id)
             .await?;
-        
+
+        let integrations = ProjectIntegrationQueries::get_by_project(&ctx.pool, project_id).await?;
+
         Ok(integrations.into_iter().map(|i| i.into()).collect())
     }
-    
+
     /// Update an integration
     pub async fn update_integration(
         ctx: &BizContext,
@@ -101,13 +104,12 @@ impl IntegrationService {
         let integration = ProjectIntegrationQueries::get_by_id(&ctx.pool, integration_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Integration not found".to_string()))?;
-        
+
         // Check if user has access to the project
-        ctx.access_control.require_project_access(
-            user_id,
-            &integration.project_id,
-        ).await?;
-        
+        ctx.access_control
+            .require_project_access(user_id, &integration.project_id)
+            .await?;
+
         let changes_json = serde_json::to_value(&request).unwrap_or_default();
         let updated = ProjectIntegrationQueries::update(
             &ctx.pool,
@@ -116,8 +118,9 @@ impl IntegrationService {
             request.config,
             request.webhook_url.as_deref(),
             request.is_active,
-        ).await?;
-        
+        )
+        .await?;
+
         // Log the update
         IntegrationAuditEventQueries::create(
             &ctx.pool,
@@ -129,11 +132,12 @@ impl IntegrationService {
             }),
             "COMPLETED",
             None,
-        ).await?;
-        
+        )
+        .await?;
+
         Ok(updated.into())
     }
-    
+
     /// Delete an integration
     pub async fn delete_integration(
         ctx: &BizContext,
@@ -143,15 +147,14 @@ impl IntegrationService {
         let integration = ProjectIntegrationQueries::get_by_id(&ctx.pool, integration_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Integration not found".to_string()))?;
-        
+
         // Check if user has access to the project
-        ctx.access_control.require_project_access(
-            user_id,
-            &integration.project_id,
-        ).await?;
-        
+        ctx.access_control
+            .require_project_access(user_id, &integration.project_id)
+            .await?;
+
         let deleted = ProjectIntegrationQueries::delete(&ctx.pool, integration_id).await?;
-        
+
         if deleted {
             // Log the deletion
             IntegrationAuditEventQueries::create(
@@ -163,12 +166,13 @@ impl IntegrationService {
                 }),
                 "COMPLETED",
                 None,
-            ).await?;
+            )
+            .await?;
         }
-        
+
         Ok(deleted)
     }
-    
+
     /// Get integration by project and provider
     pub async fn get_integration_by_provider(
         ctx: &BizContext,
@@ -177,17 +181,17 @@ impl IntegrationService {
         provider: IntegrationProvider,
     ) -> Result<Vec<ProjectIntegrationResponse>, AppError> {
         // Check if user has access to the project
-        ctx.access_control.require_project_access(user_id, project_id).await?;
-        
-        let integrations = ProjectIntegrationQueries::get_by_project_and_provider(
-            &ctx.pool,
-            project_id,
-            provider,
-        ).await?;
-        
+        ctx.access_control
+            .require_project_access(user_id, project_id)
+            .await?;
+
+        let integrations =
+            ProjectIntegrationQueries::get_by_project_and_provider(&ctx.pool, project_id, provider)
+                .await?;
+
         Ok(integrations.into_iter().map(|i| i.into()).collect())
     }
-    
+
     /// Check if idempotency key has been processed
     pub async fn is_idempotent(
         ctx: &BizContext,
@@ -198,23 +202,20 @@ impl IntegrationService {
             &ctx.pool,
             integration_id,
             request_id,
-        ).await?;
-        
+        )
+        .await?;
+
         Ok(exists.is_some())
     }
-    
+
     /// Mark a request as processed (idempotency)
     pub async fn mark_processed(
         ctx: &BizContext,
         integration_id: &str,
         request_id: &str,
     ) -> Result<(), AppError> {
-        IntegrationIdempotencyRecordQueries::create(
-            &ctx.pool,
-            integration_id,
-            request_id,
-        ).await?;
-        
+        IntegrationIdempotencyRecordQueries::create(&ctx.pool, integration_id, request_id).await?;
+
         Ok(())
     }
 
@@ -234,7 +235,8 @@ impl IntegrationService {
                 webhook_url: None,
                 is_active: Some(true),
             },
-        ).await
+        )
+        .await
     }
 
     /// Disable an integration
@@ -253,7 +255,8 @@ impl IntegrationService {
                 webhook_url: None,
                 is_active: Some(false),
             },
-        ).await
+        )
+        .await
     }
 
     /// Test an integration

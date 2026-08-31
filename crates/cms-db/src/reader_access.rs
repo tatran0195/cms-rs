@@ -5,12 +5,12 @@
 
 use chrono::{DateTime, Utc};
 use cms_entity::reader_access::{
-    Reader, ReaderResponse, Audience, AudienceResponse, ReaderAudience, 
-    AudienceGrant, AudienceGrantResponse, ReaderInvitation, ReaderInvitationResponse,
-    ReaderSession, JwtAccessProvider, JwtReplay, ReaderAuditLog,
+    Audience, AudienceGrant, AudienceGrantResponse, AudienceResponse, JwtAccessProvider, JwtReplay,
+    Reader, ReaderAudience, ReaderAuditLog, ReaderInvitation, ReaderInvitationResponse,
+    ReaderResponse, ReaderSession,
 };
 use cms_error::AppError;
-use sqlx::{FromRow, PgPool, QueryBuilder, Postgres};
+use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
 use uuid::Uuid;
 
 // ============================================
@@ -55,29 +55,25 @@ pub struct ReaderQueries;
 
 impl ReaderQueries {
     pub async fn get_by_id(pool: &PgPool, reader_id: &str) -> Result<Option<Reader>, AppError> {
-        let row = sqlx::query_as::<_, ReaderRow>(
-            "SELECT * FROM \"Reader\" WHERE id = $1"
-        )
-        .bind(reader_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row = sqlx::query_as::<_, ReaderRow>("SELECT * FROM \"Reader\" WHERE id = $1")
+            .bind(reader_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn get_by_email(pool: &PgPool, email: &str) -> Result<Option<Reader>, AppError> {
-        let row = sqlx::query_as::<_, ReaderRow>(
-            "SELECT * FROM \"Reader\" WHERE email = $1"
-        )
-        .bind(email)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row = sqlx::query_as::<_, ReaderRow>("SELECT * FROM \"Reader\" WHERE email = $1")
+            .bind(email)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         email: &str,
@@ -85,13 +81,13 @@ impl ReaderQueries {
     ) -> Result<Reader, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, ReaderRow>(
             r#"
             INSERT INTO "Reader" (id, email, name, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(email)
@@ -107,48 +103,46 @@ impl ReaderQueries {
                 AppError::Database(e.into())
             }
         })?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn update(
         pool: &PgPool,
         reader_id: &str,
         name: Option<&str>,
     ) -> Result<Reader, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"Reader\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new("UPDATE \"Reader\" SET ");
+
         if let Some(name) = name {
             query_builder.push("name = ");
             query_builder.push_bind(name);
         } else {
             query_builder.push("name = NULL");
         }
-        
+
         query_builder.push(", updated_at = ");
         query_builder.push_bind(Utc::now());
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(reader_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<ReaderRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn delete(pool: &PgPool, reader_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"Reader\" WHERE id = $1")
             .bind(reader_id)
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }
@@ -198,32 +192,29 @@ pub struct AudienceQueries;
 
 impl AudienceQueries {
     pub async fn get_by_id(pool: &PgPool, audience_id: &str) -> Result<Option<Audience>, AppError> {
-        let row = sqlx::query_as::<_, AudienceRow>(
-            "SELECT * FROM \"Audience\" WHERE id = $1"
-        )
-        .bind(audience_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row = sqlx::query_as::<_, AudienceRow>("SELECT * FROM \"Audience\" WHERE id = $1")
+            .bind(audience_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn get_by_project(
         pool: &PgPool,
         project_id: &str,
     ) -> Result<Vec<Audience>, AppError> {
-        let rows = sqlx::query_as::<_, AudienceRow>(
-            "SELECT * FROM \"Audience\" WHERE project_id = $1"
-        )
-        .bind(project_id)
-        .fetch_all(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let rows =
+            sqlx::query_as::<_, AudienceRow>("SELECT * FROM \"Audience\" WHERE project_id = $1")
+                .bind(project_id)
+                .fetch_all(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         project_id: &str,
@@ -232,13 +223,13 @@ impl AudienceQueries {
     ) -> Result<Audience, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, AudienceRow>(
             r#"
             INSERT INTO "Audience" (id, project_id, name, description, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(project_id)
@@ -249,20 +240,19 @@ impl AudienceQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn update(
         pool: &PgPool,
         audience_id: &str,
         name: Option<&str>,
         description: Option<&str>,
     ) -> Result<Audience, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"Audience\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE \"Audience\" SET ");
+
         let mut has_updates = false;
         if let Some(name) = name {
             query_builder.push("name = ");
@@ -277,32 +267,32 @@ impl AudienceQueries {
             query_builder.push_bind(description);
             has_updates = true;
         }
-        
+
         if has_updates {
             query_builder.push(", updated_at = ");
             query_builder.push_bind(Utc::now());
         }
-        
+
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(audience_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<AudienceRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn delete(pool: &PgPool, audience_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"Audience\" WHERE id = $1")
             .bind(audience_id)
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }
@@ -329,14 +319,14 @@ impl ReaderAudienceQueries {
         audience_id: &str,
     ) -> Result<Option<ReaderAudience>, AppError> {
         let row = sqlx::query_as::<_, ReaderAudienceRow>(
-            "SELECT * FROM \"ReaderAudience\" WHERE reader_id = $1 AND audience_id = $2"
+            "SELECT * FROM \"ReaderAudience\" WHERE reader_id = $1 AND audience_id = $2",
         )
         .bind(reader_id)
         .bind(audience_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| ReaderAudience {
             id: r.id,
             reader_id: r.reader_id,
@@ -344,7 +334,7 @@ impl ReaderAudienceQueries {
             created_at: r.created_at,
         }))
     }
-    
+
     pub async fn has_grant_for_project(
         pool: &PgPool,
         reader_id: &str,
@@ -356,17 +346,17 @@ impl ReaderAudienceQueries {
             SELECT COUNT(*) FROM "ReaderAudience" ra
             JOIN "Audience" a ON ra.audience_id = a.id
             WHERE ra.reader_id = $1 AND a.project_id = $2
-            "#
+            "#,
         )
         .bind(reader_id)
         .bind(project_id)
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(count > 0)
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         reader_id: &str,
@@ -374,13 +364,13 @@ impl ReaderAudienceQueries {
     ) -> Result<ReaderAudience, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, ReaderAudienceRow>(
             r#"
             INSERT INTO "ReaderAudience" (id, reader_id, audience_id, created_at)
             VALUES ($1, $2, $3, $4)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(reader_id)
@@ -395,7 +385,7 @@ impl ReaderAudienceQueries {
                 AppError::Database(e.into())
             }
         })?;
-        
+
         Ok(ReaderAudience {
             id: row.id,
             reader_id: row.reader_id,
@@ -403,21 +393,20 @@ impl ReaderAudienceQueries {
             created_at: row.created_at,
         })
     }
-    
+
     pub async fn delete(
         pool: &PgPool,
         reader_id: &str,
         audience_id: &str,
     ) -> Result<bool, AppError> {
-        let result = sqlx::query(
-            "DELETE FROM \"ReaderAudience\" WHERE reader_id = $1 AND audience_id = $2"
-        )
-        .bind(reader_id)
-        .bind(audience_id)
-        .execute(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let result =
+            sqlx::query("DELETE FROM \"ReaderAudience\" WHERE reader_id = $1 AND audience_id = $2")
+                .bind(reader_id)
+                .bind(audience_id)
+                .execute(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(result.rows_affected() > 0)
     }
 }
@@ -466,30 +455,35 @@ impl From<AudienceGrantRow> for AudienceGrantResponse {
 pub struct AudienceGrantQueries;
 
 impl AudienceGrantQueries {
-    pub async fn get_by_id(pool: &PgPool, grant_id: &str) -> Result<Option<AudienceGrant>, AppError> {
-        let row = sqlx::query_as::<_, AudienceGrantRow>(
-            "SELECT * FROM \"AudienceGrant\" WHERE id = $1"
-        )
-        .bind(grant_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+    pub async fn get_by_id(
+        pool: &PgPool,
+        grant_id: &str,
+    ) -> Result<Option<AudienceGrant>, AppError> {
+        let row =
+            sqlx::query_as::<_, AudienceGrantRow>("SELECT * FROM \"AudienceGrant\" WHERE id = $1")
+                .bind(grant_id)
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
 
-    pub async fn get_by_audience(pool: &PgPool, audience_id: &str) -> Result<Vec<AudienceGrant>, AppError> {
+    pub async fn get_by_audience(
+        pool: &PgPool,
+        audience_id: &str,
+    ) -> Result<Vec<AudienceGrant>, AppError> {
         let rows = sqlx::query_as::<_, AudienceGrantRow>(
-            "SELECT * FROM \"AudienceGrant\" WHERE audience_id = $1"
+            "SELECT * FROM \"AudienceGrant\" WHERE audience_id = $1",
         )
         .bind(audience_id)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     pub async fn has_grant_for_branch(
         pool: &PgPool,
         reader_id: &str,
@@ -510,10 +504,10 @@ impl AudienceGrantQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(count > 0)
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         audience_id: &str,
@@ -523,7 +517,7 @@ impl AudienceGrantQueries {
     ) -> Result<AudienceGrant, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, AudienceGrantRow>(
             r#"
             INSERT INTO "AudienceGrant" (id, audience_id, project_id, branch_id, language_id, created_at)
@@ -540,17 +534,17 @@ impl AudienceGrantQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn delete(pool: &PgPool, grant_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"AudienceGrant\" WHERE id = $1")
             .bind(grant_id)
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }
@@ -598,45 +592,51 @@ impl From<ReaderInvitationRow> for ReaderInvitationResponse {
 pub struct ReaderInvitationQueries;
 
 impl ReaderInvitationQueries {
-    pub async fn get_by_id(pool: &PgPool, invitation_id: &str) -> Result<Option<ReaderInvitation>, AppError> {
+    pub async fn get_by_id(
+        pool: &PgPool,
+        invitation_id: &str,
+    ) -> Result<Option<ReaderInvitation>, AppError> {
         let row = sqlx::query_as::<_, ReaderInvitationRow>(
-            "SELECT * FROM \"ReaderInvitation\" WHERE id = $1"
+            "SELECT * FROM \"ReaderInvitation\" WHERE id = $1",
         )
         .bind(invitation_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
-    pub async fn get_by_token(pool: &PgPool, token: &str) -> Result<Option<ReaderInvitation>, AppError> {
+
+    pub async fn get_by_token(
+        pool: &PgPool,
+        token: &str,
+    ) -> Result<Option<ReaderInvitation>, AppError> {
         let row = sqlx::query_as::<_, ReaderInvitationRow>(
-            "SELECT * FROM \"ReaderInvitation\" WHERE token = $1"
+            "SELECT * FROM \"ReaderInvitation\" WHERE token = $1",
         )
         .bind(token)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn get_by_audience(
         pool: &PgPool,
         audience_id: &str,
     ) -> Result<Vec<ReaderInvitation>, AppError> {
         let rows = sqlx::query_as::<_, ReaderInvitationRow>(
-            "SELECT * FROM \"ReaderInvitation\" WHERE audience_id = $1"
+            "SELECT * FROM \"ReaderInvitation\" WHERE audience_id = $1",
         )
         .bind(audience_id)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         audience_id: &str,
@@ -646,13 +646,13 @@ impl ReaderInvitationQueries {
     ) -> Result<ReaderInvitation, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, ReaderInvitationRow>(
             r#"
             INSERT INTO "ReaderInvitation" (id, audience_id, email, token, expires_at, created_at)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(audience_id)
@@ -669,17 +669,17 @@ impl ReaderInvitationQueries {
                 AppError::Database(e.into())
             }
         })?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn delete(pool: &PgPool, invitation_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"ReaderInvitation\" WHERE id = $1")
             .bind(invitation_id)
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }
@@ -701,15 +701,17 @@ struct ReaderSessionRow {
 pub struct ReaderSessionQueries;
 
 impl ReaderSessionQueries {
-    pub async fn get_by_id(pool: &PgPool, session_id: &str) -> Result<Option<ReaderSession>, AppError> {
-        let row = sqlx::query_as::<_, ReaderSessionRow>(
-            "SELECT * FROM \"ReaderSession\" WHERE id = $1"
-        )
-        .bind(session_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+    pub async fn get_by_id(
+        pool: &PgPool,
+        session_id: &str,
+    ) -> Result<Option<ReaderSession>, AppError> {
+        let row =
+            sqlx::query_as::<_, ReaderSessionRow>("SELECT * FROM \"ReaderSession\" WHERE id = $1")
+                .bind(session_id)
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| ReaderSession {
             id: r.id,
             reader_id: r.reader_id,
@@ -718,16 +720,19 @@ impl ReaderSessionQueries {
             created_at: r.created_at,
         }))
     }
-    
-    pub async fn get_by_token(pool: &PgPool, token: &str) -> Result<Option<ReaderSession>, AppError> {
+
+    pub async fn get_by_token(
+        pool: &PgPool,
+        token: &str,
+    ) -> Result<Option<ReaderSession>, AppError> {
         let row = sqlx::query_as::<_, ReaderSessionRow>(
-            "SELECT * FROM \"ReaderSession\" WHERE session_token = $1"
+            "SELECT * FROM \"ReaderSession\" WHERE session_token = $1",
         )
         .bind(token)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| ReaderSession {
             id: r.id,
             reader_id: r.reader_id,
@@ -736,7 +741,7 @@ impl ReaderSessionQueries {
             created_at: r.created_at,
         }))
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         reader_id: &str,
@@ -745,13 +750,13 @@ impl ReaderSessionQueries {
     ) -> Result<ReaderSession, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, ReaderSessionRow>(
             r#"
             INSERT INTO "ReaderSession" (id, reader_id, session_token, expires_at, created_at)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(reader_id)
@@ -761,7 +766,7 @@ impl ReaderSessionQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(ReaderSession {
             id: row.id,
             reader_id: row.reader_id,
@@ -770,14 +775,14 @@ impl ReaderSessionQueries {
             created_at: row.created_at,
         })
     }
-    
+
     pub async fn delete(pool: &PgPool, session_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"ReaderSession\" WHERE id = $1")
             .bind(session_id)
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }
@@ -815,35 +820,38 @@ impl From<JwtAccessProviderRow> for JwtAccessProvider {
 pub struct JwtAccessProviderQueries;
 
 impl JwtAccessProviderQueries {
-    pub async fn get_by_id(pool: &PgPool, provider_id: &str) -> Result<Option<JwtAccessProvider>, AppError> {
+    pub async fn get_by_id(
+        pool: &PgPool,
+        provider_id: &str,
+    ) -> Result<Option<JwtAccessProvider>, AppError> {
         let row = sqlx::query_as::<_, JwtAccessProviderRow>(
-            "SELECT * FROM \"JwtAccessProvider\" WHERE id = $1"
+            "SELECT * FROM \"JwtAccessProvider\" WHERE id = $1",
         )
         .bind(provider_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn get_by_issuer_and_audience(
         pool: &PgPool,
         issuer: &str,
         audience: &str,
     ) -> Result<Option<JwtAccessProvider>, AppError> {
         let row = sqlx::query_as::<_, JwtAccessProviderRow>(
-            "SELECT * FROM \"JwtAccessProvider\" WHERE issuer = $1 AND audience = $2"
+            "SELECT * FROM \"JwtAccessProvider\" WHERE issuer = $1 AND audience = $2",
         )
         .bind(issuer)
         .bind(audience)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         name: &str,
@@ -853,7 +861,7 @@ impl JwtAccessProviderQueries {
     ) -> Result<JwtAccessProvider, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, JwtAccessProviderRow>(
             r#"
             INSERT INTO "JwtAccessProvider" (id, name, issuer, audience, secret, created_at, updated_at)
@@ -871,17 +879,17 @@ impl JwtAccessProviderQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn delete(pool: &PgPool, provider_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"JwtAccessProvider\" WHERE id = $1")
             .bind(provider_id)
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }
@@ -921,17 +929,17 @@ impl JwtReplayQueries {
         provider_id: &str,
     ) -> Result<Option<JwtReplay>, AppError> {
         let row = sqlx::query_as::<_, JwtReplayRow>(
-            "SELECT * FROM \"JwtReplay\" WHERE jwt_id = $1 AND provider_id = $2"
+            "SELECT * FROM \"JwtReplay\" WHERE jwt_id = $1 AND provider_id = $2",
         )
         .bind(jwt_id)
         .bind(provider_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn is_replayed(
         pool: &PgPool,
         jwt_id: &str,
@@ -940,10 +948,10 @@ impl JwtReplayQueries {
         let exists = JwtReplayQueries::get_by_jwt_id_and_provider(pool, jwt_id, provider_id)
             .await?
             .is_some();
-        
+
         Ok(exists)
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         jwt_id: &str,
@@ -951,13 +959,13 @@ impl JwtReplayQueries {
     ) -> Result<JwtReplay, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, JwtReplayRow>(
             r#"
             INSERT INTO "JwtReplay" (id, jwt_id, provider_id, used_at, created_at)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(jwt_id)
@@ -973,7 +981,7 @@ impl JwtReplayQueries {
                 AppError::Database(e.into())
             }
         })?;
-        
+
         Ok(row.into())
     }
 }
@@ -1018,13 +1026,13 @@ impl ReaderAuditLogQueries {
     ) -> Result<ReaderAuditLog, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, ReaderAuditLogRow>(
             r#"
             INSERT INTO "ReaderAuditLog" (id, reader_id, project_id, action, metadata, created_at)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(reader_id)
@@ -1035,39 +1043,38 @@ impl ReaderAuditLogQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn get_by_reader(
         pool: &PgPool,
         reader_id: &str,
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<ReaderAuditLog>, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT * FROM \"ReaderAuditLog\" WHERE reader_id = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT * FROM \"ReaderAuditLog\" WHERE reader_id = ");
         query_builder.push_bind(reader_id);
-        
+
         query_builder.push(" ORDER BY created_at DESC");
-        
+
         if let Some(limit) = limit {
             query_builder.push(" LIMIT ");
             query_builder.push_bind(limit);
         }
-        
+
         if let Some(offset) = offset {
             query_builder.push(" OFFSET ");
             query_builder.push_bind(offset);
         }
-        
+
         let rows = query_builder
             .build_query_as::<ReaderAuditLogRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 }

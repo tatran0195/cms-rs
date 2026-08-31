@@ -2,17 +2,24 @@
 //!
 //! This module contains the actual implementation of search handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::search::SearchService;
-use cms_entity::search::{SearchRequest, SearchResponse, ReindexRequest, ListSearchIndexRunsQuery, SearchIndexRunResponse};
-use cms_entity::common::{Id, PaginatedResponse};
+use cms_entity::{
+    common::{Id, PaginatedResponse},
+    search::{
+        ListSearchIndexRunsQuery, ReindexRequest, SearchIndexRunResponse, SearchRequest,
+        SearchResponse,
+    },
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// Perform a search
@@ -51,8 +58,9 @@ pub async fn search_handler(
         state.search_engine.clone(),
         &project_id,
         request,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(result))
 }
 
@@ -81,13 +89,11 @@ pub async fn reindex_handler(
     auth: AuthExtractor,
     Json(request): Json<ReindexRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    SearchService::reindex(
-        &state.biz_context,
-        &auth.user.id,
-        request,
-    ).await?;
-    
-    Ok(Json(serde_json::json!({"success": true, "message": "Reindexing started"})))
+    SearchService::reindex(&state.biz_context, &auth.user.id, request).await?;
+
+    Ok(Json(
+        serde_json::json!({"success": true, "message": "Reindexing started"}),
+    ))
 }
 
 /// List search index runs
@@ -119,12 +125,8 @@ pub async fn list_search_index_runs_handler(
     auth: AuthExtractor,
     Query(query): Query<ListSearchIndexRunsQuery>,
 ) -> Result<Json<PaginatedResponse<SearchIndexRunResponse>>, AppError> {
-    let result = SearchService::list_index_runs(
-        &state.biz_context,
-        &auth.user.id,
-        query,
-    ).await?;
-    
+    let result = SearchService::list_index_runs(&state.biz_context, &auth.user.id, query).await?;
+
     Ok(Json(result))
 }
 
@@ -154,12 +156,8 @@ pub async fn get_search_index_run_handler(
     auth: AuthExtractor,
     Path(run_id): Path<Id>,
 ) -> Result<Json<SearchIndexRunResponse>, AppError> {
-    let run = SearchService::get_index_run(
-        &state.biz_context,
-        &auth.user.id,
-        &run_id,
-    ).await?;
-    
+    let run = SearchService::get_index_run(&state.biz_context, &auth.user.id, &run_id).await?;
+
     Ok(Json(run))
 }
 
@@ -189,11 +187,8 @@ pub async fn get_search_status_handler(
     auth: AuthExtractor,
     Path(project_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let status = SearchService::get_search_status(
-        &state.biz_context,
-        &auth.user.id,
-        &project_id,
-    ).await?;
-    
+    let status =
+        SearchService::get_search_status(&state.biz_context, &auth.user.id, &project_id).await?;
+
     Ok(Json(status))
 }

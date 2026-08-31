@@ -2,12 +2,15 @@
 //!
 //! This module contains business logic for notifications.
 
-use crate::{BizContext, AppError};
-use cms_db::notification::NotificationQueries;
-use cms_entity::notification::{Notification, NotificationResponse, NotificationType, NotificationStatus};
-use cms_entity::common::{Id, PaginatedResponse};
-use uuid::Uuid;
 use chrono::Utc;
+use cms_db::notification::NotificationQueries;
+use cms_entity::{
+    common::{Id, PaginatedResponse},
+    notification::{Notification, NotificationResponse, NotificationStatus, NotificationType},
+};
+use uuid::Uuid;
+
+use crate::{AppError, BizContext};
 
 /// Notification service
 pub struct NotificationService;
@@ -29,11 +32,12 @@ impl NotificationService {
             title,
             message,
             data,
-        ).await?;
-        
+        )
+        .await?;
+
         Ok(notification.into())
     }
-    
+
     /// Get a notification
     pub async fn get_notification(
         ctx: &BizContext,
@@ -43,15 +47,17 @@ impl NotificationService {
         let notification = NotificationQueries::get_by_id(&ctx.pool, notification_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Notification not found".to_string()))?;
-        
+
         // Verify notification belongs to user
         if notification.user_id != user_id {
-            return Err(AppError::AccessDenied("Notification does not belong to this user".to_string()));
+            return Err(AppError::AccessDenied(
+                "Notification does not belong to this user".to_string(),
+            ));
         }
-        
+
         Ok(notification.into())
     }
-    
+
     /// List notifications for a user
     pub async fn list_notifications(
         ctx: &BizContext,
@@ -66,14 +72,11 @@ impl NotificationService {
             status.as_ref(),
             Some(page as i64),
             Some(page_size as i64),
-        ).await?;
-        
-        let total = NotificationQueries::count_by_user(
-            &ctx.pool,
-            user_id,
-            status.as_ref(),
-        ).await?;
-        
+        )
+        .await?;
+
+        let total = NotificationQueries::count_by_user(&ctx.pool, user_id, status.as_ref()).await?;
+
         Ok(PaginatedResponse::new(
             notifications.into_iter().map(|n| n.into()).collect(),
             total as u64,
@@ -81,7 +84,7 @@ impl NotificationService {
             page_size,
         ))
     }
-    
+
     /// Mark notification as read
     pub async fn mark_as_read(
         ctx: &BizContext,
@@ -91,29 +94,29 @@ impl NotificationService {
         let notification = NotificationQueries::get_by_id(&ctx.pool, notification_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Notification not found".to_string()))?;
-        
+
         // Verify notification belongs to user
         if notification.user_id != user_id {
-            return Err(AppError::AccessDenied("Notification does not belong to this user".to_string()));
+            return Err(AppError::AccessDenied(
+                "Notification does not belong to this user".to_string(),
+            ));
         }
-        
+
         let updated = NotificationQueries::update_status(
             &ctx.pool,
             notification_id,
             NotificationStatus::READ,
-        ).await?;
-        
+        )
+        .await?;
+
         Ok(updated.into())
     }
-    
+
     /// Mark all notifications as read
-    pub async fn mark_all_as_read(
-        ctx: &BizContext,
-        user_id: &str,
-    ) -> Result<u64, AppError> {
+    pub async fn mark_all_as_read(ctx: &BizContext, user_id: &str) -> Result<u64, AppError> {
         NotificationQueries::mark_all_as_read(&ctx.pool, user_id).await
     }
-    
+
     /// Delete a notification
     pub async fn delete_notification(
         ctx: &BizContext,
@@ -123,25 +126,21 @@ impl NotificationService {
         let notification = NotificationQueries::get_by_id(&ctx.pool, notification_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Notification not found".to_string()))?;
-        
+
         // Verify notification belongs to user
         if notification.user_id != user_id {
-            return Err(AppError::AccessDenied("Notification does not belong to this user".to_string()));
+            return Err(AppError::AccessDenied(
+                "Notification does not belong to this user".to_string(),
+            ));
         }
-        
+
         NotificationQueries::delete(&ctx.pool, notification_id).await
     }
-    
+
     /// Get unread notification count
-    pub async fn get_unread_count(
-        ctx: &BizContext,
-        user_id: &str,
-    ) -> Result<u64, AppError> {
-        let count = NotificationQueries::count_unread_by_user(
-            &ctx.pool,
-            user_id,
-        ).await?;
-        
+    pub async fn get_unread_count(ctx: &BizContext, user_id: &str) -> Result<u64, AppError> {
+        let count = NotificationQueries::count_unread_by_user(&ctx.pool, user_id).await?;
+
         Ok(count as u64)
     }
 

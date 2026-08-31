@@ -78,7 +78,6 @@ pub struct UploadAssetRequest {
     pub height: Option<i32>,
 }
 
-
 /// Update asset request
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UpdateAssetRequest {
@@ -119,4 +118,3 @@ pub struct DeleteAssetResponse {
 
 /// Create asset request (alias for UploadAssetRequest for API compatibility)
 pub type CreateAssetRequest = UploadAssetRequest;
-

@@ -2,16 +2,22 @@
 //!
 //! This module contains the actual implementation of asset handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query, Multipart},
+    extract::{Multipart, Path, Query, State},
     Json,
 };
 use cms_biz::asset::AssetService;
-use cms_entity::asset::{AssetResponse, ListAssetsQuery, UploadAssetRequest, UpdateAssetRequest, DeleteAssetResponse};
-use cms_entity::common::{Id, PaginatedResponse};
+use cms_entity::{
+    asset::{
+        AssetResponse, DeleteAssetResponse, ListAssetsQuery, UpdateAssetRequest, UploadAssetRequest,
+    },
+    common::{Id, PaginatedResponse},
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+
 use crate::auth::AuthExtractor;
 
 /// List assets
@@ -50,8 +56,9 @@ pub async fn list_assets_handler(
         project_id,
         query.limit.unwrap_or(1) as u64,
         query.offset.unwrap_or(20) as u64,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(assets))
 }
 
@@ -88,8 +95,9 @@ pub async fn upload_asset_handler(
         &request.file_name,
         &request.content_type,
         request.alt_text.as_deref(),
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(asset))
 }
 
@@ -124,18 +132,27 @@ pub async fn upload_asset_multipart_handler(
     let mut file_name = None;
     let mut content_type = None;
     let mut file_data = Vec::new();
-    
-    while let Some(field) = multipart.next_field().await.map_err(|e| AppError::BadRequest(e.to_string()))? {
+
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::BadRequest(e.to_string()))?
+    {
         if field.name() == Some("file") {
             file_name = field.file_name().map(|s| s.to_string());
             content_type = field.content_type().map(|s| s.to_string());
-            file_data = field.bytes().await.map_err(|e| AppError::BadRequest(e.to_string()))?.to_vec();
+            file_data = field
+                .bytes()
+                .await
+                .map_err(|e| AppError::BadRequest(e.to_string()))?
+                .to_vec();
         }
     }
-    
-    let file_name = file_name.ok_or_else(|| AppError::BadRequest("No file provided".to_string()))?;
+
+    let file_name =
+        file_name.ok_or_else(|| AppError::BadRequest("No file provided".to_string()))?;
     let content_type = content_type.unwrap_or_else(|| "application/octet-stream".to_string());
-    
+
     let asset = AssetService::upload_asset_bytes(
         &state.biz_context,
         &state.storage,
@@ -144,8 +161,9 @@ pub async fn upload_asset_multipart_handler(
         &file_name,
         &content_type,
         &file_data,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(asset))
 }
 
@@ -175,12 +193,8 @@ pub async fn get_asset_handler(
     auth: AuthExtractor,
     Path(asset_id): Path<Id>,
 ) -> Result<Json<AssetResponse>, AppError> {
-    let asset = AssetService::get_asset(
-        &state.biz_context,
-        &auth.user.id,
-        &asset_id,
-    ).await?;
-    
+    let asset = AssetService::get_asset(&state.biz_context, &auth.user.id, &asset_id).await?;
+
     Ok(Json(asset))
 }
 
@@ -219,8 +233,9 @@ pub async fn update_asset_handler(
         &auth.user.id,
         &asset_id,
         request.alt_text.as_deref(),
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(asset))
 }
 
@@ -256,8 +271,9 @@ pub async fn delete_asset_handler(
         &auth.user.id,
         state.storage.clone(),
         &asset_id,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(DeleteAssetResponse {
         success: true,
         asset_id,

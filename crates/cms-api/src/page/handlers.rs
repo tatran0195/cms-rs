@@ -2,17 +2,21 @@
 //!
 //! This module contains the actual implementation of page handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::page::PageService;
-use cms_entity::page::{CreatePageRequest, UpdatePageRequest, PageResponse, PageListItem, ListPagesQuery};
-use cms_entity::common::{Id, PaginatedResponse};
+use cms_entity::{
+    common::{Id, PaginatedResponse},
+    page::{CreatePageRequest, ListPagesQuery, PageListItem, PageResponse, UpdatePageRequest},
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// List pages for a project and branch
@@ -47,14 +51,8 @@ pub async fn list_pages_handler(
     auth: AuthExtractor,
     Query(query): Query<ListPagesQuery>,
 ) -> Result<Json<PaginatedResponse<PageListItem>>, AppError> {
-    let result = PageService::list_pages(
-        &state.biz_context,
-        &auth.user.id,
-        query,
-        1,
-        20,
-    ).await?;
-    
+    let result = PageService::list_pages(&state.biz_context, &auth.user.id, query, 1, 20).await?;
+
     Ok(Json(result))
 }
 
@@ -91,8 +89,9 @@ pub async fn create_page_handler(
         &project_id,
         &branch_id,
         request,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(page))
 }
 
@@ -122,12 +121,8 @@ pub async fn get_page_handler(
     auth: AuthExtractor,
     Path(page_id): Path<Id>,
 ) -> Result<Json<PageResponse>, AppError> {
-    let page = PageService::get_page(
-        &state.biz_context,
-        &auth.user.id,
-        &page_id,
-    ).await?;
-    
+    let page = PageService::get_page(&state.biz_context, &auth.user.id, &page_id).await?;
+
     Ok(Json(page))
 }
 
@@ -161,13 +156,9 @@ pub async fn update_page_handler(
     Path(page_id): Path<Id>,
     Json(request): Json<UpdatePageRequest>,
 ) -> Result<Json<PageResponse>, AppError> {
-    let page = PageService::update_page(
-        &state.biz_context,
-        &auth.user.id,
-        &page_id,
-        request,
-    ).await?;
-    
+    let page =
+        PageService::update_page(&state.biz_context, &auth.user.id, &page_id, request).await?;
+
     Ok(Json(page))
 }
 
@@ -198,11 +189,7 @@ pub async fn delete_page_handler(
     auth: AuthExtractor,
     Path(page_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    PageService::delete_page(
-        &state.biz_context,
-        &auth.user.id,
-        &page_id,
-    ).await?;
-    
+    PageService::delete_page(&state.biz_context, &auth.user.id, &page_id).await?;
+
     Ok(Json(serde_json::json!({"success": true, "id": page_id})))
 }

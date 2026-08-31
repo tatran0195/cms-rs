@@ -369,4 +369,3 @@ pub struct AcceptInvitationRequest {
     #[serde(default)]
     pub name: Option<String>,
 }
-

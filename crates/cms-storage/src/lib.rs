@@ -7,12 +7,12 @@
 //! The trait is designed so that cms-biz can be tested against a fake
 //! implementation without a live storage backend.
 
+use std::{path::Path, time::Duration};
+
 use async_trait::async_trait;
 use bytes::Bytes;
 use cms_config::StorageConfig;
 use cms_error::AppError;
-use std::path::Path;
-use std::time::Duration;
 
 /// Upload target for file uploads
 #[derive(Debug, Clone)]
@@ -69,7 +69,7 @@ pub trait Storage: Send + Sync {
 }
 
 /// Create a Storage implementation based on configuration
-pub fn create_storage(config: &StorageConfig) -> Result<Box<dyn Storage>, AppError> {
+pub async fn create_storage(config: &StorageConfig) -> Result<Box<dyn Storage>, AppError> {
     match config.backend.as_str() {
         "local" => {
             let root_dir = config.local_root.as_deref().unwrap_or("./storage");
@@ -84,14 +84,17 @@ pub fn create_storage(config: &StorageConfig) -> Result<Box<dyn Storage>, AppErr
                     &config.s3_access_key,
                     &config.s3_secret_key,
                 ) {
-                    Ok(Box::new(S3Storage::new(
-                        endpoint.clone(),
-                        bucket.clone(),
-                        access_key.clone(),
-                        secret_key.clone(),
-                        config.s3_region.clone().unwrap_or_default(),
-                        config.s3_path_style,
-                    )))
+                    Ok(Box::new(
+                        S3Storage::new(
+                            endpoint.clone(),
+                            bucket.clone(),
+                            access_key.clone(),
+                            secret_key.clone(),
+                            config.s3_region.clone().unwrap_or_default(),
+                            config.s3_path_style,
+                        )
+                        .await,
+                    ))
                 } else {
                     Err(AppError::StorageNotConfigured)
                 }
@@ -266,12 +269,13 @@ pub struct S3Storage {
     client: aws_sdk_s3::Client,
     bucket: String,
     use_path_style: bool,
+    endpoint: String,
 }
 
 #[cfg(feature = "s3")]
 impl S3Storage {
     /// Create a new S3Storage instance
-    pub fn new(
+    pub async fn new(
         endpoint: String,
         bucket: String,
         access_key: String,
@@ -281,19 +285,16 @@ impl S3Storage {
     ) -> Self {
         use aws_config::BehaviorVersion;
 
-        let config = aws_config::from_env()
-            .endpoint_url(endpoint)
-            .region(aws_config::Region::new(region))
-            .behavior_version(BehaviorVersion::latest())
-            .load_defaults(aws_sdk_s3::config::Builder::from(
-                &aws_config::load_from_env().await,
-            ))
+        let config = aws_config::defaults(BehaviorVersion::latest())
+            .endpoint_url(endpoint.clone())
+            .region(aws_config::Region::new(region.clone()))
+            .load()
             .await;
 
         // Override credentials if provided
         let config = if !access_key.is_empty() && !secret_key.is_empty() {
-            aws_config::from_env()
-                .endpoint_url(endpoint)
+            aws_config::defaults(BehaviorVersion::latest())
+                .endpoint_url(endpoint.clone())
                 .region(aws_config::Region::new(region))
                 .credentials_provider(aws_credential_types::Credentials::new(
                     &access_key,
@@ -302,7 +303,6 @@ impl S3Storage {
                     None,
                     "loaded-from-config",
                 ))
-                .behavior_version(BehaviorVersion::latest())
                 .load()
                 .await
         } else {
@@ -310,11 +310,13 @@ impl S3Storage {
         };
 
         let client = aws_sdk_s3::Client::new(&config);
+        let host = endpoint.replace("http://", "").replace("https://", "");
 
         Self {
             client,
             bucket,
             use_path_style,
+            endpoint: host,
         }
     }
 
@@ -328,19 +330,9 @@ impl S3Storage {
     fn get_public_url(&self, key: &str) -> String {
         let s3_key = self.get_s3_key(key);
         if self.use_path_style {
-            format!(
-                "https://{}/{}/{}",
-                self.client.endpoint_url().host_str().unwrap_or(""),
-                self.bucket,
-                s3_key
-            )
+            format!("https://{}/{}/{}", self.endpoint, self.bucket, s3_key)
         } else {
-            format!(
-                "https://{}.{}/{}",
-                self.bucket,
-                self.client.endpoint_url().host_str().unwrap_or(""),
-                s3_key
-            )
+            format!("https://{}.{}/{}", self.bucket, self.endpoint, s3_key)
         }
     }
 }
@@ -395,22 +387,23 @@ impl Storage for S3Storage {
     async fn delete(&self, key: &str) -> Result<(), AppError> {
         let s3_key = self.get_s3_key(key);
 
-        self.client
+        match self
+            .client
             .delete_object()
             .bucket(&self.bucket)
             .key(&s3_key)
             .send()
             .await
-            .map_err(|e| {
+        {
+            Ok(_) => Ok(()),
+            Err(e) => {
                 if e.to_string().contains("NoSuchKey") {
-                    // It's okay if the object doesn't exist
                     Ok(())
                 } else {
                     Err(AppError::Storage(format!("S3 delete failed: {}", e)))
                 }
-            })?;
-
-        Ok(())
+            }
+        }
     }
 
     async fn upload_target(
@@ -420,15 +413,15 @@ impl Storage for S3Storage {
     ) -> Result<UploadTarget, AppError> {
         let s3_key = self.get_s3_key(key);
 
+        let presigning_config = aws_sdk_s3::presigning::PresigningConfig::expires_in(expires_in)
+            .map_err(|e| AppError::Storage(format!("Invalid expires_in: {}", e)))?;
+
         let response = self
             .client
             .put_object()
             .bucket(&self.bucket)
             .key(&s3_key)
-            .presigned()
-            .expires_in(expires_in)
-            .customize()
-            .build()
+            .presigned(presigning_config)
             .await
             .map_err(|e| AppError::Storage(format!("Failed to create presigned URL: {}", e)))?;
 
@@ -442,15 +435,15 @@ impl Storage for S3Storage {
     ) -> Result<DownloadTarget, AppError> {
         let s3_key = self.get_s3_key(key);
 
+        let presigning_config = aws_sdk_s3::presigning::PresigningConfig::expires_in(expires_in)
+            .map_err(|e| AppError::Storage(format!("Invalid expires_in: {}", e)))?;
+
         let response = self
             .client
             .get_object()
             .bucket(&self.bucket)
             .key(&s3_key)
-            .presigned()
-            .expires_in(expires_in)
-            .customize()
-            .build()
+            .presigned(presigning_config)
             .await
             .map_err(|e| AppError::Storage(format!("Failed to create presigned URL: {}", e)))?;
 
@@ -459,14 +452,10 @@ impl Storage for S3Storage {
 
     async fn ensure_ready(&self) -> Result<(), AppError> {
         // Check if bucket exists, create if not
-        self.client
-            .head_bucket()
-            .bucket(&self.bucket)
-            .send()
-            .await
-            .map_err(|e| {
+        match self.client.head_bucket().bucket(&self.bucket).send().await {
+            Ok(_) => Ok(()),
+            Err(e) => {
                 if e.to_string().contains("NotFound") || e.to_string().contains("NoSuchBucket") {
-                    // Try to create the bucket
                     self.client
                         .create_bucket()
                         .bucket(&self.bucket)
@@ -479,9 +468,8 @@ impl Storage for S3Storage {
                 } else {
                     Err(AppError::Storage(format!("Bucket check failed: {}", e)))
                 }
-            })?;
-
-        Ok(())
+            }
+        }
     }
 
     async fn exists(&self, key: &str) -> Result<bool, AppError> {
@@ -515,7 +503,6 @@ impl Storage for S3Storage {
 
         let keys = response
             .contents()
-            .unwrap_or_default()
             .iter()
             .map(|obj| obj.key().unwrap_or_default().to_string())
             .collect();
@@ -526,8 +513,9 @@ impl Storage for S3Storage {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tempfile::tempdir;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_local_storage_put_get() {

@@ -11,11 +11,12 @@
 //! These are simple enough that a general-purpose policy engine would add
 //! indirection without adding capability.
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use cms_db::PgPool;
 use cms_entity::common::MemberRole;
 use cms_error::AppError;
-use std::sync::Arc;
 
 /// Access control trait
 ///

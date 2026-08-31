@@ -2,16 +2,23 @@
 //!
 //! This module contains the actual implementation of analytics handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
 use cms_biz::analytics::AnalyticsService;
-use cms_entity::analytics::{AnalyticsEventResponse, ListAnalyticsEventsQuery, TrackAnalyticsEventRequest, AnalyticsQueryRequest, AnalyticsQueryResponse, AnalyticsDashboardResponse};
-use cms_entity::common::{Id, PaginatedResponse};
+use cms_entity::{
+    analytics::{
+        AnalyticsDashboardResponse, AnalyticsEventResponse, AnalyticsQueryRequest,
+        AnalyticsQueryResponse, ListAnalyticsEventsQuery, TrackAnalyticsEventRequest,
+    },
+    common::{Id, PaginatedResponse},
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+
 use crate::auth::AuthExtractor;
 
 /// Track an analytics event
@@ -32,11 +39,8 @@ pub async fn track_event_handler(
     State(state): State<Arc<AppState>>,
     Json(request): Json<TrackAnalyticsEventRequest>,
 ) -> Result<Json<AnalyticsEventResponse>, AppError> {
-    let event = AnalyticsService::track_event(
-        &state.biz_context,
-        request,
-    ).await?;
-    
+    let event = AnalyticsService::track_event(&state.biz_context, request).await?;
+
     Ok(Json(event))
 }
 
@@ -71,12 +75,8 @@ pub async fn list_analytics_events_handler(
     auth: AuthExtractor,
     Query(query): Query<ListAnalyticsEventsQuery>,
 ) -> Result<Json<PaginatedResponse<AnalyticsEventResponse>>, AppError> {
-    let result = AnalyticsService::list_events(
-        &state.biz_context,
-        &auth.user.id,
-        query,
-    ).await?;
-    
+    let result = AnalyticsService::list_events(&state.biz_context, &auth.user.id, query).await?;
+
     Ok(Json(result))
 }
 
@@ -104,12 +104,9 @@ pub async fn query_analytics_handler(
     auth: AuthExtractor,
     Json(request): Json<AnalyticsQueryRequest>,
 ) -> Result<Json<AnalyticsQueryResponse>, AppError> {
-    let result = AnalyticsService::query_analytics(
-        &state.biz_context,
-        &auth.user.id,
-        request,
-    ).await?;
-    
+    let result =
+        AnalyticsService::query_analytics(&state.biz_context, &auth.user.id, request).await?;
+
     Ok(Json(result))
 }
 
@@ -139,12 +136,9 @@ pub async fn get_analytics_dashboard_handler(
     auth: AuthExtractor,
     Path(project_id): Path<Id>,
 ) -> Result<Json<AnalyticsDashboardResponse>, AppError> {
-    let dashboard = AnalyticsService::get_dashboard(
-        &state.biz_context,
-        &auth.user.id,
-        &project_id,
-    ).await?;
-    
+    let dashboard =
+        AnalyticsService::get_dashboard(&state.biz_context, &auth.user.id, &project_id).await?;
+
     Ok(Json(dashboard))
 }
 
@@ -174,11 +168,8 @@ pub async fn get_page_views_handler(
     auth: AuthExtractor,
     Path(page_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let views = AnalyticsService::get_page_views(
-        &state.biz_context,
-        &auth.user.id,
-        &page_id,
-    ).await?;
-    
+    let views =
+        AnalyticsService::get_page_views(&state.biz_context, &auth.user.id, &page_id).await?;
+
     Ok(Json(serde_json::json!(views)))
 }

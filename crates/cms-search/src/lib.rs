@@ -8,13 +8,16 @@
 //!
 //! The search is retargeted from Arabic to Japanese per the architecture decision.
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use cms_config::SearchConfig;
 use cms_db::PgPool;
-use cms_entity::page::Page;
-use cms_entity::search::{RagAnswer, SearchHit, SearchOptions};
+use cms_entity::{
+    page::Page,
+    search::{RagAnswer, SearchHit, SearchOptions},
+};
 use cms_error::AppError;
-use std::sync::Arc;
 
 /// Search engine trait
 #[async_trait]
@@ -106,7 +109,7 @@ impl JapaneseTokenizer {
         let mut tokens = Vec::new();
 
         for word in text.split_whitespace() {
-            if word.chars().all(|c| c.is_ascii()) {
+            if word.is_ascii() {
                 tokens.push(word.to_lowercase());
             } else {
                 // For CJK text, use bigrams as a simple approximation
@@ -210,23 +213,27 @@ impl SearchEngine for PgVectorSearchEngine {
 /// Qdrant-based search engine (optional)
 #[cfg(feature = "qdrant")]
 pub struct QdrantSearchEngine {
-    client: qdrant_client::QdrantClient,
+    client: qdrant_client::client::QdrantClient,
     tokenizer: JapaneseTokenizer,
 }
 
 #[cfg(feature = "qdrant")]
 impl QdrantSearchEngine {
     pub async fn new(host: String, port: u16, api_key: Option<String>) -> Result<Self, AppError> {
-        use qdrant_client::QdrantClient;
+        use qdrant_client::client::QdrantClient;
 
-        let mut config =
-            qdrant_client::QdrantClientConfig::from_url(&format!("http://{}:{}", host, port));
+        let mut config = qdrant_client::client::QdrantClientConfig::from_url(&format!(
+            "http://{}:{}",
+            host, port
+        ));
 
         if let Some(key) = api_key {
             config.api_key = Some(key);
         }
 
-        let client = QdrantClient::new(Some(config));
+        let client = QdrantClient::new(Some(config))
+            .await
+            .map_err(|e| AppError::SearchUnavailable(e.to_string()))?;
         let tokenizer = JapaneseTokenizer::new();
 
         Ok(Self { client, tokenizer })

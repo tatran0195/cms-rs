@@ -2,17 +2,23 @@
 //!
 //! This module contains the actual implementation of theme handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::theme::ThemeService;
-use cms_entity::theme::{CreateThemeRequest, UpdateThemeRequest, ThemeResponse, ListThemesQuery, ThemeCssVariables};
-use cms_entity::common::Id;
+use cms_entity::{
+    common::Id,
+    theme::{
+        CreateThemeRequest, ListThemesQuery, ThemeCssVariables, ThemeResponse, UpdateThemeRequest,
+    },
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// List themes
@@ -44,12 +50,8 @@ pub async fn list_themes_handler(
     Query(query): Query<ListThemesQuery>,
 ) -> Result<Json<Vec<ThemeResponse>>, AppError> {
     let project_id = query.project_id.as_deref().unwrap_or("");
-    let themes = ThemeService::list_themes(
-        &state.biz_context,
-        &auth.user.id,
-        project_id,
-    ).await?;
-    
+    let themes = ThemeService::list_themes(&state.biz_context, &auth.user.id, project_id).await?;
+
     Ok(Json(themes))
 }
 
@@ -79,13 +81,9 @@ pub async fn create_theme_handler(
     Json(request): Json<CreateThemeRequest>,
 ) -> Result<Json<ThemeResponse>, AppError> {
     let project_id = request.project_id.clone();
-    let theme = ThemeService::create_theme(
-        &state.biz_context,
-        &auth.user.id,
-        &project_id,
-        request,
-    ).await?;
-    
+    let theme =
+        ThemeService::create_theme(&state.biz_context, &auth.user.id, &project_id, request).await?;
+
     Ok(Json(theme))
 }
 
@@ -115,12 +113,8 @@ pub async fn get_theme_handler(
     auth: AuthExtractor,
     Path(theme_id): Path<Id>,
 ) -> Result<Json<ThemeResponse>, AppError> {
-    let theme = ThemeService::get_theme(
-        &state.biz_context,
-        &auth.user.id,
-        &theme_id,
-    ).await?;
-    
+    let theme = ThemeService::get_theme(&state.biz_context, &auth.user.id, &theme_id).await?;
+
     Ok(Json(theme))
 }
 
@@ -154,13 +148,9 @@ pub async fn update_theme_handler(
     Path(theme_id): Path<Id>,
     Json(request): Json<UpdateThemeRequest>,
 ) -> Result<Json<ThemeResponse>, AppError> {
-    let theme = ThemeService::update_theme(
-        &state.biz_context,
-        &auth.user.id,
-        &theme_id,
-        request,
-    ).await?;
-    
+    let theme =
+        ThemeService::update_theme(&state.biz_context, &auth.user.id, &theme_id, request).await?;
+
     Ok(Json(theme))
 }
 
@@ -191,12 +181,8 @@ pub async fn delete_theme_handler(
     auth: AuthExtractor,
     Path(theme_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    ThemeService::delete_theme(
-        &state.biz_context,
-        &auth.user.id,
-        &theme_id,
-    ).await?;
-    
+    ThemeService::delete_theme(&state.biz_context, &auth.user.id, &theme_id).await?;
+
     Ok(Json(serde_json::json!({"success": true, "id": theme_id})))
 }
 
@@ -226,12 +212,9 @@ pub async fn get_theme_css_handler(
     auth: AuthExtractor,
     Path(theme_id): Path<Id>,
 ) -> Result<Json<ThemeCssVariables>, AppError> {
-    let css_vars = ThemeService::get_theme_css(
-        &state.biz_context,
-        &auth.user.id,
-        &theme_id,
-    ).await?;
-    
+    let css_vars =
+        ThemeService::get_theme_css(&state.biz_context, &auth.user.id, &theme_id).await?;
+
     Ok(Json(css_vars))
 }
 
@@ -265,15 +248,17 @@ pub async fn set_project_theme_handler(
     Path(project_id): Path<Id>,
     Json(request): Json<serde_json::Value>,
 ) -> Result<Json<ThemeResponse>, AppError> {
-    let theme_id: String = serde_json::from_value(request.get("theme_id").cloned().unwrap_or(serde_json::Value::Null))
-        .map_err(|_| AppError::BadRequest("Invalid theme_id".to_string()))?;
-    
-    let theme = ThemeService::set_project_theme(
-        &state.biz_context,
-        &auth.user.id,
-        &project_id,
-        &theme_id,
-    ).await?;
-    
+    let theme_id: String = serde_json::from_value(
+        request
+            .get("theme_id")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null),
+    )
+    .map_err(|_| AppError::BadRequest("Invalid theme_id".to_string()))?;
+
+    let theme =
+        ThemeService::set_project_theme(&state.biz_context, &auth.user.id, &project_id, &theme_id)
+            .await?;
+
     Ok(Json(theme))
 }

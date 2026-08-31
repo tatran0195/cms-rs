@@ -18,12 +18,12 @@
 //! - Using SameSite cookies
 //! - Implementing double-submit cookie pattern
 
+use std::{collections::HashSet, sync::Arc};
+
 use axum::{
     http::{header, request::Parts, StatusCode},
     response::{IntoResponse, Response},
 };
-use std::collections::HashSet;
-use std::sync::Arc;
 
 /// Admin origin configuration with validation
 #[derive(Debug, Clone)]
@@ -70,7 +70,11 @@ impl AdminOriginConfig {
             }
 
             // Must not contain path or query
-            if origin.contains('/') || origin.contains('?') || origin.contains('#') {
+            let without_scheme = origin.split("://").nth(1).unwrap_or("");
+            if without_scheme.contains('/')
+                || without_scheme.contains('?')
+                || without_scheme.contains('#')
+            {
                 return Err(format!(
                     "Invalid origin: {}. Must not contain path, query, or fragment",
                     origin
@@ -105,10 +109,8 @@ impl AdminOriginConfig {
         };
 
         // Allow localhost for development
-        if self.allow_localhost {
-            if is_localhost_origin(&normalized_origin) {
-                return true;
-            }
+        if self.allow_localhost && is_localhost_origin(&normalized_origin) {
+            return true;
         }
 
         self.allowed_origins.contains(&normalized_origin)
@@ -278,9 +280,14 @@ impl IntoResponse for AdminOriginRejection {
     fn into_response(self) -> Response {
         (
             StatusCode::FORBIDDEN,
-            [(header::CONTENT_TYPE, header::HeaderValue::from_static("text/plain"))],
-            "Admin origin validation failed: Origin header is required and must be an allowed origin",
-        ).into_response()
+            [(
+                header::CONTENT_TYPE,
+                header::HeaderValue::from_static("text/plain"),
+            )],
+            "Admin origin validation failed: Origin header is required and must be an allowed \
+             origin",
+        )
+            .into_response()
     }
 }
 

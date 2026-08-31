@@ -8,7 +8,7 @@ use cms_entity::auth::{
     Account, ApiKey, ApiKeyResponse, Session, User, UserResponse, VerificationToken,
 };
 use cms_error::AppError;
-use sqlx::{FromRow, PgPool, QueryBuilder, Postgres, Transaction};
+use sqlx::{FromRow, PgPool, Postgres, QueryBuilder, Transaction};
 use uuid::Uuid;
 
 /// Database representation of a user row
@@ -149,30 +149,26 @@ pub struct UserQueries;
 impl UserQueries {
     /// Get a user by ID
     pub async fn get_by_id(pool: &PgPool, user_id: &str) -> Result<Option<User>, AppError> {
-        let row = sqlx::query_as::<_, UserRow>(
-            "SELECT * FROM \"User\" WHERE id = $1"
-        )
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row = sqlx::query_as::<_, UserRow>("SELECT * FROM \"User\" WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get a user by email
     pub async fn get_by_email(pool: &PgPool, email: &str) -> Result<Option<User>, AppError> {
-        let row = sqlx::query_as::<_, UserRow>(
-            "SELECT * FROM \"User\" WHERE email = $1"
-        )
-        .bind(email)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row = sqlx::query_as::<_, UserRow>("SELECT * FROM \"User\" WHERE email = $1")
+            .bind(email)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Create a new user
     pub async fn create(
         pool: &PgPool,
@@ -183,13 +179,13 @@ impl UserQueries {
     ) -> Result<User, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, UserRow>(
             r#"
             INSERT INTO "User" (id, email, name, image, email_verified, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(email)
@@ -201,10 +197,10 @@ impl UserQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update a user
     pub async fn update(
         pool: &PgPool,
@@ -212,10 +208,8 @@ impl UserQueries {
         name: Option<&str>,
         image: Option<&str>,
     ) -> Result<User, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"User\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new("UPDATE \"User\" SET ");
+
         let mut has_updates = false;
         if let Some(name) = name {
             query_builder.push("name = ");
@@ -230,25 +224,25 @@ impl UserQueries {
             query_builder.push_bind(image);
             has_updates = true;
         }
-        
+
         if has_updates {
             query_builder.push(", updated_at = ");
             query_builder.push_bind(Utc::now());
         }
-        
+
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(user_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<UserRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Delete a user
     pub async fn delete(pool: &PgPool, user_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"User\" WHERE id = $1")
@@ -256,7 +250,7 @@ impl UserQueries {
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 
@@ -265,21 +259,23 @@ impl UserQueries {
         if user_ids.is_empty() {
             return Ok(vec![]);
         }
-        let rows = sqlx::query_as::<_, UserRow>(
-            "SELECT * FROM \"User\" WHERE id = ANY($1)"
-        )
-        .bind(user_ids)
-        .fetch_all(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let rows = sqlx::query_as::<_, UserRow>("SELECT * FROM \"User\" WHERE id = ANY($1)")
+            .bind(user_ids)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 
     /// Update a user's email verification status
-    pub async fn update_verified(pool: &PgPool, user_id: &str, verified: bool) -> Result<User, AppError> {
+    pub async fn update_verified(
+        pool: &PgPool,
+        user_id: &str,
+        verified: bool,
+    ) -> Result<User, AppError> {
         let row = sqlx::query_as::<_, UserRow>(
-            "UPDATE \"User\" SET email_verified = $1, updated_at = $2 WHERE id = $3 RETURNING *"
+            "UPDATE \"User\" SET email_verified = $1, updated_at = $2 WHERE id = $3 RETURNING *",
         )
         .bind(verified)
         .bind(Utc::now())
@@ -287,11 +283,10 @@ impl UserQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
 }
-
 
 /// Session queries
 pub struct SessionQueries;
@@ -299,30 +294,27 @@ pub struct SessionQueries;
 impl SessionQueries {
     /// Get a session by ID
     pub async fn get_by_id(pool: &PgPool, session_id: &str) -> Result<Option<Session>, AppError> {
-        let row = sqlx::query_as::<_, SessionRow>(
-            "SELECT * FROM \"Session\" WHERE id = $1"
-        )
-        .bind(session_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row = sqlx::query_as::<_, SessionRow>("SELECT * FROM \"Session\" WHERE id = $1")
+            .bind(session_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get a session by token
     pub async fn get_by_token(pool: &PgPool, token: &str) -> Result<Option<Session>, AppError> {
-        let row = sqlx::query_as::<_, SessionRow>(
-            "SELECT * FROM \"Session\" WHERE session_token = $1"
-        )
-        .bind(token)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row =
+            sqlx::query_as::<_, SessionRow>("SELECT * FROM \"Session\" WHERE session_token = $1")
+                .bind(token)
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Create a new session
     pub async fn create(
         pool: &PgPool,
@@ -332,13 +324,13 @@ impl SessionQueries {
     ) -> Result<Session, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, SessionRow>(
             r#"
             INSERT INTO "Session" (id, user_id, session_token, expires_at, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(user_id)
@@ -349,10 +341,10 @@ impl SessionQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Delete a session
     pub async fn delete(pool: &PgPool, session_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"Session\" WHERE id = $1")
@@ -360,10 +352,10 @@ impl SessionQueries {
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
-    
+
     /// Delete all sessions for a user
     pub async fn delete_all_for_user(pool: &PgPool, user_id: &str) -> Result<u64, AppError> {
         let result = sqlx::query("DELETE FROM \"Session\" WHERE user_id = $1")
@@ -371,7 +363,7 @@ impl SessionQueries {
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected())
     }
 }
@@ -382,43 +374,42 @@ pub struct ApiKeyQueries;
 impl ApiKeyQueries {
     /// Get an API key by ID
     pub async fn get_by_id(pool: &PgPool, key_id: &str) -> Result<Option<ApiKey>, AppError> {
-        let row = sqlx::query_as::<_, ApiKeyRow>(
-            "SELECT * FROM \"ApiKey\" WHERE id = $1"
-        )
-        .bind(key_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row = sqlx::query_as::<_, ApiKeyRow>("SELECT * FROM \"ApiKey\" WHERE id = $1")
+            .bind(key_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get an API key by the key value (hashed)
     pub async fn get_by_key(pool: &PgPool, hashed_key: &str) -> Result<Option<ApiKey>, AppError> {
-        let row = sqlx::query_as::<_, ApiKeyRow>(
-            "SELECT * FROM \"ApiKey\" WHERE key = $1"
-        )
-        .bind(hashed_key)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row = sqlx::query_as::<_, ApiKeyRow>("SELECT * FROM \"ApiKey\" WHERE key = $1")
+            .bind(hashed_key)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get API keys for a user
-    pub async fn get_all_for_user(pool: &PgPool, user_id: &str) -> Result<Vec<ApiKeyResponse>, AppError> {
+    pub async fn get_all_for_user(
+        pool: &PgPool,
+        user_id: &str,
+    ) -> Result<Vec<ApiKeyResponse>, AppError> {
         let rows = sqlx::query_as::<_, ApiKeyRow>(
-            "SELECT * FROM \"ApiKey\" WHERE user_id = $1 ORDER BY created_at DESC"
+            "SELECT * FROM \"ApiKey\" WHERE user_id = $1 ORDER BY created_at DESC",
         )
         .bind(user_id)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| ApiKey::from(r).into()).collect())
     }
-    
+
     /// Create a new API key
     pub async fn create(
         pool: &PgPool,
@@ -428,13 +419,13 @@ impl ApiKeyQueries {
     ) -> Result<ApiKey, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, ApiKeyRow>(
             r#"
             INSERT INTO "ApiKey" (id, user_id, name, key, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(user_id)
@@ -445,10 +436,10 @@ impl ApiKeyQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update API key last used time
     pub async fn update_last_used(pool: &PgPool, key_id: &str) -> Result<(), AppError> {
         sqlx::query("UPDATE \"ApiKey\" SET last_used_at = $1 WHERE id = $2")
@@ -457,10 +448,10 @@ impl ApiKeyQueries {
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(())
     }
-    
+
     /// Delete an API key
     pub async fn delete(pool: &PgPool, key_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"ApiKey\" WHERE id = $1")
@@ -468,7 +459,7 @@ impl ApiKeyQueries {
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }
@@ -483,29 +474,32 @@ impl VerificationTokenQueries {
         identifier: &str,
     ) -> Result<Option<VerificationToken>, AppError> {
         let row = sqlx::query_as::<_, VerificationTokenRow>(
-            "SELECT * FROM \"VerificationToken\" WHERE identifier = $1"
+            "SELECT * FROM \"VerificationToken\" WHERE identifier = $1",
         )
         .bind(identifier)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get a verification token by token value
-    pub async fn get_by_token(pool: &PgPool, token: &str) -> Result<Option<VerificationToken>, AppError> {
+    pub async fn get_by_token(
+        pool: &PgPool,
+        token: &str,
+    ) -> Result<Option<VerificationToken>, AppError> {
         let row = sqlx::query_as::<_, VerificationTokenRow>(
-            "SELECT * FROM \"VerificationToken\" WHERE token = $1"
+            "SELECT * FROM \"VerificationToken\" WHERE token = $1",
         )
         .bind(token)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Create a verification token
     pub async fn create(
         pool: &PgPool,
@@ -515,13 +509,13 @@ impl VerificationTokenQueries {
     ) -> Result<VerificationToken, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, VerificationTokenRow>(
             r#"
             INSERT INTO "VerificationToken" (id, identifier, token, expires_at, created_at)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(identifier)
@@ -531,10 +525,10 @@ impl VerificationTokenQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Delete a verification token
     pub async fn delete(pool: &PgPool, token_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"VerificationToken\" WHERE id = $1")
@@ -542,7 +536,7 @@ impl VerificationTokenQueries {
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }
@@ -558,30 +552,28 @@ impl AccountQueries {
         provider_account_id: &str,
     ) -> Result<Option<Account>, AppError> {
         let row = sqlx::query_as::<_, AccountRow>(
-            "SELECT * FROM \"Account\" WHERE provider = $1 AND provider_account_id = $2"
+            "SELECT * FROM \"Account\" WHERE provider = $1 AND provider_account_id = $2",
         )
         .bind(provider)
         .bind(provider_account_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get accounts for a user
     pub async fn get_all_for_user(pool: &PgPool, user_id: &str) -> Result<Vec<Account>, AppError> {
-        let rows = sqlx::query_as::<_, AccountRow>(
-            "SELECT * FROM \"Account\" WHERE user_id = $1"
-        )
-        .bind(user_id)
-        .fetch_all(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let rows = sqlx::query_as::<_, AccountRow>("SELECT * FROM \"Account\" WHERE user_id = $1")
+            .bind(user_id)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     /// Create an account
     pub async fn create(
         pool: &PgPool,
@@ -596,7 +588,7 @@ impl AccountQueries {
     ) -> Result<Account, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, AccountRow>(
             r#"
             INSERT INTO "Account" (id, user_id, provider, provider_account_id, access_token, refresh_token, expires_at, token_type, scope, created_at, updated_at)
@@ -618,10 +610,10 @@ impl AccountQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update an account
     pub async fn update(
         pool: &PgPool,
@@ -630,10 +622,9 @@ impl AccountQueries {
         refresh_token: Option<&str>,
         expires_at: Option<DateTime<Utc>>,
     ) -> Result<Account, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"Account\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE \"Account\" SET ");
+
         let mut has_updates = false;
         if let Some(token) = access_token {
             query_builder.push("access_token = ");
@@ -656,25 +647,25 @@ impl AccountQueries {
             query_builder.push_bind(expires);
             has_updates = true;
         }
-        
+
         if has_updates {
             query_builder.push(", updated_at = ");
             query_builder.push_bind(Utc::now());
         }
-        
+
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(account_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<AccountRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Delete an account
     pub async fn delete(pool: &PgPool, account_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"Account\" WHERE id = $1")
@@ -682,7 +673,7 @@ impl AccountQueries {
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }

@@ -1,9 +1,11 @@
 //! Project database queries
 
 use chrono::{DateTime, Utc};
-use cms_entity::project::{Project, ProjectResponse, ProjectSettings, ProjectAddon, ProjectAddonResponse};
+use cms_entity::project::{
+    Project, ProjectAddon, ProjectAddonResponse, ProjectResponse, ProjectSettings,
+};
 use cms_error::AppError;
-use sqlx::{FromRow, PgPool, QueryBuilder, Postgres, Row};
+use sqlx::{FromRow, PgPool, Postgres, QueryBuilder, Row};
 use uuid::Uuid;
 
 /// Database representation of a project row
@@ -81,17 +83,15 @@ pub struct ProjectQueries;
 impl ProjectQueries {
     /// Get a project by ID
     pub async fn get_by_id(pool: &PgPool, project_id: &str) -> Result<Option<Project>, AppError> {
-        let row = sqlx::query_as::<_, ProjectRow>(
-            "SELECT * FROM \"Project\" WHERE id = $1"
-        )
-        .bind(project_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row = sqlx::query_as::<_, ProjectRow>("SELECT * FROM \"Project\" WHERE id = $1")
+            .bind(project_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get a project by slug
     pub async fn get_by_slug(
         pool: &PgPool,
@@ -99,33 +99,32 @@ impl ProjectQueries {
         slug: &str,
     ) -> Result<Option<Project>, AppError> {
         let row = sqlx::query_as::<_, ProjectRow>(
-            "SELECT * FROM \"Project\" WHERE organization_id = $1 AND slug = $2"
+            "SELECT * FROM \"Project\" WHERE organization_id = $1 AND slug = $2",
         )
         .bind(organization_id)
         .bind(slug)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get a project by slug across any organization
     pub async fn get_by_slug_global(
         pool: &PgPool,
         slug: &str,
     ) -> Result<Option<Project>, AppError> {
-        let row = sqlx::query_as::<_, ProjectRow>(
-            "SELECT * FROM \"Project\" WHERE slug = $1 LIMIT 1"
-        )
-        .bind(slug)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row =
+            sqlx::query_as::<_, ProjectRow>("SELECT * FROM \"Project\" WHERE slug = $1 LIMIT 1")
+                .bind(slug)
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get projects by organization
     pub async fn get_by_organization(
         pool: &PgPool,
@@ -135,16 +134,15 @@ impl ProjectQueries {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<Project>, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT * FROM \"Project\" WHERE organization_id = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT * FROM \"Project\" WHERE organization_id = ");
         query_builder.push_bind(organization_id);
-        
+
         if let Some(is_public) = is_public {
             query_builder.push(" AND is_public = ");
             query_builder.push_bind(is_public);
         }
-        
+
         if let Some(search) = search {
             query_builder.push(" AND (name ILIKE ");
             query_builder.push_bind(format!("%{}%", search));
@@ -152,28 +150,28 @@ impl ProjectQueries {
             query_builder.push_bind(format!("%{}%", search));
             query_builder.push(")");
         }
-        
+
         query_builder.push(" ORDER BY created_at DESC");
-        
+
         if let Some(limit) = limit {
             query_builder.push(" LIMIT ");
             query_builder.push_bind(limit);
         }
-        
+
         if let Some(offset) = offset {
             query_builder.push(" OFFSET ");
             query_builder.push_bind(offset);
         }
-        
+
         let rows = query_builder
             .build_query_as::<ProjectRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     /// Count projects by organization
     pub async fn count_by_organization(
         pool: &PgPool,
@@ -181,16 +179,15 @@ impl ProjectQueries {
         is_public: Option<bool>,
         search: Option<&str>,
     ) -> Result<i64, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT COUNT(*) FROM \"Project\" WHERE organization_id = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT COUNT(*) FROM \"Project\" WHERE organization_id = ");
         query_builder.push_bind(organization_id);
-        
+
         if let Some(is_public) = is_public {
             query_builder.push(" AND is_public = ");
             query_builder.push_bind(is_public);
         }
-        
+
         if let Some(search) = search {
             query_builder.push(" AND (name ILIKE ");
             query_builder.push_bind(format!("%{}%", search));
@@ -198,17 +195,17 @@ impl ProjectQueries {
             query_builder.push_bind(format!("%{}%", search));
             query_builder.push(")");
         }
-        
+
         let count: i64 = query_builder
             .build()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?
             .get::<i64, _>(0);
-        
+
         Ok(count)
     }
-    
+
     /// Create a new project
     pub async fn create(
         pool: &PgPool,
@@ -221,7 +218,7 @@ impl ProjectQueries {
     ) -> Result<Project, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, ProjectRow>(
             r#"
             INSERT INTO "Project" (id, organization_id, name, slug, description, icon, is_public, created_at, updated_at)
@@ -247,10 +244,10 @@ impl ProjectQueries {
                 AppError::Database(e.into())
             }
         })?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update a project
     pub async fn update(
         pool: &PgPool,
@@ -260,10 +257,9 @@ impl ProjectQueries {
         icon: Option<&str>,
         is_public: Option<bool>,
     ) -> Result<Project, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"Project\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE \"Project\" SET ");
+
         let mut has_updates = false;
         if let Some(name) = name {
             query_builder.push("name = ");
@@ -294,25 +290,25 @@ impl ProjectQueries {
             query_builder.push_bind(is_public);
             has_updates = true;
         }
-        
+
         if has_updates {
             query_builder.push(", updated_at = ");
             query_builder.push_bind(Utc::now());
         }
-        
+
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(project_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<ProjectRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Delete a project
     pub async fn delete(pool: &PgPool, project_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"Project\" WHERE id = $1")
@@ -320,10 +316,10 @@ impl ProjectQueries {
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
-    
+
     /// Check if a project slug is available
     pub async fn is_slug_available(
         pool: &PgPool,
@@ -331,25 +327,24 @@ impl ProjectQueries {
         slug: &str,
         exclude_project_id: Option<&str>,
     ) -> Result<bool, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT COUNT(*) FROM \"Project\" WHERE organization_id = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT COUNT(*) FROM \"Project\" WHERE organization_id = ");
         query_builder.push_bind(organization_id);
         query_builder.push(" AND slug = ");
         query_builder.push_bind(slug);
-        
+
         if let Some(exclude_id) = exclude_project_id {
             query_builder.push(" AND id != ");
             query_builder.push_bind(exclude_id);
         }
-        
+
         let count: i64 = query_builder
             .build()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?
             .get::<i64, _>(0);
-        
+
         Ok(count == 0)
     }
 
@@ -361,7 +356,8 @@ impl ProjectQueries {
         offset: Option<i64>,
     ) -> Result<Vec<cms_entity::project::Project>, AppError> {
         let rows = sqlx::query_as::<_, ProjectRow>(
-            "SELECT * FROM \"Project\" WHERE organization_id = ANY($1) ORDER BY created_at DESC LIMIT $2 OFFSET $3"
+            "SELECT * FROM \"Project\" WHERE organization_id = ANY($1) ORDER BY created_at DESC \
+             LIMIT $2 OFFSET $3",
         )
         .bind(org_ids)
         .bind(limit.unwrap_or(50))
@@ -374,15 +370,16 @@ impl ProjectQueries {
 
     /// Count projects across multiple organizations
     pub async fn count_by_organizations(pool: &PgPool, org_ids: &[&str]) -> Result<i64, AppError> {
-        let row = sqlx::query("SELECT COUNT(*) as count FROM \"Project\" WHERE organization_id = ANY($1)")
-            .bind(org_ids)
-            .fetch_one(pool)
-            .await
-            .map_err(|e| AppError::Database(e.into()))?;
+        let row = sqlx::query(
+            "SELECT COUNT(*) as count FROM \"Project\" WHERE organization_id = ANY($1)",
+        )
+        .bind(org_ids)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
         Ok(row.get::<i64, _>("count"))
     }
 }
-
 
 /// Project settings queries
 pub struct ProjectSettingsQueries;
@@ -391,13 +388,13 @@ impl ProjectSettingsQueries {
     /// Get settings for a project
     pub async fn get(pool: &PgPool, project_id: &str) -> Result<Option<ProjectSettings>, AppError> {
         let row = sqlx::query_as::<_, ProjectSettingsRow>(
-            "SELECT * FROM \"ProjectSettings\" WHERE project_id = $1"
+            "SELECT * FROM \"ProjectSettings\" WHERE project_id = $1",
         )
         .bind(project_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| ProjectSettings {
             project_id: r.project_id,
             theme: r.theme,
@@ -409,7 +406,7 @@ impl ProjectSettingsQueries {
             updated_at: r.updated_at,
         }))
     }
-    
+
     /// Create or update settings for a project
     pub async fn upsert(
         pool: &PgPool,
@@ -421,12 +418,11 @@ impl ProjectSettingsQueries {
         comments_enabled: Option<bool>,
     ) -> Result<ProjectSettings, AppError> {
         let now = Utc::now();
-        
+
         // Try to update first
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"ProjectSettings\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE \"ProjectSettings\" SET ");
+
         let mut has_updates = false;
         if let Some(theme) = theme {
             query_builder.push("theme = ");
@@ -465,22 +461,22 @@ impl ProjectSettingsQueries {
             query_builder.push_bind(comments_enabled);
             has_updates = true;
         }
-        
+
         if has_updates {
             query_builder.push(", updated_at = ");
             query_builder.push_bind(now);
         }
-        
+
         query_builder.push(" WHERE project_id = ");
         query_builder.push_bind(project_id);
         query_builder.push(" RETURNING *");
-        
+
         let result = query_builder
             .build_query_as::<ProjectSettingsRow>()
             .fetch_optional(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         if let Some(row) = result {
             return Ok(ProjectSettings {
                 project_id: row.project_id,
@@ -493,7 +489,7 @@ impl ProjectSettingsQueries {
                 updated_at: row.updated_at,
             });
         }
-        
+
         // Insert if not exists
         let row = sqlx::query_as::<_, ProjectSettingsRow>(
             r#"
@@ -513,7 +509,7 @@ impl ProjectSettingsQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(ProjectSettings {
             project_id: row.project_id,
             theme: row.theme,
@@ -532,31 +528,36 @@ pub struct ProjectAddonQueries;
 
 impl ProjectAddonQueries {
     /// Get addons for a project
-    pub async fn get_by_project(pool: &PgPool, project_id: &str) -> Result<Vec<ProjectAddon>, AppError> {
+    pub async fn get_by_project(
+        pool: &PgPool,
+        project_id: &str,
+    ) -> Result<Vec<ProjectAddon>, AppError> {
         let rows = sqlx::query_as::<_, ProjectAddonRow>(
-            "SELECT * FROM \"ProjectAddon\" WHERE project_id = $1 ORDER BY created_at DESC"
+            "SELECT * FROM \"ProjectAddon\" WHERE project_id = $1 ORDER BY created_at DESC",
         )
         .bind(project_id)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     /// Get a specific addon
-    pub async fn get_by_id(pool: &PgPool, addon_id: &str) -> Result<Option<ProjectAddon>, AppError> {
-        let row = sqlx::query_as::<_, ProjectAddonRow>(
-            "SELECT * FROM \"ProjectAddon\" WHERE id = $1"
-        )
-        .bind(addon_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+    pub async fn get_by_id(
+        pool: &PgPool,
+        addon_id: &str,
+    ) -> Result<Option<ProjectAddon>, AppError> {
+        let row =
+            sqlx::query_as::<_, ProjectAddonRow>("SELECT * FROM \"ProjectAddon\" WHERE id = $1")
+                .bind(addon_id)
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Create a new addon
     pub async fn create(
         pool: &PgPool,
@@ -567,7 +568,7 @@ impl ProjectAddonQueries {
     ) -> Result<ProjectAddon, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, ProjectAddonRow>(
             r#"
             INSERT INTO "ProjectAddon" (id, project_id, addon_type, config, is_enabled, created_at, updated_at)
@@ -585,10 +586,10 @@ impl ProjectAddonQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update an addon
     pub async fn update(
         pool: &PgPool,
@@ -596,10 +597,9 @@ impl ProjectAddonQueries {
         config: Option<serde_json::Value>,
         is_enabled: Option<bool>,
     ) -> Result<ProjectAddon, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"ProjectAddon\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE \"ProjectAddon\" SET ");
+
         let mut has_updates = false;
         if let Some(config) = config {
             query_builder.push("config = ");
@@ -614,25 +614,25 @@ impl ProjectAddonQueries {
             query_builder.push_bind(is_enabled);
             has_updates = true;
         }
-        
+
         if has_updates {
             query_builder.push(", updated_at = ");
             query_builder.push_bind(Utc::now());
         }
-        
+
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(addon_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<ProjectAddonRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Delete an addon
     pub async fn delete(pool: &PgPool, addon_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"ProjectAddon\" WHERE id = $1")
@@ -640,7 +640,7 @@ impl ProjectAddonQueries {
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }

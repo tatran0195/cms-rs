@@ -2,17 +2,21 @@
 //!
 //! This module contains the actual implementation of deployment handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::deployment::DeploymentService;
-use cms_entity::deployment::{CreateDeploymentRequest, DeploymentResponse, ListDeploymentsQuery};
-use cms_entity::common::{Id, PaginatedResponse};
+use cms_entity::{
+    common::{Id, PaginatedResponse},
+    deployment::{CreateDeploymentRequest, DeploymentResponse, ListDeploymentsQuery},
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// List deployments for a project
@@ -51,8 +55,9 @@ pub async fn list_deployments_handler(
         project_id,
         query.limit.unwrap_or(1) as u64,
         query.offset.unwrap_or(20) as u64,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(result))
 }
 
@@ -87,8 +92,9 @@ pub async fn create_deployment_handler(
         &auth.user.id,
         &project_id,
         request,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(deployment))
 }
 
@@ -118,12 +124,10 @@ pub async fn get_deployment_handler(
     auth: AuthExtractor,
     Path(deployment_id): Path<Id>,
 ) -> Result<Json<DeploymentResponse>, AppError> {
-    let deployment = DeploymentService::get_deployment(
-        &state.biz_context,
-        &auth.user.id,
-        &deployment_id,
-    ).await?;
-    
+    let deployment =
+        DeploymentService::get_deployment(&state.biz_context, &auth.user.id, &deployment_id)
+            .await?;
+
     Ok(Json(deployment))
 }
 
@@ -153,12 +157,10 @@ pub async fn get_deployment_logs_handler(
     auth: AuthExtractor,
     Path(deployment_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let logs = DeploymentService::get_deployment_logs(
-        &state.biz_context,
-        &auth.user.id,
-        &deployment_id,
-    ).await?;
-    
+    let logs =
+        DeploymentService::get_deployment_logs(&state.biz_context, &auth.user.id, &deployment_id)
+            .await?;
+
     Ok(Json(serde_json::json!({"logs": logs})))
 }
 
@@ -189,12 +191,10 @@ pub async fn retry_deployment_handler(
     auth: AuthExtractor,
     Path(deployment_id): Path<Id>,
 ) -> Result<Json<DeploymentResponse>, AppError> {
-    let deployment = DeploymentService::retry_deployment(
-        &state.biz_context,
-        &auth.user.id,
-        &deployment_id,
-    ).await?;
-    
+    let deployment =
+        DeploymentService::retry_deployment(&state.biz_context, &auth.user.id, &deployment_id)
+            .await?;
+
     Ok(Json(deployment))
 }
 
@@ -226,11 +226,9 @@ pub async fn cancel_deployment_handler(
     auth: AuthExtractor,
     Path(deployment_id): Path<Id>,
 ) -> Result<Json<DeploymentResponse>, AppError> {
-    let deployment = DeploymentService::cancel_deployment(
-        &state.biz_context,
-        &auth.user.id,
-        &deployment_id,
-    ).await?;
-    
+    let deployment =
+        DeploymentService::cancel_deployment(&state.biz_context, &auth.user.id, &deployment_id)
+            .await?;
+
     Ok(Json(deployment))
 }

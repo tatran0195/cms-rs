@@ -2,32 +2,33 @@
 //!
 //! This module provides locale resolution from request headers or cookies.
 
+use std::{collections::HashMap, convert::Infallible};
+
+use async_trait::async_trait;
 use axum::{
     extract::FromRequestParts,
-    http::{request::Parts, header, HeaderValue},
+    http::{header, request::Parts, HeaderValue},
 };
-use async_trait::async_trait;
-use std::collections::HashMap;
-use std::convert::Infallible;
 
 /// Supported locales
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Locale {
-    En,  // English
-    Ja,  // Japanese
-    Zh,  // Chinese
-    Es,  // Spanish
-    Fr,  // French
-    De,  // German
-    Ko,  // Korean
-    Vi,  // Vietnamese
+    #[default]
+    En, // English
+    Ja, // Japanese
+    Zh, // Chinese
+    Es, // Spanish
+    Fr, // French
+    De, // German
+    Ko, // Korean
+    Vi, // Vietnamese
 }
 
 impl Locale {
     /// Get locale from language tag
     pub fn from_language_tag(tag: &str) -> Option<Self> {
         let tag = tag.to_lowercase();
-        
+
         // Check for exact matches first
         match tag.as_str() {
             "en" => return Some(Self::En),
@@ -40,7 +41,7 @@ impl Locale {
             "vi" => return Some(Self::Vi),
             _ => {}
         }
-        
+
         // Check for language-region combinations
         if tag.starts_with("en") {
             return Some(Self::En);
@@ -66,15 +67,10 @@ impl Locale {
         if tag.starts_with("vi") {
             return Some(Self::Vi);
         }
-        
+
         None
     }
-    
-    /// Get default locale
-    pub fn default() -> Self {
-        Self::En
-    }
-    
+
     /// Get locale as ISO 639-1 string
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -88,7 +84,7 @@ impl Locale {
             Self::Vi => "vi",
         }
     }
-    
+
     /// Get locale as BCP 47 string (language-region)
     pub fn as_bcp47(&self) -> &'static str {
         match self {
@@ -114,7 +110,7 @@ where
     S: Send + Sync,
 {
     type Rejection = Infallible;
-    
+
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         // Try to get locale from Accept-Language header
         if let Some(accept_language) = parts.headers.get(header::ACCEPT_LANGUAGE) {
@@ -130,18 +126,18 @@ where
                 }
             }
         }
-        
+
         // Try to get locale from cookie
         if let Some(cookies) = parts.headers.get(header::COOKIE) {
             if let Ok(cookie_str) = cookies.to_str() {
                 let cookie_map = parse_cookies(cookie_str);
-                
+
                 if let Some(locale_str) = cookie_map.get("locale") {
                     if let Some(locale) = Locale::from_language_tag(locale_str) {
                         return Ok(locale);
                     }
                 }
-                
+
                 // Also check for language cookie
                 if let Some(locale_str) = cookie_map.get("language") {
                     if let Some(locale) = Locale::from_language_tag(locale_str) {
@@ -150,7 +146,7 @@ where
                 }
             }
         }
-        
+
         // Return default locale
         Ok(Locale::default())
     }
@@ -159,13 +155,13 @@ where
 /// Parse cookie string into a map
 fn parse_cookies(cookie_str: &str) -> HashMap<String, String> {
     let mut cookies = HashMap::new();
-    
+
     for cookie in cookie_str.split(';') {
         let cookie = cookie.trim();
         if cookie.is_empty() {
             continue;
         }
-        
+
         let parts: Vec<&str> = cookie.splitn(2, '=').collect();
         if parts.len() == 2 {
             cookies.insert(parts[0].to_string(), parts[1].to_string());
@@ -173,12 +169,18 @@ fn parse_cookies(cookie_str: &str) -> HashMap<String, String> {
             cookies.insert(cookie.to_string(), String::new());
         }
     }
-    
+
     cookies
 }
 
 /// Locale layer for Tower middleware
 pub struct LocaleLayer;
+
+impl Default for LocaleLayer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl LocaleLayer {
     pub fn new() -> Self {
@@ -189,24 +191,31 @@ impl LocaleLayer {
 /// Set locale cookie middleware
 pub struct SetLocaleMiddleware;
 
+impl Default for SetLocaleMiddleware {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SetLocaleMiddleware {
     pub fn new() -> Self {
         Self
     }
-    
+
     /// Build Set-Cookie header for locale
     pub fn set_locale_cookie(locale: Locale) -> HeaderValue {
         HeaderValue::from_str(&format!(
             "locale={}; Path=/; SameSite=Lax; Max-Age=31536000",
             locale.as_str()
-        )).expect("Invalid locale cookie header")
+        ))
+        .expect("Invalid locale cookie header")
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_locale_from_language_tag() {
         assert_eq!(Locale::from_language_tag("en"), Some(Locale::En));
@@ -218,14 +227,14 @@ mod tests {
         assert_eq!(Locale::from_language_tag("fr"), Some(Locale::Fr));
         assert_eq!(Locale::from_language_tag("xx"), None);
     }
-    
+
     #[test]
     fn test_locale_as_str() {
         assert_eq!(Locale::En.as_str(), "en");
         assert_eq!(Locale::Ja.as_str(), "ja");
         assert_eq!(Locale::Zh.as_str(), "zh");
     }
-    
+
     #[test]
     fn test_parse_cookies() {
         let cookies = parse_cookies("locale=en-US; session=abc123; theme=dark");

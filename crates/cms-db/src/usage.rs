@@ -2,11 +2,11 @@
 
 use chrono::{DateTime, Utc};
 use cms_entity::usage::{
-    UsagePlan, UsageMeter, UsagePlanMeter, UsageEntitlement, 
-    OrganizationUsagePlan, AnalyticsEvent, UsageCheckpoint,
+    AnalyticsEvent, OrganizationUsagePlan, UsageCheckpoint, UsageEntitlement, UsageMeter,
+    UsagePlan, UsagePlanMeter,
 };
 use cms_error::AppError;
-use sqlx::{FromRow, PgPool, QueryBuilder, Postgres, Row};
+use sqlx::{FromRow, PgPool, Postgres, QueryBuilder, Row};
 use uuid::Uuid;
 
 // ============================================
@@ -45,56 +45,53 @@ pub struct UsagePlanQueries;
 
 impl UsagePlanQueries {
     pub async fn get_by_id(pool: &PgPool, plan_id: &str) -> Result<Option<UsagePlan>, AppError> {
-        let row = sqlx::query_as::<_, UsagePlanRow>(
-            "SELECT * FROM \"UsagePlan\" WHERE id = $1"
-        )
-        .bind(plan_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row = sqlx::query_as::<_, UsagePlanRow>("SELECT * FROM \"UsagePlan\" WHERE id = $1")
+            .bind(plan_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn get_all(
         pool: &PgPool,
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<UsagePlan>, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT * FROM \"UsagePlan\""
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT * FROM \"UsagePlan\"");
+
         query_builder.push(" ORDER BY created_at DESC");
-        
+
         if let Some(limit) = limit {
             query_builder.push(" LIMIT ");
             query_builder.push_bind(limit);
         }
-        
+
         if let Some(offset) = offset {
             query_builder.push(" OFFSET ");
             query_builder.push_bind(offset);
         }
-        
+
         let rows = query_builder
             .build_query_as::<UsagePlanRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     pub async fn count(pool: &PgPool) -> Result<i64, AppError> {
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM \"UsagePlan\"")
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(count)
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         name: &str,
@@ -104,7 +101,7 @@ impl UsagePlanQueries {
     ) -> Result<UsagePlan, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, UsagePlanRow>(
             r#"
             INSERT INTO "UsagePlan" (id, name, description, price, billing_period, is_active, created_at, updated_at)
@@ -123,7 +120,7 @@ impl UsagePlanQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
 }
@@ -162,56 +159,53 @@ pub struct UsageMeterQueries;
 
 impl UsageMeterQueries {
     pub async fn get_by_id(pool: &PgPool, meter_id: &str) -> Result<Option<UsageMeter>, AppError> {
-        let row = sqlx::query_as::<_, UsageMeterRow>(
-            "SELECT * FROM \"UsageMeter\" WHERE id = $1"
-        )
-        .bind(meter_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row = sqlx::query_as::<_, UsageMeterRow>("SELECT * FROM \"UsageMeter\" WHERE id = $1")
+            .bind(meter_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn get_all(
         pool: &PgPool,
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<UsageMeter>, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT * FROM \"UsageMeter\""
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT * FROM \"UsageMeter\"");
+
         query_builder.push(" ORDER BY created_at DESC");
-        
+
         if let Some(limit) = limit {
             query_builder.push(" LIMIT ");
             query_builder.push_bind(limit);
         }
-        
+
         if let Some(offset) = offset {
             query_builder.push(" OFFSET ");
             query_builder.push_bind(offset);
         }
-        
+
         let rows = query_builder
             .build_query_as::<UsageMeterRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     pub async fn count(pool: &PgPool) -> Result<i64, AppError> {
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM \"UsageMeter\"")
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(count)
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         code: &str,
@@ -221,13 +215,13 @@ impl UsageMeterQueries {
     ) -> Result<UsageMeter, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, UsageMeterRow>(
             r#"
             INSERT INTO "UsageMeter" (id, code, name, description, unit, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(code)
@@ -239,7 +233,7 @@ impl UsageMeterQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
 }
@@ -273,18 +267,21 @@ impl From<UsagePlanMeterRow> for UsagePlanMeter {
 pub struct UsagePlanMeterQueries;
 
 impl UsagePlanMeterQueries {
-    pub async fn get_by_plan(pool: &PgPool, plan_id: &str) -> Result<Vec<UsagePlanMeter>, AppError> {
+    pub async fn get_by_plan(
+        pool: &PgPool,
+        plan_id: &str,
+    ) -> Result<Vec<UsagePlanMeter>, AppError> {
         let rows = sqlx::query_as::<_, UsagePlanMeterRow>(
-            "SELECT * FROM \"UsagePlanMeter\" WHERE usage_plan_id = $1"
+            "SELECT * FROM \"UsagePlanMeter\" WHERE usage_plan_id = $1",
         )
         .bind(plan_id)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         usage_plan_id: &str,
@@ -293,13 +290,13 @@ impl UsagePlanMeterQueries {
     ) -> Result<UsagePlanMeter, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, UsagePlanMeterRow>(
             r#"
             INSERT INTO "UsagePlanMeter" (id, usage_plan_id, usage_meter_id, limit, created_at)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(usage_plan_id)
@@ -309,7 +306,7 @@ impl UsagePlanMeterQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
 }
@@ -347,60 +344,65 @@ impl From<UsageEntitlementRow> for UsageEntitlement {
 pub struct UsageEntitlementQueries;
 
 impl UsageEntitlementQueries {
-    pub async fn get_by_id(pool: &PgPool, entitlement_id: &str) -> Result<Option<UsageEntitlement>, AppError> {
+    pub async fn get_by_id(
+        pool: &PgPool,
+        entitlement_id: &str,
+    ) -> Result<Option<UsageEntitlement>, AppError> {
         let row = sqlx::query_as::<_, UsageEntitlementRow>(
-            "SELECT * FROM \"UsageEntitlement\" WHERE id = $1"
+            "SELECT * FROM \"UsageEntitlement\" WHERE id = $1",
         )
         .bind(entitlement_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
-    pub async fn get_by_code(pool: &PgPool, code: &str) -> Result<Option<UsageEntitlement>, AppError> {
+
+    pub async fn get_by_code(
+        pool: &PgPool,
+        code: &str,
+    ) -> Result<Option<UsageEntitlement>, AppError> {
         let row = sqlx::query_as::<_, UsageEntitlementRow>(
-            "SELECT * FROM \"UsageEntitlement\" WHERE name = $1"
+            "SELECT * FROM \"UsageEntitlement\" WHERE name = $1",
         )
         .bind(code)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn get_all(
         pool: &PgPool,
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<UsageEntitlement>, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT * FROM \"UsageEntitlement\""
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT * FROM \"UsageEntitlement\"");
+
         query_builder.push(" ORDER BY created_at DESC");
-        
+
         if let Some(limit) = limit {
             query_builder.push(" LIMIT ");
             query_builder.push_bind(limit);
         }
-        
+
         if let Some(offset) = offset {
             query_builder.push(" OFFSET ");
             query_builder.push_bind(offset);
         }
-        
+
         let rows = query_builder
             .build_query_as::<UsageEntitlementRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     pub async fn update(
         pool: &PgPool,
         entitlement_id: &str,
@@ -408,10 +410,9 @@ impl UsageEntitlementQueries {
         description: Option<&str>,
         is_enabled: Option<bool>,
     ) -> Result<UsageEntitlement, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"UsageEntitlement\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE \"UsageEntitlement\" SET ");
+
         let mut has_updates = false;
         if let Some(name) = name {
             query_builder.push("name = ");
@@ -434,32 +435,32 @@ impl UsageEntitlementQueries {
             query_builder.push_bind(is_enabled);
             has_updates = true;
         }
-        
+
         if has_updates {
             query_builder.push(", updated_at = ");
             query_builder.push_bind(Utc::now());
         }
-        
+
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(entitlement_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<UsageEntitlementRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn delete(pool: &PgPool, entitlement_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"UsageEntitlement\" WHERE id = $1")
             .bind(entitlement_id)
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 
@@ -496,7 +497,6 @@ impl UsageEntitlementQueries {
     }
 }
 
-
 // ============================================
 // OrganizationUsagePlan
 // ============================================
@@ -532,30 +532,36 @@ impl From<OrganizationUsagePlanRow> for OrganizationUsagePlan {
 pub struct OrganizationUsagePlanQueries;
 
 impl OrganizationUsagePlanQueries {
-    pub async fn get_by_id(pool: &PgPool, org_plan_id: &str) -> Result<Option<OrganizationUsagePlan>, AppError> {
+    pub async fn get_by_id(
+        pool: &PgPool,
+        org_plan_id: &str,
+    ) -> Result<Option<OrganizationUsagePlan>, AppError> {
         let row = sqlx::query_as::<_, OrganizationUsagePlanRow>(
-            "SELECT * FROM \"OrganizationUsagePlan\" WHERE id = $1"
+            "SELECT * FROM \"OrganizationUsagePlan\" WHERE id = $1",
         )
         .bind(org_plan_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
-    pub async fn get_by_organization(pool: &PgPool, org_id: &str) -> Result<Option<OrganizationUsagePlan>, AppError> {
+
+    pub async fn get_by_organization(
+        pool: &PgPool,
+        org_id: &str,
+    ) -> Result<Option<OrganizationUsagePlan>, AppError> {
         let row = sqlx::query_as::<_, OrganizationUsagePlanRow>(
-            "SELECT * FROM \"OrganizationUsagePlan\" WHERE organization_id = $1 LIMIT 1"
+            "SELECT * FROM \"OrganizationUsagePlan\" WHERE organization_id = $1 LIMIT 1",
         )
         .bind(org_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         organization_id: &str,
@@ -565,7 +571,7 @@ impl OrganizationUsagePlanQueries {
     ) -> Result<OrganizationUsagePlan, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, OrganizationUsagePlanRow>(
             r#"
             INSERT INTO "OrganizationUsagePlan" (id, organization_id, usage_plan_id, starts_at, ends_at, status, created_at, updated_at)
@@ -584,7 +590,7 @@ impl OrganizationUsagePlanQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
 }
@@ -638,7 +644,7 @@ impl AnalyticsEventQueries {
     ) -> Result<AnalyticsEvent, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, AnalyticsEventRow>(
             r#"
             INSERT INTO "AnalyticsEvent" (id, organization_id, project_id, user_id, event_type, metadata, ip_address, user_agent, created_at)
@@ -658,10 +664,10 @@ impl AnalyticsEventQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn query(
         pool: &PgPool,
         organization_id: Option<&str>,
@@ -673,61 +679,60 @@ impl AnalyticsEventQueries {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<AnalyticsEvent>, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT * FROM \"AnalyticsEvent\" WHERE 1=1"
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT * FROM \"AnalyticsEvent\" WHERE 1=1");
+
         if let Some(org_id) = organization_id {
             query_builder.push(" AND organization_id = ");
             query_builder.push_bind(org_id);
         }
-        
+
         if let Some(pid) = project_id {
             query_builder.push(" AND project_id = ");
             query_builder.push_bind(pid);
         }
-        
+
         if let Some(uid) = user_id {
             query_builder.push(" AND user_id = ");
             query_builder.push_bind(uid);
         }
-        
+
         if let Some(et) = event_type {
             query_builder.push(" AND event_type = ");
             query_builder.push_bind(et);
         }
-        
+
         if let Some(start) = start_date {
             query_builder.push(" AND created_at >= ");
             query_builder.push_bind(start);
         }
-        
+
         if let Some(end) = end_date {
             query_builder.push(" AND created_at <= ");
             query_builder.push_bind(end);
         }
-        
+
         query_builder.push(" ORDER BY created_at DESC");
-        
+
         if let Some(limit) = limit {
             query_builder.push(" LIMIT ");
             query_builder.push_bind(limit);
         }
-        
+
         if let Some(offset) = offset {
             query_builder.push(" OFFSET ");
             query_builder.push_bind(offset);
         }
-        
+
         let rows = query_builder
             .build_query_as::<AnalyticsEventRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     pub async fn count(
         pool: &PgPool,
         organization_id: Option<&str>,
@@ -737,47 +742,46 @@ impl AnalyticsEventQueries {
         start_date: Option<DateTime<Utc>>,
         end_date: Option<DateTime<Utc>>,
     ) -> Result<i64, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT COUNT(*) FROM \"AnalyticsEvent\" WHERE 1=1"
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT COUNT(*) FROM \"AnalyticsEvent\" WHERE 1=1");
+
         if let Some(org_id) = organization_id {
             query_builder.push(" AND organization_id = ");
             query_builder.push_bind(org_id);
         }
-        
+
         if let Some(pid) = project_id {
             query_builder.push(" AND project_id = ");
             query_builder.push_bind(pid);
         }
-        
+
         if let Some(uid) = user_id {
             query_builder.push(" AND user_id = ");
             query_builder.push_bind(uid);
         }
-        
+
         if let Some(et) = event_type {
             query_builder.push(" AND event_type = ");
             query_builder.push_bind(et);
         }
-        
+
         if let Some(start) = start_date {
             query_builder.push(" AND created_at >= ");
             query_builder.push_bind(start);
         }
-        
+
         if let Some(end) = end_date {
             query_builder.push(" AND created_at <= ");
             query_builder.push_bind(end);
         }
-        
+
         let count: i64 = query_builder
             .build()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?
             .get::<i64, _>(0);
-        
+
         Ok(count)
     }
 }
@@ -819,13 +823,13 @@ impl UsageCheckpointQueries {
     ) -> Result<UsageCheckpoint, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         // Check if checkpoint already exists
         let existing = sqlx::query_scalar::<_, Option<String>>(
             r#"
             SELECT id FROM "UsageCheckpoint" 
             WHERE event_type = $1 AND entity_id = $2 AND period_start = $3
-            "#
+            "#,
         )
         .bind(event_type)
         .bind(entity_id)
@@ -833,26 +837,26 @@ impl UsageCheckpointQueries {
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         if existing.is_some() {
             // Checkpoint already exists - return it
             let row = sqlx::query_as::<_, UsageCheckpointRow>(
-                "SELECT * FROM \"UsageCheckpoint\" WHERE id = $1"
+                "SELECT * FROM \"UsageCheckpoint\" WHERE id = $1",
             )
             .bind(existing.unwrap())
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-            
+
             return Ok(row.into());
         }
-        
+
         let row = sqlx::query_as::<_, UsageCheckpointRow>(
             r#"
             INSERT INTO "UsageCheckpoint" (id, event_type, entity_id, period_start, processed_at)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(event_type)
@@ -862,7 +866,7 @@ impl UsageCheckpointQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
 }

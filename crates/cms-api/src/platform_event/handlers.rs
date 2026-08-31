@@ -2,17 +2,21 @@
 //!
 //! This module contains the actual implementation of platform event handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::platform_event::PlatformEventService;
-use cms_entity::platform_event::{PlatformEventResponse, ListPlatformEventsQuery};
-use cms_entity::common::{Id, PaginatedResponse};
+use cms_entity::{
+    common::{Id, PaginatedResponse},
+    platform_event::{ListPlatformEventsQuery, PlatformEventResponse},
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// List platform events
@@ -55,8 +59,9 @@ pub async fn list_platform_events_handler(
         query.event_type.as_deref(),
         query.limit.unwrap_or(1) as u64,
         query.offset.unwrap_or(20) as u64,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(result))
 }
 
@@ -85,17 +90,35 @@ pub async fn create_platform_event_handler(
 ) -> Result<Json<PlatformEventResponse>, AppError> {
     // This is typically called internally, not from external API
     // But we provide it for completeness
-    let event_type: String = serde_json::from_value(request.get("event_type").cloned().unwrap_or(serde_json::Value::Null))
-        .map_err(|_| AppError::BadRequest("Invalid event_type".to_string()))?;
-    
-    let organization_id: Option<String> = serde_json::from_value(request.get("organization_id").cloned().unwrap_or(serde_json::Value::Null))
-        .ok();
-    
-    let user_id: Option<String> = serde_json::from_value(request.get("user_id").cloned().unwrap_or(serde_json::Value::Null))
-        .ok();
-    
-    let metadata: serde_json::Value = request.get("metadata").cloned().unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
-    
+    let event_type: String = serde_json::from_value(
+        request
+            .get("event_type")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null),
+    )
+    .map_err(|_| AppError::BadRequest("Invalid event_type".to_string()))?;
+
+    let organization_id: Option<String> = serde_json::from_value(
+        request
+            .get("organization_id")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null),
+    )
+    .ok();
+
+    let user_id: Option<String> = serde_json::from_value(
+        request
+            .get("user_id")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null),
+    )
+    .ok();
+
+    let metadata: serde_json::Value = request
+        .get("metadata")
+        .cloned()
+        .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
+
     let event = PlatformEventService::create_event(
         &state.biz_context,
         organization_id.as_deref(),
@@ -106,8 +129,9 @@ pub async fn create_platform_event_handler(
             event_type,
             metadata,
         },
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(event))
 }
 
@@ -137,11 +161,8 @@ pub async fn get_platform_event_handler(
     auth: AuthExtractor,
     Path(event_id): Path<Id>,
 ) -> Result<Json<PlatformEventResponse>, AppError> {
-    let event = PlatformEventService::get_event(
-        &state.biz_context,
-        &auth.user.id,
-        &event_id,
-    ).await?;
-    
+    let event =
+        PlatformEventService::get_event(&state.biz_context, &auth.user.id, &event_id).await?;
+
     Ok(Json(event))
 }

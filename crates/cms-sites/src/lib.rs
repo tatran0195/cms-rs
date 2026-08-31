@@ -13,18 +13,17 @@ pub mod security;
 pub mod seo;
 pub mod static_files;
 
+use std::sync::Arc;
+
 use axum::{
     extract::{Path, State},
     http::{HeaderMap, StatusCode},
     response::{Html, Response},
     Router,
 };
-use cms_db::page::PageQueries;
-use cms_db::project::ProjectQueries;
+use cms_db::{page::PageQueries, project::ProjectQueries};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
-
 use host_resolution::{HostResolutionResult, HostResolver};
 use markdown_renderer::{MarkdownRenderer, MarkdownRendererConfig};
 use security::SiteSecurityHeaders;
@@ -158,12 +157,12 @@ async fn serve_project_index(
 
     match root_page {
         Some(page) => {
-            let html = render_page(&state, &page, &project).await?;
+            let html = render_page(state, &page, &project).await?;
             Ok(Html(html))
         }
         None => {
             // No root page found, show project listing
-            let html = render_project_listing(&state, &project, &pages).await?;
+            let html = render_project_listing(state, &project, &pages).await?;
             Ok(Html(html))
         }
     }
@@ -192,7 +191,7 @@ async fn serve_page(
 
     match page {
         Some(page) => {
-            let html = render_page(&state, &page, &project).await?;
+            let html = render_page(state, &page, &project).await?;
             Ok(Html(html))
         }
         None => serve_not_found(),
@@ -314,38 +313,35 @@ fn get_security_headers() -> String {
 
 /// Return 404 Not Found response
 fn serve_not_found() -> Result<Html<String>, AppError> {
-    let html = format!(
-        r#"<!DOCTYPE html>
+    let html = r#"<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>404 - Not Found</title>
     <style>
-        body {{
+        body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             text-align: center;
             padding: 50px;
-        }}
-        h1 {{
-            font-size: 48px;
-            margin-bottom: 20px;
-        }}
-        p {{
+        }
+        h1 {
+            font-size: 50px;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 20px;
             color: #666;
-            font-size: 18px;
-        }}
+        }
     </style>
 </head>
 <body>
     <h1>404</h1>
     <p>Page not found</p>
-    <p><a href="/">Return to home</a></p>
 </body>
 </html>"#
-    );
-
-    Err(AppError::NotFound(html))
+        .to_string();
+    Err(cms_error::AppError::NotFound(html))
 }
 
 /// Robots.txt handler - generates custom robots.txt per project
@@ -365,7 +361,8 @@ async fn robots_txt_handler(
 
             // Generate custom robots.txt for project
             Ok(format!(
-                "User-agent: *\nAllow: /\nSitemap: {}/sitemap.xml\n\nDisallow: /api/\nDisallow: /admin/\nDisallow: /private/\n",
+                "User-agent: *\nAllow: /\nSitemap: {}/sitemap.xml\n\nDisallow: /api/\nDisallow: \
+                 /admin/\nDisallow: /private/\n",
                 if result.is_custom_domain {
                     format!("https://{}", result.hostname)
                 } else {
@@ -375,7 +372,11 @@ async fn robots_txt_handler(
         }
         None => {
             // Default robots.txt
-            Ok("User-agent: *\nAllow: /\nSitemap: /sitemap.xml\n\nDisallow: /api/\nDisallow: /admin/\nDisallow: /private/\n".to_string())
+            Ok(
+                "User-agent: *\nAllow: /\nSitemap: /sitemap.xml\n\nDisallow: /api/\nDisallow: \
+                 /admin/\nDisallow: /private/\n"
+                    .to_string(),
+            )
         }
     }
 }

@@ -3,7 +3,7 @@
 use chrono::{DateTime, Utc};
 use cms_entity::openapi::{OpenApiDocument, OpenApiDocumentResponse};
 use cms_error::AppError;
-use sqlx::{FromRow, PgPool, QueryBuilder, Postgres};
+use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
 use uuid::Uuid;
 
 // ============================================
@@ -65,16 +65,16 @@ impl OpenApiDocumentQueries {
         document_id: &str,
     ) -> Result<Option<OpenApiDocument>, AppError> {
         let row = sqlx::query_as::<_, OpenApiDocumentRow>(
-            "SELECT * FROM \"OpenApiDocument\" WHERE id = $1"
+            "SELECT * FROM \"OpenApiDocument\" WHERE id = $1",
         )
         .bind(document_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get OpenAPI document by URL and project ID
     pub async fn get_by_url(
         pool: &PgPool,
@@ -82,33 +82,33 @@ impl OpenApiDocumentQueries {
         project_id: &str,
     ) -> Result<Option<OpenApiDocument>, AppError> {
         let row = sqlx::query_as::<_, OpenApiDocumentRow>(
-            "SELECT * FROM \"OpenApiDocument\" WHERE url = $1 AND project_id = $2"
+            "SELECT * FROM \"OpenApiDocument\" WHERE url = $1 AND project_id = $2",
         )
         .bind(url)
         .bind(project_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get OpenAPI documents by project ID
     pub async fn get_by_project(
         pool: &PgPool,
         project_id: &str,
     ) -> Result<Vec<OpenApiDocument>, AppError> {
         let rows = sqlx::query_as::<_, OpenApiDocumentRow>(
-            "SELECT * FROM \"OpenApiDocument\" WHERE project_id = $1 ORDER BY created_at ASC"
+            "SELECT * FROM \"OpenApiDocument\" WHERE project_id = $1 ORDER BY created_at ASC",
         )
         .bind(project_id)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     /// Create a new OpenAPI document
     pub async fn create(
         pool: &PgPool,
@@ -118,13 +118,13 @@ impl OpenApiDocumentQueries {
     ) -> Result<OpenApiDocument, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, OpenApiDocumentRow>(
             r#"
             INSERT INTO "OpenApiDocument" (id, project_id, name, url, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(project_id)
@@ -135,10 +135,10 @@ impl OpenApiDocumentQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update an OpenAPI document
     pub async fn update(
         pool: &PgPool,
@@ -146,10 +146,9 @@ impl OpenApiDocumentQueries {
         name: Option<&str>,
         url: Option<&str>,
     ) -> Result<OpenApiDocument, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"OpenApiDocument\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE \"OpenApiDocument\" SET ");
+
         let mut has_updates = false;
         if let Some(name) = name {
             query_builder.push("name = ");
@@ -164,26 +163,26 @@ impl OpenApiDocumentQueries {
             query_builder.push_bind(url);
             has_updates = true;
         }
-        
+
         if has_updates {
             query_builder.push(", ");
         }
         query_builder.push("updated_at = ");
         query_builder.push_bind(Utc::now());
-        
+
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(document_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<OpenApiDocumentRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update OpenAPI document with parsed content
     pub async fn update_parsed(
         pool: &PgPool,
@@ -192,10 +191,9 @@ impl OpenApiDocumentQueries {
         parsed_at: Option<DateTime<Utc>>,
         error_message: Option<&str>,
     ) -> Result<OpenApiDocument, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"OpenApiDocument\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE \"OpenApiDocument\" SET ");
+
         let mut has_updates = false;
         if let Some(content) = content {
             query_builder.push("content = ");
@@ -218,26 +216,26 @@ impl OpenApiDocumentQueries {
             query_builder.push_bind(error_message);
             has_updates = true;
         }
-        
+
         if has_updates {
             query_builder.push(", ");
         }
         query_builder.push("updated_at = ");
         query_builder.push_bind(Utc::now());
-        
+
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(document_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<OpenApiDocumentRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update OpenAPI document error
     pub async fn update_error(
         pool: &PgPool,
@@ -245,7 +243,8 @@ impl OpenApiDocumentQueries {
         error_message: Option<&str>,
     ) -> Result<OpenApiDocument, AppError> {
         let row = sqlx::query_as::<_, OpenApiDocumentRow>(
-            "UPDATE \"OpenApiDocument\" SET error_message = $1, updated_at = $2 WHERE id = $3 RETURNING *"
+            "UPDATE \"OpenApiDocument\" SET error_message = $1, updated_at = $2 WHERE id = $3 \
+             RETURNING *",
         )
         .bind(error_message)
         .bind(Utc::now())
@@ -253,21 +252,18 @@ impl OpenApiDocumentQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Delete an OpenAPI document
-    pub async fn delete(
-        pool: &PgPool,
-        document_id: &str,
-    ) -> Result<bool, AppError> {
+    pub async fn delete(pool: &PgPool, document_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"OpenApiDocument\" WHERE id = $1")
             .bind(document_id)
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }

@@ -2,17 +2,25 @@
 //!
 //! This module contains the actual implementation of organization handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::org::OrgService;
-use cms_entity::org::{CreateOrganizationRequest, UpdateOrganizationRequest, OrganizationResponse, ListMembersQuery, ListMembersResponse, CreateInvitationRequest, InvitationResponse, ListInvitationsResponse};
-use cms_entity::common::{Id, PaginatedResponse};
+use cms_entity::{
+    common::{Id, PaginatedResponse},
+    org::{
+        CreateInvitationRequest, CreateOrganizationRequest, InvitationResponse,
+        ListInvitationsResponse, ListMembersQuery, ListMembersResponse, OrganizationResponse,
+        UpdateOrganizationRequest,
+    },
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// List all organizations for the authenticated user
@@ -36,11 +44,8 @@ pub async fn list_orgs_handler(
     State(state): State<Arc<AppState>>,
     auth: AuthExtractor,
 ) -> Result<Json<Vec<OrganizationResponse>>, AppError> {
-    let orgs = OrgService::list_organizations_for_user(
-        &state.biz_context,
-        &auth.user.id,
-    ).await?;
-    
+    let orgs = OrgService::list_organizations_for_user(&state.biz_context, &auth.user.id).await?;
+
     Ok(Json(orgs))
 }
 
@@ -68,12 +73,8 @@ pub async fn create_org_handler(
     auth: AuthExtractor,
     Json(request): Json<CreateOrganizationRequest>,
 ) -> Result<Json<OrganizationResponse>, AppError> {
-    let org = OrgService::create_organization(
-        &state.biz_context,
-        &auth.user.id,
-        request,
-    ).await?;
-    
+    let org = OrgService::create_organization(&state.biz_context, &auth.user.id, request).await?;
+
     Ok(Json(org))
 }
 
@@ -84,13 +85,14 @@ pub async fn get_org_handler(
     Path(org_id): Path<Id>,
 ) -> Result<Json<OrganizationResponse>, AppError> {
     // Check access
-    state.biz_context.access_control.require_org_member(&auth.user.id, &org_id).await?;
-    
-    let org = OrgService::get_organization(
-        &state.biz_context,
-        &org_id,
-    ).await?;
-    
+    state
+        .biz_context
+        .access_control
+        .require_org_member(&auth.user.id, &org_id)
+        .await?;
+
+    let org = OrgService::get_organization(&state.biz_context, &org_id).await?;
+
     Ok(Json(org))
 }
 
@@ -101,13 +103,9 @@ pub async fn update_org_handler(
     Path(org_id): Path<Id>,
     Json(request): Json<UpdateOrganizationRequest>,
 ) -> Result<Json<OrganizationResponse>, AppError> {
-    let org = OrgService::update_organization(
-        &state.biz_context,
-        &auth.user.id,
-        &org_id,
-        request,
-    ).await?;
-    
+    let org = OrgService::update_organization(&state.biz_context, &auth.user.id, &org_id, request)
+        .await?;
+
     Ok(Json(org))
 }
 
@@ -117,12 +115,8 @@ pub async fn delete_org_handler(
     auth: AuthExtractor,
     Path(org_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    OrgService::delete_organization(
-        &state.biz_context,
-        &auth.user.id,
-        &org_id,
-    ).await?;
-    
+    OrgService::delete_organization(&state.biz_context, &auth.user.id, &org_id).await?;
+
     Ok(Json(serde_json::json!({"success": true, "id": org_id})))
 }
 
@@ -133,15 +127,9 @@ pub async fn list_members_handler(
     Path(org_id): Path<Id>,
     Query(query): Query<ListMembersQuery>,
 ) -> Result<Json<ListMembersResponse>, AppError> {
-    let result = OrgService::list_members(
-        &state.biz_context,
-        &auth.user.id,
-        &org_id,
-        query,
-        1,
-        100,
-    ).await?;
-    
+    let result =
+        OrgService::list_members(&state.biz_context, &auth.user.id, &org_id, query, 1, 100).await?;
+
     Ok(Json(result))
 }
 
@@ -152,12 +140,22 @@ pub async fn add_member_handler(
     Path(org_id): Path<Id>,
     Json(request): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let new_user_id: String = serde_json::from_value(request.get("user_id").cloned().unwrap_or(serde_json::Value::Null))
-        .map_err(|_| AppError::BadRequest("Invalid user_id".to_string()))?;
-    
-    let role: String = serde_json::from_value(request.get("role").cloned().unwrap_or(serde_json::Value::Null))
-        .unwrap_or_else(|_| "MEMBER".to_string());
-    
+    let new_user_id: String = serde_json::from_value(
+        request
+            .get("user_id")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null),
+    )
+    .map_err(|_| AppError::BadRequest("Invalid user_id".to_string()))?;
+
+    let role: String = serde_json::from_value(
+        request
+            .get("role")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null),
+    )
+    .unwrap_or_else(|_| "MEMBER".to_string());
+
     let role = match role.to_uppercase().as_str() {
         "OWNER" => cms_entity::common::MemberRole::Owner,
         "ADMIN" => cms_entity::common::MemberRole::Admin,
@@ -165,15 +163,16 @@ pub async fn add_member_handler(
         "GUEST" => cms_entity::common::MemberRole::Guest,
         _ => cms_entity::common::MemberRole::Member,
     };
-    
+
     let member = OrgService::add_member(
         &state.biz_context,
         &auth.user.id,
         &org_id,
         &new_user_id,
         role,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(serde_json::json!(member)))
 }
 
@@ -184,9 +183,14 @@ pub async fn update_member_role_handler(
     Path((org_id, member_id)): Path<(Id, Id)>,
     Json(request): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let new_role: String = serde_json::from_value(request.get("role").cloned().unwrap_or(serde_json::Value::Null))
-        .map_err(|_| AppError::BadRequest("Invalid role".to_string()))?;
-    
+    let new_role: String = serde_json::from_value(
+        request
+            .get("role")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null),
+    )
+    .map_err(|_| AppError::BadRequest("Invalid role".to_string()))?;
+
     let role = match new_role.to_uppercase().as_str() {
         "OWNER" => cms_entity::common::MemberRole::Owner,
         "ADMIN" => cms_entity::common::MemberRole::Admin,
@@ -194,15 +198,16 @@ pub async fn update_member_role_handler(
         "GUEST" => cms_entity::common::MemberRole::Guest,
         _ => return Err(AppError::BadRequest("Invalid role value".to_string())),
     };
-    
+
     let member = OrgService::update_member_role(
         &state.biz_context,
         &auth.user.id,
         &org_id,
         &member_id,
         role,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(serde_json::json!(member)))
 }
 
@@ -212,13 +217,8 @@ pub async fn remove_member_handler(
     auth: AuthExtractor,
     Path((org_id, member_id)): Path<(Id, Id)>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    OrgService::remove_member(
-        &state.biz_context,
-        &auth.user.id,
-        &org_id,
-        &member_id,
-    ).await?;
-    
+    OrgService::remove_member(&state.biz_context, &auth.user.id, &org_id, &member_id).await?;
+
     Ok(Json(serde_json::json!({"success": true})))
 }
 
@@ -229,13 +229,9 @@ pub async fn create_invitation_handler(
     Path(org_id): Path<Id>,
     Json(request): Json<CreateInvitationRequest>,
 ) -> Result<Json<InvitationResponse>, AppError> {
-    let invitation = OrgService::create_invitation(
-        &state.biz_context,
-        &auth.user.id,
-        &org_id,
-        request,
-    ).await?;
-    
+    let invitation =
+        OrgService::create_invitation(&state.biz_context, &auth.user.id, &org_id, request).await?;
+
     Ok(Json(invitation))
 }
 
@@ -245,14 +241,9 @@ pub async fn list_invitations_handler(
     auth: AuthExtractor,
     Path(org_id): Path<Id>,
 ) -> Result<Json<ListInvitationsResponse>, AppError> {
-    let result = OrgService::list_invitations(
-        &state.biz_context,
-        &auth.user.id,
-        &org_id,
-        1,
-        100,
-    ).await?;
-    
+    let result =
+        OrgService::list_invitations(&state.biz_context, &auth.user.id, &org_id, 1, 100).await?;
+
     Ok(Json(result))
 }
 
@@ -262,12 +253,8 @@ pub async fn revoke_invitation_handler(
     auth: AuthExtractor,
     Path((org_id, invitation_id)): Path<(Id, Id)>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    OrgService::revoke_invitation(
-        &state.biz_context,
-        &auth.user.id,
-        &org_id,
-        &invitation_id,
-    ).await?;
-    
+    OrgService::revoke_invitation(&state.biz_context, &auth.user.id, &org_id, &invitation_id)
+        .await?;
+
     Ok(Json(serde_json::json!({"success": true})))
 }

@@ -19,6 +19,9 @@ pgvector = { version = "0.4", optional = true }
 # Postgres
 sqlx = { workspace = true, features = ["postgres", "runtime-tokio"] }
 
+# Qdrant
+qdrant-client = { version = "0.11", optional = true }
+
 # Async
 tokio = { workspace = true }
 
@@ -30,7 +33,7 @@ chrono = { workspace = true }
 [features]
 default = ["pgvector"]
 pgvector = ["dep:pgvector"]
-qdrant = []
+qdrant = ["dep:qdrant-client"]
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }

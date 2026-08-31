@@ -1,9 +1,9 @@
-﻿//! MCP database queries
+//! MCP database queries
 
 use chrono::{DateTime, Utc};
 use cms_entity::mcp::McpAuditEvent;
 use cms_error::AppError;
-use sqlx::{FromRow, PgPool, QueryBuilder, Postgres};
+use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
 use uuid::Uuid;
 
 /// Database representation of an MCP audit event row
@@ -41,18 +41,20 @@ pub struct McpAuditEventQueries;
 
 impl McpAuditEventQueries {
     /// Get an MCP audit event by ID
-    pub async fn get_by_id(pool: &PgPool, event_id: &str) -> Result<Option<McpAuditEvent>, AppError> {
-        let row = sqlx::query_as::<_, McpAuditEventRow>(
-            "SELECT * FROM \"McpAuditEvent\" WHERE id = $1"
-        )
-        .bind(event_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+    pub async fn get_by_id(
+        pool: &PgPool,
+        event_id: &str,
+    ) -> Result<Option<McpAuditEvent>, AppError> {
+        let row =
+            sqlx::query_as::<_, McpAuditEventRow>("SELECT * FROM \"McpAuditEvent\" WHERE id = $1")
+                .bind(event_id)
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get MCP audit events by organization
     pub async fn get_by_organization(
         pool: &PgPool,
@@ -60,32 +62,31 @@ impl McpAuditEventQueries {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<McpAuditEvent>, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT * FROM \"McpAuditEvent\" WHERE organization_id = $1"
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT * FROM \"McpAuditEvent\" WHERE organization_id = $1");
         query_builder.push_bind(org_id);
-        
+
         query_builder.push(" ORDER BY created_at DESC");
-        
+
         if let Some(limit) = limit {
             query_builder.push(" LIMIT ");
             query_builder.push_bind(limit);
         }
-        
+
         if let Some(offset) = offset {
             query_builder.push(" OFFSET ");
             query_builder.push_bind(offset);
         }
-        
+
         let rows = query_builder
             .build_query_as::<McpAuditEventRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     /// Create a new MCP audit event
     pub async fn create(
         pool: &PgPool,
@@ -99,7 +100,7 @@ impl McpAuditEventQueries {
     ) -> Result<McpAuditEvent, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, McpAuditEventRow>(
             r#"
             INSERT INTO "McpAuditEvent" (id, organization_id, project_id, user_id, operation, request_id, response_status, error_message, created_at)
@@ -119,23 +120,22 @@ impl McpAuditEventQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Count MCP audit events by organization
     pub async fn count_by_organization(pool: &PgPool, org_id: &str) -> Result<i64, AppError> {
-        let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM \"McpAuditEvent\" WHERE organization_id = $1"
-        )
-        .bind(org_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM \"McpAuditEvent\" WHERE organization_id = $1")
+                .bind(org_id)
+                .fetch_one(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(count)
     }
-    
+
     /// Delete an MCP audit event
     pub async fn delete(pool: &PgPool, event_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"McpAuditEvent\" WHERE id = $1")
@@ -143,7 +143,7 @@ impl McpAuditEventQueries {
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }

@@ -3,7 +3,7 @@
 use chrono::{DateTime, Utc};
 use cms_entity::analytics::AnalyticsEvent;
 use cms_error::AppError;
-use sqlx::{FromRow, PgPool, QueryBuilder, Postgres, Row};
+use sqlx::{FromRow, PgPool, Postgres, QueryBuilder, Row};
 use uuid::Uuid;
 
 // Note: AnalyticsEvent is already defined in usage.rs
@@ -21,30 +21,31 @@ impl AnalyticsQueries {
         end_date: Option<DateTime<Utc>>,
     ) -> Result<i64, AppError> {
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT COUNT(*) as count FROM \"AnalyticsEvent\" WHERE project_id = $1 AND event_type = 'page_view'"
+            "SELECT COUNT(*) as count FROM \"AnalyticsEvent\" WHERE project_id = $1 AND \
+             event_type = 'page_view'",
         );
         query_builder.push_bind(project_id);
-        
+
         if let Some(start) = start_date {
             query_builder.push(" AND created_at >= ");
             query_builder.push_bind(start);
         }
-        
+
         if let Some(end) = end_date {
             query_builder.push(" AND created_at <= ");
             query_builder.push_bind(end);
         }
-        
+
         let count: i64 = query_builder
             .build()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?
             .get::<i64, _>("count");
-        
+
         Ok(count)
     }
-    
+
     /// Get search count for a project
     pub async fn get_search_count(
         pool: &PgPool,
@@ -53,30 +54,31 @@ impl AnalyticsQueries {
         end_date: Option<DateTime<Utc>>,
     ) -> Result<i64, AppError> {
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT COUNT(*) as count FROM \"AnalyticsEvent\" WHERE project_id = $1 AND event_type = 'search'"
+            "SELECT COUNT(*) as count FROM \"AnalyticsEvent\" WHERE project_id = $1 AND \
+             event_type = 'search'",
         );
         query_builder.push_bind(project_id);
-        
+
         if let Some(start) = start_date {
             query_builder.push(" AND created_at >= ");
             query_builder.push_bind(start);
         }
-        
+
         if let Some(end) = end_date {
             query_builder.push(" AND created_at <= ");
             query_builder.push_bind(end);
         }
-        
+
         let count: i64 = query_builder
             .build()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?
             .get::<i64, _>("count");
-        
+
         Ok(count)
     }
-    
+
     /// Get unique user count for a project
     pub async fn get_unique_user_count(
         pool: &PgPool,
@@ -85,30 +87,30 @@ impl AnalyticsQueries {
         end_date: Option<DateTime<Utc>>,
     ) -> Result<i64, AppError> {
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT COUNT(DISTINCT user_id) as count FROM \"AnalyticsEvent\" WHERE project_id = $1"
+            "SELECT COUNT(DISTINCT user_id) as count FROM \"AnalyticsEvent\" WHERE project_id = $1",
         );
         query_builder.push_bind(project_id);
-        
+
         if let Some(start) = start_date {
             query_builder.push(" AND created_at >= ");
             query_builder.push_bind(start);
         }
-        
+
         if let Some(end) = end_date {
             query_builder.push(" AND created_at <= ");
             query_builder.push_bind(end);
         }
-        
+
         let count: i64 = query_builder
             .build()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?
             .get::<i64, _>("count");
-        
+
         Ok(count)
     }
-    
+
     /// Get most viewed pages for a project
     pub async fn get_most_viewed_pages(
         pool: &PgPool,
@@ -142,7 +144,7 @@ impl AnalyticsEventQueries {
     ) -> Result<cms_entity::analytics::AnalyticsEvent, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, AnalyticsEventRow>(
             r#"
             INSERT INTO "AnalyticsEvent" (id, organization_id, project_id, user_id, event_type, metadata, ip_address, user_agent, created_at)
@@ -162,10 +164,10 @@ impl AnalyticsEventQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// List analytics events for a project
     pub async fn list_by_project(
         pool: &PgPool,
@@ -175,7 +177,7 @@ impl AnalyticsEventQueries {
     ) -> Result<Vec<cms_entity::analytics::AnalyticsEvent>, AppError> {
         let limit = limit.unwrap_or(100);
         let offset = offset.unwrap_or(0);
-        
+
         let rows = sqlx::query_as::<_, AnalyticsEventRow>(
             r#"SELECT * FROM "AnalyticsEvent" WHERE project_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3"#
         )
@@ -185,7 +187,7 @@ impl AnalyticsEventQueries {
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 
@@ -203,11 +205,26 @@ impl AnalyticsEventQueries {
         let mut conditions: Vec<String> = Vec::new();
         let mut idx = 1usize;
 
-        if project_id.is_some() { conditions.push(format!("project_id = ${}", idx)); idx += 1; }
-        if user_id.is_some() { conditions.push(format!("user_id = ${}", idx)); idx += 1; }
-        if event_type.is_some() { conditions.push(format!("event_type = ${}", idx)); idx += 1; }
-        if start_date.is_some() { conditions.push(format!("created_at >= ${}", idx)); idx += 1; }
-        if end_date.is_some() { conditions.push(format!("created_at <= ${}", idx)); idx += 1; }
+        if project_id.is_some() {
+            conditions.push(format!("project_id = ${}", idx));
+            idx += 1;
+        }
+        if user_id.is_some() {
+            conditions.push(format!("user_id = ${}", idx));
+            idx += 1;
+        }
+        if event_type.is_some() {
+            conditions.push(format!("event_type = ${}", idx));
+            idx += 1;
+        }
+        if start_date.is_some() {
+            conditions.push(format!("created_at >= ${}", idx));
+            idx += 1;
+        }
+        if end_date.is_some() {
+            conditions.push(format!("created_at <= ${}", idx));
+            idx += 1;
+        }
 
         let where_clause = if conditions.is_empty() {
             String::new()
@@ -217,22 +234,36 @@ impl AnalyticsEventQueries {
 
         let sql = format!(
             r#"SELECT * FROM "AnalyticsEvent" {} ORDER BY created_at DESC LIMIT ${} OFFSET ${}"#,
-            where_clause, idx, idx + 1
+            where_clause,
+            idx,
+            idx + 1
         );
 
         let mut q = sqlx::query_as::<_, AnalyticsEventRow>(&sql);
-        if let Some(v) = project_id { q = q.bind(v); }
-        if let Some(v) = user_id { q = q.bind(v); }
-        if let Some(v) = event_type { q = q.bind(v); }
-        if let Some(v) = start_date { q = q.bind(v); }
-        if let Some(v) = end_date { q = q.bind(v); }
+        if let Some(v) = project_id {
+            q = q.bind(v);
+        }
+        if let Some(v) = user_id {
+            q = q.bind(v);
+        }
+        if let Some(v) = event_type {
+            q = q.bind(v);
+        }
+        if let Some(v) = start_date {
+            q = q.bind(v);
+        }
+        if let Some(v) = end_date {
+            q = q.bind(v);
+        }
         q = q.bind(limit).bind(offset);
 
-        let rows = q.fetch_all(pool).await.map_err(|e| AppError::Database(e.into()))?;
+        let rows = q
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 }
-
 
 /// Analytics event row from the database
 #[derive(Debug, sqlx::FromRow)]
@@ -263,4 +294,3 @@ impl From<AnalyticsEventRow> for cms_entity::analytics::AnalyticsEvent {
         }
     }
 }
-

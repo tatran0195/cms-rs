@@ -3,11 +3,12 @@
 //! This module contains the shared application state that is passed to all handlers.
 
 use std::sync::Arc;
+
+use cms_biz::BizContext;
 use cms_config::Config;
 use cms_error::AppError;
-use cms_biz::BizContext;
-use cms_storage::Storage;
 use cms_queue::JobQueue;
+use cms_storage::Storage;
 
 /// Application state shared across all handlers
 #[derive(Clone)]
@@ -28,11 +29,13 @@ impl AppState {
     /// Create AppState from full configuration
     pub async fn from_config(config: &Config) -> Result<Self, AppError> {
         let pool = cms_db::create_pool(&config.database.url).await?;
-        let storage_box = cms_storage::create_storage(&config.storage)?;
+        let storage_box = cms_storage::create_storage(&config.storage).await?;
         let storage: Arc<dyn Storage> = Arc::from(storage_box);
         let job_queue: Arc<dyn JobQueue> = Arc::new(cms_queue::MemoryJobQueue::new(4));
         let search_engine = cms_search::create_search_engine(&config.search).await?;
-        let access_control = Arc::new(cms_access_control::ProductionAccessControl::new(pool.clone()));
+        let access_control = Arc::new(cms_access_control::ProductionAccessControl::new(
+            pool.clone(),
+        ));
         let biz_context = BizContext::new(pool, access_control);
 
         Ok(Self {

@@ -57,7 +57,11 @@ impl From<Domain> for DomainResponse {
 pub struct CreateDomainRequest {
     #[validate(length(min = 1, message = "Deployment ID is required"))]
     pub deployment_id: String,
-    #[validate(length(min = 1, max = 253, message = "Hostname must be between 1 and 253 characters"))]
+    #[validate(length(
+        min = 1,
+        max = 253,
+        message = "Hostname must be between 1 and 253 characters"
+    ))]
     pub hostname: String,
     #[serde(default)]
     pub is_primary: bool,

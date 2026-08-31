@@ -34,7 +34,6 @@ pub enum ExportFormat {
     EPUB,
 }
 
-
 /// Export snapshot entity
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportSnapshot {
@@ -106,7 +105,10 @@ impl From<ExportJob> for ExportJobResponse {
             format: job.format,
             status: job.status,
             output_path: job.output_path.clone(),
-            download_url: job.output_path.as_deref().map(|p| format!("/api/export/download/{}", p)),
+            download_url: job
+                .output_path
+                .as_deref()
+                .map(|p| format!("/api/export/download/{}", p)),
             error_message: job.error_message,
             started_at: job.started_at,
             completed_at: job.completed_at,
@@ -280,4 +282,3 @@ pub struct CreateExportRequest {
     #[serde(default)]
     pub snapshot_id: Option<Id>,
 }
-

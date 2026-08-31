@@ -4,7 +4,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-use crate::common::{Id, Timestamp, PaginatedResponse};
+use crate::common::{Id, PaginatedResponse, Timestamp};
 
 /// Project entity
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,7 +27,11 @@ pub struct Project {
 pub struct CreateProjectRequest {
     #[serde(default)]
     pub organization_id: Option<Id>,
-    #[validate(length(min = 1, max = 100, message = "Project name must be between 1 and 100 characters"))]
+    #[validate(length(
+        min = 1,
+        max = 100,
+        message = "Project name must be between 1 and 100 characters"
+    ))]
     pub name: String,
     #[serde(default)]
     #[validate(length(max = 500, message = "Description must be at most 500 characters"))]
@@ -43,7 +47,11 @@ pub struct CreateProjectRequest {
 #[derive(Debug, Clone, Deserialize, Serialize, Validate)]
 pub struct UpdateProjectRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[validate(length(min = 1, max = 100, message = "Project name must be between 1 and 100 characters"))]
+    #[validate(length(
+        min = 1,
+        max = 100,
+        message = "Project name must be between 1 and 100 characters"
+    ))]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[validate(length(max = 500, message = "Description must be at most 500 characters"))]
@@ -198,7 +206,7 @@ pub struct ProjectAuditEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_project_response_conversion() {
         let project = Project {
@@ -212,7 +220,7 @@ mod tests {
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
-        
+
         let response: ProjectResponse = project.into();
         assert_eq!(response.id, "proj-1");
         assert_eq!(response.name, "Test Project");

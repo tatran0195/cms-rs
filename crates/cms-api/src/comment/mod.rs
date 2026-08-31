@@ -2,16 +2,18 @@
 //!
 //! This module contains handlers for comment routes.
 
+use std::sync::Arc;
+
 use axum::{
-    routing::{get, post, put, delete},
+    routing::{delete, get, post, put},
     Router,
 };
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
 
 pub mod handlers;
 
 use handlers::*;
+
 use crate::extractors::UserId;
 
 /// Create the comment router

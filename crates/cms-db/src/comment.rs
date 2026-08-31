@@ -1,9 +1,9 @@
-﻿//! Comment database queries
+//! Comment database queries
 
 use chrono::{DateTime, Utc};
 use cms_entity::comment::Comment;
 use cms_error::AppError;
-use sqlx::{FromRow, PgPool, QueryBuilder, Postgres, Row};
+use sqlx::{FromRow, PgPool, Postgres, QueryBuilder, Row};
 use uuid::Uuid;
 
 /// Database representation of a comment row
@@ -46,17 +46,15 @@ pub struct CommentQueries;
 impl CommentQueries {
     /// Get a comment by ID
     pub async fn get_by_id(pool: &PgPool, comment_id: &str) -> Result<Option<Comment>, AppError> {
-        let row = sqlx::query_as::<_, CommentRow>(
-            "SELECT * FROM \"Comment\" WHERE id = $1"
-        )
-        .bind(comment_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row = sqlx::query_as::<_, CommentRow>("SELECT * FROM \"Comment\" WHERE id = $1")
+            .bind(comment_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get comments by page
     pub async fn get_by_page(
         pool: &PgPool,
@@ -66,11 +64,10 @@ impl CommentQueries {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<Comment>, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT * FROM \"Comment\" WHERE page_id = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT * FROM \"Comment\" WHERE page_id = ");
         query_builder.push_bind(page_id);
-        
+
         if let Some(parent_id) = parent_id {
             if parent_id.is_empty() {
                 query_builder.push(" AND parent_id IS NULL");
@@ -79,33 +76,33 @@ impl CommentQueries {
                 query_builder.push_bind(parent_id);
             }
         }
-        
+
         if let Some(resolved) = resolved {
             query_builder.push(" AND resolved = ");
             query_builder.push_bind(resolved);
         }
-        
+
         query_builder.push(" ORDER BY created_at DESC");
-        
+
         if let Some(limit) = limit {
             query_builder.push(" LIMIT ");
             query_builder.push_bind(limit);
         }
-        
+
         if let Some(offset) = offset {
             query_builder.push(" OFFSET ");
             query_builder.push_bind(offset);
         }
-        
+
         let rows = query_builder
             .build_query_as::<CommentRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     /// Count comments by page
     pub async fn count_by_page(
         pool: &PgPool,
@@ -113,11 +110,10 @@ impl CommentQueries {
         parent_id: Option<&str>,
         resolved: Option<bool>,
     ) -> Result<i64, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT COUNT(*) FROM \"Comment\" WHERE page_id = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT COUNT(*) FROM \"Comment\" WHERE page_id = ");
         query_builder.push_bind(page_id);
-        
+
         if let Some(parent_id) = parent_id {
             if parent_id.is_empty() {
                 query_builder.push(" AND parent_id IS NULL");
@@ -126,22 +122,22 @@ impl CommentQueries {
                 query_builder.push_bind(parent_id);
             }
         }
-        
+
         if let Some(resolved) = resolved {
             query_builder.push(" AND resolved = ");
             query_builder.push_bind(resolved);
         }
-        
+
         let count: i64 = query_builder
             .build()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?
             .get::<i64, _>(0);
-        
+
         Ok(count)
     }
-    
+
     /// Create a new comment
     pub async fn create(
         pool: &PgPool,
@@ -153,7 +149,7 @@ impl CommentQueries {
     ) -> Result<Comment, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, CommentRow>(
             r#"
             INSERT INTO "Comment" (id, page_id, user_id, reader_id, parent_id, content, resolved, created_at, updated_at)
@@ -173,10 +169,10 @@ impl CommentQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update a comment
     pub async fn update(
         pool: &PgPool,
@@ -184,10 +180,9 @@ impl CommentQueries {
         content: Option<&str>,
         resolved: Option<bool>,
     ) -> Result<Comment, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"Comment\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE \"Comment\" SET ");
+
         let mut has_updates = false;
         if let Some(content) = content {
             query_builder.push("content = ");
@@ -200,7 +195,7 @@ impl CommentQueries {
             }
             query_builder.push("resolved = ");
             query_builder.push_bind(resolved);
-            
+
             if resolved {
                 query_builder.push(", resolved_at = ");
                 query_builder.push_bind(Utc::now());
@@ -209,25 +204,25 @@ impl CommentQueries {
             }
             has_updates = true;
         }
-        
+
         if has_updates {
             query_builder.push(", updated_at = ");
             query_builder.push_bind(Utc::now());
         }
-        
+
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(comment_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<CommentRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Delete a comment
     pub async fn delete(pool: &PgPool, comment_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"Comment\" WHERE id = $1")
@@ -235,10 +230,10 @@ impl CommentQueries {
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
-    
+
     /// Get replies for a comment
     pub async fn get_replies(
         pool: &PgPool,
@@ -246,29 +241,28 @@ impl CommentQueries {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<Comment>, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT * FROM \"Comment\" WHERE parent_id = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT * FROM \"Comment\" WHERE parent_id = ");
         query_builder.push_bind(parent_id);
-        
+
         query_builder.push(" ORDER BY created_at ASC");
-        
+
         if let Some(limit) = limit {
             query_builder.push(" LIMIT ");
             query_builder.push_bind(limit);
         }
-        
+
         if let Some(offset) = offset {
             query_builder.push(" OFFSET ");
             query_builder.push_bind(offset);
         }
-        
+
         let rows = query_builder
             .build_query_as::<CommentRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 }

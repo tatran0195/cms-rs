@@ -1,9 +1,9 @@
-﻿//! Search index database queries
+//! Search index database queries
 
 use chrono::{DateTime, Utc};
 use cms_entity::search::{SearchIndexRun, SearchIndexRunStatus};
 use cms_error::AppError;
-use sqlx::{FromRow, PgPool, QueryBuilder, Postgres};
+use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
 use uuid::Uuid;
 
 // ============================================
@@ -53,16 +53,16 @@ impl SearchIndexRunQueries {
         run_id: &str,
     ) -> Result<Option<SearchIndexRun>, AppError> {
         let row = sqlx::query_as::<_, SearchIndexRunRow>(
-            "SELECT * FROM \"SearchIndexRun\" WHERE id = $1"
+            "SELECT * FROM \"SearchIndexRun\" WHERE id = $1",
         )
         .bind(run_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get search index runs by project ID
     pub async fn get_by_project(
         pool: &PgPool,
@@ -70,48 +70,48 @@ impl SearchIndexRunQueries {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<SearchIndexRun>, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT * FROM \"SearchIndexRun\" WHERE project_id = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT * FROM \"SearchIndexRun\" WHERE project_id = ");
         query_builder.push_bind(project_id);
-        
+
         query_builder.push(" ORDER BY created_at DESC");
-        
+
         if let Some(limit) = limit {
             query_builder.push(" LIMIT ");
             query_builder.push_bind(limit);
         }
-        
+
         if let Some(offset) = offset {
             query_builder.push(" OFFSET ");
             query_builder.push_bind(offset);
         }
-        
+
         let rows = query_builder
             .build_query_as::<SearchIndexRunRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     /// Get the latest search index run for a project
     pub async fn get_latest_by_project(
         pool: &PgPool,
         project_id: &str,
     ) -> Result<Option<SearchIndexRun>, AppError> {
         let row = sqlx::query_as::<_, SearchIndexRunRow>(
-            "SELECT * FROM \"SearchIndexRun\" WHERE project_id = $1 ORDER BY created_at DESC LIMIT 1"
+            "SELECT * FROM \"SearchIndexRun\" WHERE project_id = $1 ORDER BY created_at DESC \
+             LIMIT 1",
         )
         .bind(project_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Create a new search index run
     pub async fn create(
         pool: &PgPool,
@@ -122,7 +122,7 @@ impl SearchIndexRunQueries {
     ) -> Result<SearchIndexRun, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, SearchIndexRunRow>(
             r#"
             INSERT INTO "SearchIndexRun" (id, project_id, branch_id, language_id, status, pages_indexed, created_at, updated_at)
@@ -141,10 +141,10 @@ impl SearchIndexRunQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update search index run status
     pub async fn update_status(
         pool: &PgPool,
@@ -153,7 +153,8 @@ impl SearchIndexRunQueries {
         error_message: Option<&str>,
     ) -> Result<SearchIndexRun, AppError> {
         let row = sqlx::query_as::<_, SearchIndexRunRow>(
-            "UPDATE \"SearchIndexRun\" SET status = $1, error_message = $2, updated_at = $3 WHERE id = $4 RETURNING *"
+            "UPDATE \"SearchIndexRun\" SET status = $1, error_message = $2, updated_at = $3 WHERE \
+             id = $4 RETURNING *",
         )
         .bind(status)
         .bind(error_message)
@@ -162,10 +163,10 @@ impl SearchIndexRunQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update search index run progress
     pub async fn update_progress(
         pool: &PgPool,
@@ -173,31 +174,30 @@ impl SearchIndexRunQueries {
         pages_indexed: i32,
         started_at: Option<DateTime<Utc>>,
     ) -> Result<SearchIndexRun, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"SearchIndexRun\" SET pages_indexed = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE \"SearchIndexRun\" SET pages_indexed = ");
         query_builder.push_bind(pages_indexed);
-        
+
         if let Some(started_at) = started_at {
             query_builder.push(", started_at = ");
             query_builder.push_bind(started_at);
         }
-        
+
         query_builder.push(", updated_at = ");
         query_builder.push_bind(Utc::now());
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(run_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<SearchIndexRunRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Mark search index run as completed
     pub async fn mark_completed(
         pool: &PgPool,
@@ -209,7 +209,7 @@ impl SearchIndexRunQueries {
             UPDATE "SearchIndexRun" 
             SET status = $1, pages_indexed = $2, completed_at = $3, updated_at = $4 
             WHERE id = $5 RETURNING *
-            "#
+            "#,
         )
         .bind(SearchIndexRunStatus::Completed)
         .bind(pages_indexed)
@@ -219,23 +219,19 @@ impl SearchIndexRunQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Count search index runs by project ID
-    pub async fn count_by_project(
-        pool: &PgPool,
-        project_id: &str,
-    ) -> Result<i64, AppError> {
-        let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM \"SearchIndexRun\" WHERE project_id = $1"
-        )
-        .bind(project_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+    pub async fn count_by_project(pool: &PgPool, project_id: &str) -> Result<i64, AppError> {
+        let count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM \"SearchIndexRun\" WHERE project_id = $1")
+                .bind(project_id)
+                .fetch_one(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(count)
     }
 }

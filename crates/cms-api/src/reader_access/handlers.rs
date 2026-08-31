@@ -2,17 +2,25 @@
 //!
 //! This module contains the actual implementation of reader access handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::reader_access::ReaderAccessService;
-use cms_entity::reader_access::{ReaderResponse, AudienceResponse, AudienceGrantResponse, CreateAudienceRequest, UpdateAudienceRequest, CreateAudienceGrantRequest, ReaderInvitationResponse, CreateReaderInvitationRequest, ReaderSessionResponse};
-use cms_entity::common::Id;
+use cms_entity::{
+    common::Id,
+    reader_access::{
+        AudienceGrantResponse, AudienceResponse, CreateAudienceGrantRequest, CreateAudienceRequest,
+        CreateReaderInvitationRequest, ReaderInvitationResponse, ReaderResponse,
+        ReaderSessionResponse, UpdateAudienceRequest,
+    },
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// Create a new audience
@@ -46,8 +54,9 @@ pub async fn create_audience_handler(
         &auth.user.id,
         &project_id,
         request,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(audience))
 }
 
@@ -77,12 +86,9 @@ pub async fn list_audiences_handler(
     auth: AuthExtractor,
     Path(project_id): Path<Id>,
 ) -> Result<Json<Vec<AudienceResponse>>, AppError> {
-    let audiences = ReaderAccessService::list_audiences(
-        &state.biz_context,
-        &auth.user.id,
-        &project_id,
-    ).await?;
-    
+    let audiences =
+        ReaderAccessService::list_audiences(&state.biz_context, &auth.user.id, &project_id).await?;
+
     Ok(Json(audiences))
 }
 
@@ -112,12 +118,9 @@ pub async fn get_audience_handler(
     auth: AuthExtractor,
     Path(audience_id): Path<Id>,
 ) -> Result<Json<AudienceResponse>, AppError> {
-    let audience = ReaderAccessService::get_audience(
-        &state.biz_context,
-        &auth.user.id,
-        &audience_id,
-    ).await?;
-    
+    let audience =
+        ReaderAccessService::get_audience(&state.biz_context, &auth.user.id, &audience_id).await?;
+
     Ok(Json(audience))
 }
 
@@ -157,8 +160,9 @@ pub async fn update_audience_handler(
         &audience_id,
         request.name.as_deref(),
         request.description.as_deref(),
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(audience))
 }
 
@@ -189,13 +193,11 @@ pub async fn delete_audience_handler(
     auth: AuthExtractor,
     Path(audience_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    ReaderAccessService::delete_audience(
-        &state.biz_context,
-        &auth.user.id,
-        &audience_id,
-    ).await?;
-    
-    Ok(Json(serde_json::json!({"success": true, "id": audience_id})))
+    ReaderAccessService::delete_audience(&state.biz_context, &auth.user.id, &audience_id).await?;
+
+    Ok(Json(
+        serde_json::json!({"success": true, "id": audience_id}),
+    ))
 }
 
 /// Create an audience grant
@@ -230,8 +232,9 @@ pub async fn create_audience_grant_handler(
         &request.project_id,
         request.branch_id.as_deref(),
         request.language_id.as_deref(),
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(grant))
 }
 
@@ -261,12 +264,10 @@ pub async fn list_audience_grants_handler(
     auth: AuthExtractor,
     Path(audience_id): Path<Id>,
 ) -> Result<Json<Vec<AudienceGrantResponse>>, AppError> {
-    let grants = ReaderAccessService::list_audience_grants(
-        &state.biz_context,
-        &auth.user.id,
-        &audience_id,
-    ).await?;
-    
+    let grants =
+        ReaderAccessService::list_audience_grants(&state.biz_context, &auth.user.id, &audience_id)
+            .await?;
+
     Ok(Json(grants))
 }
 
@@ -297,12 +298,9 @@ pub async fn delete_audience_grant_handler(
     auth: AuthExtractor,
     Path(grant_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    ReaderAccessService::delete_audience_grant(
-        &state.biz_context,
-        &auth.user.id,
-        &grant_id,
-    ).await?;
-    
+    ReaderAccessService::delete_audience_grant(&state.biz_context, &auth.user.id, &grant_id)
+        .await?;
+
     Ok(Json(serde_json::json!({"success": true, "id": grant_id})))
 }
 
@@ -341,8 +339,9 @@ pub async fn create_reader_invitation_handler(
             audience_id: request.audience_id.clone(),
             expires_in_days: None,
         },
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(invitation))
 }
 
@@ -365,14 +364,17 @@ pub async fn accept_reader_invitation_handler(
     State(state): State<Arc<AppState>>,
     Json(request): Json<serde_json::Value>,
 ) -> Result<Json<ReaderSessionResponse>, AppError> {
-    let token: String = serde_json::from_value(request.get("token").cloned().unwrap_or(serde_json::Value::Null))
-        .map_err(|_| AppError::BadRequest("Invalid token".to_string()))?;
-    
-    let audience = ReaderAccessService::accept_reader_invitation(
-        &state.biz_context,
-        &token,
-    ).await?;
-    
+    let token: String = serde_json::from_value(
+        request
+            .get("token")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null),
+    )
+    .map_err(|_| AppError::BadRequest("Invalid token".to_string()))?;
+
+    let audience =
+        ReaderAccessService::accept_reader_invitation(&state.biz_context, &token).await?;
+
     Ok(Json(ReaderSessionResponse {
         id: audience.id,
         reader_id: audience.reader_id,

@@ -1,3 +1,7 @@
+#![allow(clippy::useless_conversion)]
+#![allow(clippy::unnecessary_unwrap)]
+#![allow(clippy::too_many_arguments)]
+
 //! CMS Database Layer
 //!
 //! This crate provides hand-written SQLx queries organized by domain,
@@ -38,10 +42,18 @@ pub type PgPool = sqlx::PgPool;
 /// Create a new database connection pool
 pub async fn create_pool(database_url: &str) -> Result<PgPool, AppError> {
     let pool = PgPoolOptions::new()
-        .max_connections(20)
+        .max_connections(50)
+        .min_connections(5)
+        .acquire_timeout(std::time::Duration::from_secs(15))
+        .idle_timeout(std::time::Duration::from_secs(600))
+        .max_lifetime(std::time::Duration::from_secs(1800))
+        .test_before_acquire(true)
         .connect(database_url)
         .await
-        .map_err(|_e| AppError::DatabaseConnectionFailed)?;
+        .map_err(|e| {
+            tracing::error!("Database connection failed: {}", e);
+            AppError::DatabaseConnectionFailed
+        })?;
 
     Ok(pool)
 }

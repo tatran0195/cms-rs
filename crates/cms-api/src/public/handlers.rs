@@ -3,19 +3,17 @@
 //! This module contains the actual implementation of public-facing handlers.
 //! These handlers are for unauthenticated readers accessing published content.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
-use cms_biz::page::PageService;
-use cms_biz::project::ProjectService;
-use cms_entity::page::PageResponse;
-use cms_entity::project::ProjectResponse;
-use cms_entity::common::Id;
+use cms_biz::{page::PageService, project::ProjectService};
+use cms_entity::{common::Id, page::PageResponse, project::ProjectResponse};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
 
 /// Get a public project
 ///
@@ -38,12 +36,9 @@ pub async fn get_public_project_handler(
     State(state): State<Arc<AppState>>,
     Path((org_slug, project_slug)): Path<(String, String)>,
 ) -> Result<Json<ProjectResponse>, AppError> {
-    let project = ProjectService::get_public_project(
-        &state.biz_context,
-        &org_slug,
-        &project_slug,
-    ).await?;
-    
+    let project =
+        ProjectService::get_public_project(&state.biz_context, &org_slug, &project_slug).await?;
+
     Ok(Json(project.project))
 }
 
@@ -68,13 +63,10 @@ pub async fn get_public_page_handler(
     State(state): State<Arc<AppState>>,
     Path((org_slug, project_slug, page_path)): Path<(String, String, String)>,
 ) -> Result<Json<PageResponse>, AppError> {
-    let page = PageService::get_public_page(
-        &state.biz_context,
-        &org_slug,
-        &project_slug,
-        &page_path,
-    ).await?;
-    
+    let page =
+        PageService::get_public_page(&state.biz_context, &org_slug, &project_slug, &page_path)
+            .await?;
+
     Ok(Json(page))
 }
 
@@ -83,12 +75,9 @@ pub async fn list_public_pages_handler(
     State(state): State<Arc<AppState>>,
     Path((org_slug, project_slug)): Path<(String, String)>,
 ) -> Result<Json<Vec<PageResponse>>, AppError> {
-    let pages = PageService::list_public_pages(
-        &state.biz_context,
-        &org_slug,
-        &project_slug,
-    ).await?;
-    
+    let pages =
+        PageService::list_public_pages(&state.biz_context, &org_slug, &project_slug).await?;
+
     Ok(Json(pages))
 }
 
@@ -99,14 +88,11 @@ pub async fn search_public_content_handler(
     Query(query): Query<serde_json::Value>,
 ) -> Result<Json<Vec<PageResponse>>, AppError> {
     let search_term = query.get("q").and_then(|v| v.as_str()).unwrap_or("");
-    
-    let pages = PageService::search_public_pages(
-        &state.biz_context,
-        &org_slug,
-        &project_slug,
-        search_term,
-    ).await?;
-    
+
+    let pages =
+        PageService::search_public_pages(&state.biz_context, &org_slug, &project_slug, search_term)
+            .await?;
+
     Ok(Json(pages))
 }
 
@@ -115,11 +101,8 @@ pub async fn get_project_sitemap_handler(
     State(state): State<Arc<AppState>>,
     Path((org_slug, project_slug)): Path<(String, String)>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let sitemap = PageService::get_project_sitemap(
-        &state.biz_context,
-        &org_slug,
-        &project_slug,
-    ).await?;
-    
+    let sitemap =
+        PageService::get_project_sitemap(&state.biz_context, &org_slug, &project_slug).await?;
+
     Ok(Json(serde_json::json!(sitemap)))
 }

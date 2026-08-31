@@ -29,12 +29,6 @@
 //! which is appropriate for the CMS deployment model (single AWS Windows machine).
 //! Each instance maintains its own rate limit state.
 
-use axum::{
-    http::{header, HeaderValue, StatusCode},
-    response::{IntoResponse, Response},
-};
-use governor::{clock, state::NotKeyed, Quota, RateLimiter as GovernorRateLimiter};
-use parking_lot::RwLock;
 use std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
@@ -44,6 +38,13 @@ use std::{
     },
     time::{Duration, Instant},
 };
+
+use axum::{
+    http::{header, HeaderValue, StatusCode},
+    response::{IntoResponse, Response},
+};
+use governor::{clock, state::NotKeyed, Quota, RateLimiter as GovernorRateLimiter};
+use parking_lot::RwLock;
 
 /// Rate limit configuration with strict validation
 #[derive(Debug, Clone)]
@@ -306,7 +307,7 @@ impl RateLimiter {
                     .iter()
                     .map(|(k, v)| (k.clone(), v.last_access))
                     .collect();
-                entries.sort_by(|a, b| a.1.cmp(&b.1));
+                entries.sort_by_key(|a| a.1);
 
                 let to_remove_count = entries.len() - self.config.max_tracked_clients;
                 for (key, _) in entries.into_iter().take(to_remove_count) {
@@ -415,9 +416,11 @@ pub type RateLimitLayer = tower_http::limit::RequestBodyLimitLayer;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use axum::http::{header, Request};
     use std::net::{Ipv4Addr, SocketAddr};
+
+    use axum::http::{header, Request};
+
+    use super::*;
 
     #[test]
     fn test_config_validation() {
@@ -466,7 +469,7 @@ mod tests {
     #[test]
     fn test_rate_limiting() {
         let config = RateLimitConfig {
-            requests_per_second: 10,
+            requests_per_second: 2,
             burst_size: 2,
             enabled: true,
             max_tracked_clients: 100,
@@ -487,7 +490,7 @@ mod tests {
     #[test]
     fn test_metrics() {
         let config = RateLimitConfig {
-            requests_per_second: 100,
+            requests_per_second: 1,
             burst_size: 1,
             enabled: true,
             max_tracked_clients: 100,

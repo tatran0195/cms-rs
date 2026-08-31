@@ -2,16 +2,18 @@
 //!
 //! This module contains handlers for export routes.
 
+use std::sync::Arc;
+
 use axum::{
-    routing::{get, post, put, delete},
+    routing::{delete, get, post, put},
     Router,
 };
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
 
 pub mod handlers;
 
 use handlers::*;
+
 use crate::extractors::UserId;
 
 /// Create the export router
@@ -23,7 +25,10 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/jobs/:id/download", get(download_export_handler))
         // Schedule routes
         .route("/schedules/:project_id", get(list_export_schedules_handler))
-        .route("/schedules/:project_id", post(create_export_schedule_handler))
+        .route(
+            "/schedules/:project_id",
+            post(create_export_schedule_handler),
+        )
         .route("/schedules/:id", put(update_export_schedule_handler))
         .route("/schedules/:id", delete(delete_export_schedule_handler))
         .with_state(state)

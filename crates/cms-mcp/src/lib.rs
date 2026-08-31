@@ -3,17 +3,17 @@
 //! This crate provides the Model Context Protocol (MCP) server implementation.
 //! MCP allows AI agents to query CMS's documentation programmatically.
 
+use std::sync::Arc;
+
 use axum::{
     extract::State,
     http::{HeaderMap, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
     Json, Router,
 };
-use cms_biz::mcp::McpService;
-use cms_biz::BizContext;
+use cms_biz::{mcp::McpService, BizContext};
 use cms_entity::mcp::{McpCapabilities, McpRequest, McpResponse, McpToolResult};
 use cms_error::AppError;
-use std::sync::Arc;
 
 /// MCP router
 pub fn mcp_router(ctx: Arc<BizContext>) -> Router {
@@ -42,6 +42,12 @@ async fn execute_tool(
 
 /// MCP server implementation
 pub struct McpServer;
+
+impl Default for McpServer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl McpServer {
     /// Create a new MCP server
@@ -81,12 +87,13 @@ impl McpClient {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use cms_biz::BizContext;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_get_capabilities() {
-        let pool = cms_db::PgPool::connect_lazy(&"postgres://user:pass@localhost/db").unwrap();
+        let pool = cms_db::PgPool::connect_lazy("postgres://user:pass@localhost/db").unwrap();
         let ctx = BizContext::new(pool, Arc::new(cms_access_control::NoopAccessControl));
 
         let capabilities = McpService::get_capabilities(&ctx, None, None, None)

@@ -7,13 +7,13 @@
 //! The queue follows the same trait pattern as storage and search,
 //! allowing the default deployment to run without any external services.
 
+use std::{sync::Arc, time::Duration};
+
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use cms_config::QueueConfig;
 use cms_error::AppError;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use std::time::Duration;
 use uuid::Uuid;
 
 /// Job ID type
@@ -21,8 +21,15 @@ use uuid::Uuid;
 pub struct JobId(pub String);
 
 impl JobId {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self(Uuid::new_v4().to_string())
+    }
+}
+
+impl Default for JobId {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -338,13 +345,15 @@ impl JobQueue for MemoryJobQueue {
                     match queue.consume(&consumer_name).await {
                         Ok(job) => {
                             if let Err(e) = queue.process_job(job).await {
-                                eprintln!("Error processing job: {}", e);
+                                tracing::error!("Error processing job: {}", e);
                             }
                             // Auto-ack for now
                             // In a real implementation, we'd have proper ack/nack
                         }
                         Err(e) => {
-                            eprintln!("Error consuming job: {}", e);
+                            if e.to_string() != "No jobs available" {
+                                tracing::error!("Error consuming job: {}", e);
+                            }
                             tokio::time::sleep(Duration::from_secs(1)).await;
                         }
                     }
@@ -378,7 +387,9 @@ pub struct RedisJobQueue {
 impl RedisJobQueue {
     pub async fn new(redis_url: String, max_retries: usize) -> Result<Self, AppError> {
         let config = deadpool_redis::Config::from_url(redis_url);
-        let pool = config.create_pool(Some(deadpool_redis::Runtime::Tokio1))?;
+        let pool = config
+            .create_pool(Some(deadpool_redis::Runtime::Tokio1))
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         Ok(Self {
             client: pool,
@@ -393,14 +404,19 @@ impl JobQueue for RedisJobQueue {
     async fn enqueue(&self, job: JobEnvelope) -> Result<JobId, AppError> {
         let job_id = job.id.clone();
 
-        let mut conn = self.client.get().await?;
+        let mut conn = self
+            .client
+            .get()
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
         let serialized = serde_json::to_string(&job)?;
 
         redis::cmd("LPUSH")
             .arg("cms:queue:pending")
             .arg(serialized)
             .query_async::<_, String>(&mut conn)
-            .await?;
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         // Store job metadata
         let metadata = serde_json::json!({
@@ -416,7 +432,8 @@ impl JobQueue for RedisJobQueue {
             .arg("payload")
             .arg(serde_json::to_string(&job.payload)?)
             .query_async::<_, String>(&mut conn)
-            .await?;
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         Ok(job_id)
     }
@@ -424,18 +441,23 @@ impl JobQueue for RedisJobQueue {
     async fn enqueue_delayed(&self, job: JobEnvelope, delay: Duration) -> Result<JobId, AppError> {
         let job_id = job.id.clone();
 
-        let mut conn = self.client.get().await?;
+        let mut conn = self
+            .client
+            .get()
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
         let serialized = serde_json::to_string(&job)?;
 
         // Use Redis sorted set for delayed jobs
-        let score = Utc::now().timestamp() as i64 + delay.as_secs() as i64;
+        let score = Utc::now().timestamp() + delay.as_secs() as i64;
 
         redis::cmd("ZADD")
             .arg("cms:queue:delayed")
             .arg(score)
             .arg(serialized)
             .query_async::<_, String>(&mut conn)
-            .await?;
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         // Store job metadata
         let metadata = serde_json::json!({
@@ -452,7 +474,8 @@ impl JobQueue for RedisJobQueue {
             .arg("payload")
             .arg(serde_json::to_string(&job.payload)?)
             .query_async::<_, String>(&mut conn)
-            .await?;
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         Ok(job_id)
     }
@@ -469,14 +492,19 @@ impl JobQueue for RedisJobQueue {
     }
 
     async fn consume(&self, _consumer_name: &str) -> Result<JobEnvelope, AppError> {
-        let mut conn = self.client.get().await?;
+        let mut conn = self
+            .client
+            .get()
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         // Blocking pop from the queue
         let result: Option<String> = redis::cmd("BLPOP")
             .arg("cms:queue:pending")
             .arg(30) // 30 second timeout
             .query_async(&mut conn)
-            .await?;
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         let serialized =
             result.ok_or_else(|| AppError::Storage("No jobs available".to_string()))?;
@@ -494,13 +522,18 @@ impl JobQueue for RedisJobQueue {
             .arg("metadata")
             .arg(metadata.to_string())
             .query_async::<_, String>(&mut conn)
-            .await?;
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         Ok(job)
     }
 
     async fn ack(&self, job_id: &JobId) -> Result<(), AppError> {
-        let mut conn = self.client.get().await?;
+        let mut conn = self
+            .client
+            .get()
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         let metadata = serde_json::json!({
             "status": "completed",
@@ -512,7 +545,8 @@ impl JobQueue for RedisJobQueue {
             .arg("metadata")
             .arg(metadata.to_string())
             .query_async::<_, String>(&mut conn)
-            .await?;
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         // Remove from queue if still there
         redis::cmd("LREM")
@@ -520,20 +554,26 @@ impl JobQueue for RedisJobQueue {
             .arg(0)
             .arg(job_id.0.clone())
             .query_async::<_, String>(&mut conn)
-            .await?;
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         Ok(())
     }
 
     async fn nack(&self, job_id: &JobId, error_message: &str) -> Result<(), AppError> {
-        let mut conn = self.client.get().await?;
+        let mut conn = self
+            .client
+            .get()
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         // Get current retry count
         let retry_count: Option<i32> = redis::cmd("HGET")
             .arg(format!("cms:jobs:{}", job_id.0))
             .arg("retry_count")
             .query_async(&mut conn)
-            .await?;
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         let retry_count = retry_count.unwrap_or(0) + 1;
 
@@ -551,14 +591,16 @@ impl JobQueue for RedisJobQueue {
                 .arg("metadata")
                 .arg(metadata.to_string())
                 .query_async::<_, String>(&mut conn)
-                .await?;
+                .await
+                .map_err(|e| AppError::Storage(e.to_string()))?;
 
             // Move to failed queue
             redis::cmd("LPUSH")
                 .arg("cms:queue:failed")
                 .arg(job_id.0.clone())
                 .query_async::<_, String>(&mut conn)
-                .await?;
+                .await
+                .map_err(|e| AppError::Storage(e.to_string()))?;
         } else {
             // Re-queue
             let metadata = serde_json::json!({
@@ -571,32 +613,40 @@ impl JobQueue for RedisJobQueue {
                 .arg("metadata")
                 .arg(metadata.to_string())
                 .query_async::<_, String>(&mut conn)
-                .await?;
+                .await
+                .map_err(|e| AppError::Storage(e.to_string()))?;
 
             redis::cmd("LPUSH")
                 .arg("cms:queue:pending")
                 .arg(job_id.0.clone())
                 .query_async::<_, String>(&mut conn)
-                .await?;
+                .await
+                .map_err(|e| AppError::Storage(e.to_string()))?;
         }
 
         Ok(())
     }
 
     async fn get_job(&self, job_id: JobId) -> Result<Option<JobEnvelope>, AppError> {
-        let mut conn = self.client.get().await?;
+        let mut conn = self
+            .client
+            .get()
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         let metadata: Option<String> = redis::cmd("HGET")
             .arg(format!("cms:jobs:{}", job_id.0))
             .arg("metadata")
             .query_async(&mut conn)
-            .await?;
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         let payload: Option<String> = redis::cmd("HGET")
             .arg(format!("cms:jobs:{}", job_id.0))
             .arg("payload")
             .query_async(&mut conn)
-            .await?;
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         if let (Some(metadata), Some(payload)) = (metadata, payload) {
             let metadata: serde_json::Value = serde_json::from_str(&metadata)?;
@@ -612,20 +662,23 @@ impl JobQueue for RedisJobQueue {
                     metadata.get("status").cloned().unwrap_or_default(),
                 )?,
                 created_at: chrono::DateTime::parse_from_rfc3339(
-                    &metadata
+                    metadata
                         .get("created_at")
                         .and_then(|v| v.as_str())
                         .unwrap_or(""),
                 )
-                .unwrap_or(Utc::now()),
+                .map(|d| d.with_timezone(&Utc))
+                .unwrap_or_else(|_| Utc::now()),
                 started_at: metadata
                     .get("started_at")
                     .and_then(|v| v.as_str())
-                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok()),
+                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+                    .map(|d| d.with_timezone(&Utc)),
                 completed_at: metadata
                     .get("completed_at")
                     .and_then(|v| v.as_str())
-                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok()),
+                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+                    .map(|d| d.with_timezone(&Utc)),
                 error_message: metadata
                     .get("error_message")
                     .and_then(|v| v.as_str())
@@ -656,7 +709,11 @@ impl JobQueue for RedisJobQueue {
 
     async fn retry_job(&self, job_id: JobId) -> Result<(), AppError> {
         // Reset retry count and re-queue
-        let mut conn = self.client.get().await?;
+        let mut conn = self
+            .client
+            .get()
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         let metadata = serde_json::json!({
             "status": "pending",
@@ -668,24 +725,31 @@ impl JobQueue for RedisJobQueue {
             .arg("metadata")
             .arg(metadata.to_string())
             .query_async::<_, String>(&mut conn)
-            .await?;
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         redis::cmd("LPUSH")
             .arg("cms:queue:pending")
             .arg(job_id.0.clone())
             .query_async::<_, String>(&mut conn)
-            .await?;
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         Ok(())
     }
 
     async fn delete_job(&self, job_id: JobId) -> Result<bool, AppError> {
-        let mut conn = self.client.get().await?;
+        let mut conn = self
+            .client
+            .get()
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         let deleted: i32 = redis::cmd("DEL")
             .arg(format!("cms:jobs:{}", job_id.0))
             .query_async(&mut conn)
-            .await?;
+            .await
+            .map_err(|e| AppError::Storage(e.to_string()))?;
 
         Ok(deleted > 0)
     }

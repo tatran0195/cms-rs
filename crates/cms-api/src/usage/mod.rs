@@ -2,16 +2,18 @@
 //!
 //! This module contains handlers for usage and billing routes.
 
+use std::sync::Arc;
+
 use axum::{
     routing::{get, post, put},
     Router,
 };
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
 
 pub mod handlers;
 
 use handlers::*;
+
 use crate::extractors::UserId;
 
 /// Create the usage router
@@ -26,8 +28,14 @@ pub fn router(state: Arc<AppState>) -> Router {
         // Usage entitlement routes
         .route("/entitlements", get(list_usage_entitlements_handler))
         // Organization usage plan routes
-        .route("/orgs/:org_id/plan", get(get_organization_usage_plan_handler))
-        .route("/orgs/:org_id/plan", put(update_organization_usage_plan_handler))
+        .route(
+            "/orgs/:org_id/plan",
+            get(get_organization_usage_plan_handler),
+        )
+        .route(
+            "/orgs/:org_id/plan",
+            put(update_organization_usage_plan_handler),
+        )
         // Usage tracking
         .route("/track", post(track_usage_event_handler))
         .route("/orgs/:org_id/summary", get(get_usage_summary_handler))

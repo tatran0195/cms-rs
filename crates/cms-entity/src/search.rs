@@ -204,8 +204,12 @@ pub struct SearchOptions {
     pub fts_weight: f32,
 }
 
-fn default_search_limit() -> usize { 10 }
-fn default_fts_weight() -> f32 { 0.5 }
+fn default_search_limit() -> usize {
+    10
+}
+fn default_fts_weight() -> f32 {
+    0.5
+}
 
 impl Default for SearchOptions {
     fn default() -> Self {
@@ -251,5 +255,3 @@ pub struct IndexPageRequest {
     #[serde(default)]
     pub language_id: Option<Id>,
 }
-
-

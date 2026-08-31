@@ -2,13 +2,15 @@
 //!
 //! This module contains business logic for theme management.
 
-use crate::{BizContext, AppError};
-use cms_db::theme::ThemeQueries;
-use cms_db::project::ProjectQueries;
-use cms_entity::theme::{Theme, ThemeResponse, CreateThemeRequest, UpdateThemeRequest};
-use cms_entity::common::{Id, PaginatedResponse, MemberRole};
-use uuid::Uuid;
 use chrono::Utc;
+use cms_db::{project::ProjectQueries, theme::ThemeQueries};
+use cms_entity::{
+    common::{Id, MemberRole, PaginatedResponse},
+    theme::{CreateThemeRequest, Theme, ThemeResponse, UpdateThemeRequest},
+};
+use uuid::Uuid;
+
+use crate::{AppError, BizContext};
 
 /// Theme service
 pub struct ThemeService;
@@ -25,25 +27,24 @@ impl ThemeService {
         let _project = ProjectQueries::get_by_id(&ctx.pool, project_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
-        
+
         // Check if user has admin role in the project
-        ctx.access_control.require_project_role(
-            user_id,
-            project_id,
-            MemberRole::Admin,
-        ).await?;
-        
+        ctx.access_control
+            .require_project_role(user_id, project_id, MemberRole::Admin)
+            .await?;
+
         let theme = ThemeQueries::create(
             &ctx.pool,
             project_id,
             &request.name,
             request.config.clone().unwrap_or_default(),
             request.is_global.unwrap_or(false),
-        ).await?;
-        
+        )
+        .await?;
+
         Ok(theme.into())
     }
-    
+
     /// Get a theme
     pub async fn get_theme(
         ctx: &BizContext,
@@ -53,17 +54,15 @@ impl ThemeService {
         let theme = ThemeQueries::get_by_id(&ctx.pool, theme_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Theme not found".to_string()))?;
-        
+
         // Check if user has access to the project
-        ctx.access_control.require_project_role(
-            user_id,
-            &theme.project_id,
-            MemberRole::Viewer,
-        ).await?;
-        
+        ctx.access_control
+            .require_project_role(user_id, &theme.project_id, MemberRole::Viewer)
+            .await?;
+
         Ok(theme.into())
     }
-    
+
     /// List themes for a project
     pub async fn list_themes(
         ctx: &BizContext,
@@ -73,19 +72,17 @@ impl ThemeService {
         let _project = ProjectQueries::get_by_id(&ctx.pool, project_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
-        
+
         // Check if user has access to the project
-        ctx.access_control.require_project_role(
-            user_id,
-            project_id,
-            MemberRole::Viewer,
-        ).await?;
-        
+        ctx.access_control
+            .require_project_role(user_id, project_id, MemberRole::Viewer)
+            .await?;
+
         let themes = ThemeQueries::get_by_project(&ctx.pool, project_id).await?;
-        
+
         Ok(themes.into_iter().map(|t| t.into()).collect())
     }
-    
+
     /// Update a theme
     pub async fn update_theme(
         ctx: &BizContext,
@@ -96,25 +93,24 @@ impl ThemeService {
         let theme = ThemeQueries::get_by_id(&ctx.pool, theme_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Theme not found".to_string()))?;
-        
+
         // Check if user has admin role in the project
-        ctx.access_control.require_project_role(
-            user_id,
-            &theme.project_id,
-            MemberRole::Admin,
-        ).await?;
-        
+        ctx.access_control
+            .require_project_role(user_id, &theme.project_id, MemberRole::Admin)
+            .await?;
+
         let updated = ThemeQueries::update(
             &ctx.pool,
             theme_id,
             request.name.as_deref(),
             request.config.as_ref(),
             request.is_global,
-        ).await?;
-        
+        )
+        .await?;
+
         Ok(updated.into())
     }
-    
+
     /// Delete a theme
     pub async fn delete_theme(
         ctx: &BizContext,
@@ -124,19 +120,19 @@ impl ThemeService {
         let theme = ThemeQueries::get_by_id(&ctx.pool, theme_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Theme not found".to_string()))?;
-        
+
         // Check if user has admin role in the project
-        ctx.access_control.require_project_role(
-            user_id,
-            &theme.project_id,
-            MemberRole::Admin,
-        ).await?;
-        
+        ctx.access_control
+            .require_project_role(user_id, &theme.project_id, MemberRole::Admin)
+            .await?;
+
         // Cannot delete global theme
         if theme.is_global {
-            return Err(AppError::AccessDenied("Cannot delete global theme".to_string()));
+            return Err(AppError::AccessDenied(
+                "Cannot delete global theme".to_string(),
+            ));
         }
-        
+
         ThemeQueries::delete(&ctx.pool, theme_id).await
     }
 
@@ -149,13 +145,11 @@ impl ThemeService {
         let theme = ThemeQueries::get_by_id(&ctx.pool, theme_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Theme not found".to_string()))?;
-        
-        ctx.access_control.require_project_role(
-            user_id,
-            &theme.project_id,
-            MemberRole::Viewer,
-        ).await?;
-        
+
+        ctx.access_control
+            .require_project_role(user_id, &theme.project_id, MemberRole::Viewer)
+            .await?;
+
         Ok(theme.into())
     }
 

@@ -2,17 +2,23 @@
 //!
 //! This module contains the actual implementation of language handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::language::LanguageService;
-use cms_entity::language::{CreateLanguageRequest, UpdateLanguageRequest, LanguageResponse, ListLanguagesQuery};
-use cms_entity::common::{Id, PaginatedResponse};
+use cms_entity::{
+    common::{Id, PaginatedResponse},
+    language::{
+        CreateLanguageRequest, LanguageResponse, ListLanguagesQuery, UpdateLanguageRequest,
+    },
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// List languages for a project
@@ -44,14 +50,9 @@ pub async fn list_languages_handler(
     auth: AuthExtractor,
     Query(query): Query<ListLanguagesQuery>,
 ) -> Result<Json<PaginatedResponse<LanguageResponse>>, AppError> {
-    let result = LanguageService::list_languages(
-        &state.biz_context,
-        &auth.user.id,
-        query,
-        1,
-        20,
-    ).await?;
-    
+    let result =
+        LanguageService::list_languages(&state.biz_context, &auth.user.id, query, 1, 20).await?;
+
     Ok(Json(result))
 }
 
@@ -80,12 +81,9 @@ pub async fn create_language_handler(
     auth: AuthExtractor,
     Json(request): Json<CreateLanguageRequest>,
 ) -> Result<Json<LanguageResponse>, AppError> {
-    let language = LanguageService::create_language(
-        &state.biz_context,
-        &auth.user.id,
-        request,
-    ).await?;
-    
+    let language =
+        LanguageService::create_language(&state.biz_context, &auth.user.id, request).await?;
+
     Ok(Json(language))
 }
 
@@ -115,12 +113,9 @@ pub async fn get_language_handler(
     auth: AuthExtractor,
     Path(language_id): Path<Id>,
 ) -> Result<Json<LanguageResponse>, AppError> {
-    let language = LanguageService::get_language(
-        &state.biz_context,
-        &auth.user.id,
-        &language_id,
-    ).await?;
-    
+    let language =
+        LanguageService::get_language(&state.biz_context, &auth.user.id, &language_id).await?;
+
     Ok(Json(language))
 }
 
@@ -154,13 +149,10 @@ pub async fn update_language_handler(
     Path(language_id): Path<Id>,
     Json(request): Json<UpdateLanguageRequest>,
 ) -> Result<Json<LanguageResponse>, AppError> {
-    let language = LanguageService::update_language(
-        &state.biz_context,
-        &auth.user.id,
-        &language_id,
-        request,
-    ).await?;
-    
+    let language =
+        LanguageService::update_language(&state.biz_context, &auth.user.id, &language_id, request)
+            .await?;
+
     Ok(Json(language))
 }
 
@@ -191,13 +183,11 @@ pub async fn delete_language_handler(
     auth: AuthExtractor,
     Path(language_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    LanguageService::delete_language(
-        &state.biz_context,
-        &auth.user.id,
-        &language_id,
-    ).await?;
-    
-    Ok(Json(serde_json::json!({"success": true, "id": language_id})))
+    LanguageService::delete_language(&state.biz_context, &auth.user.id, &language_id).await?;
+
+    Ok(Json(
+        serde_json::json!({"success": true, "id": language_id}),
+    ))
 }
 
 /// Set the default language for a project
@@ -230,14 +220,20 @@ pub async fn set_default_language_handler(
     Path(project_id): Path<Id>,
     Json(request): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let language_id: String = serde_json::from_value(request.get("language_id").cloned().unwrap_or(serde_json::Value::Null))
-        .map_err(|_| AppError::BadRequest("Invalid language_id".to_string()))?;
-    
+    let language_id: String = serde_json::from_value(
+        request
+            .get("language_id")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null),
+    )
+    .map_err(|_| AppError::BadRequest("Invalid language_id".to_string()))?;
+
     LanguageService::set_default_language(
         &state.biz_context,
         &auth.user.id,
         cms_entity::language::SetDefaultLanguageRequest { language_id },
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(serde_json::json!({"success": true})))
 }

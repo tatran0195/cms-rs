@@ -8,13 +8,13 @@
 //!
 //! See doc 06 for the worker architecture decision.
 
+use std::sync::Arc;
+
+use app_state::WorkerState;
 use cms_config::Config;
 use cms_error::AppError;
 use cms_queue::{create_job_queue, JobQueue};
-use std::sync::Arc;
 use tracing::{debug, error, info};
-
-use app_state::WorkerState;
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
@@ -144,6 +144,8 @@ async fn process_job(
 
 /// Worker application state
 pub mod app_state {
+    use std::sync::Arc;
+
     use cms_analytics::AnalyticsStore;
     use cms_biz::email::Mailer;
     use cms_config::Config;
@@ -151,7 +153,6 @@ pub mod app_state {
     use cms_error::AppError;
     use cms_search::SearchEngine;
     use cms_storage::Storage;
-    use std::sync::Arc;
 
     #[derive(Clone)]
     pub struct WorkerState {
@@ -169,7 +170,8 @@ pub mod app_state {
             let db = cms_db::create_pool(&config.database.url).await?;
 
             // Initialize storage backend
-            let storage: Arc<dyn Storage> = cms_storage::create_storage(&config.storage)?.into();
+            let storage: Arc<dyn Storage> =
+                cms_storage::create_storage(&config.storage).await?.into();
 
             // Initialize search engine
             let search = cms_search::create_search_engine(&config.search).await?;

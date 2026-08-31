@@ -2,15 +2,20 @@
 //!
 //! This module contains business logic for analytics tracking.
 
-use crate::{BizContext, AppError};
 use cms_db::analytics::AnalyticsEventQueries;
-use cms_entity::analytics::{AnalyticsEvent, AnalyticsEventResponse, AnalyticsQueryRequest, AnalyticsQueryResponse, AnalyticsResultItem};
+use cms_entity::analytics::{
+    AnalyticsEvent, AnalyticsEventResponse, AnalyticsQueryRequest, AnalyticsQueryResponse,
+    AnalyticsResultItem,
+};
+
+use crate::{AppError, BizContext};
 
 /// Analytics service
 pub struct AnalyticsService;
 
 impl AnalyticsService {
     /// Record an analytics event
+    #[allow(clippy::too_many_arguments)]
     pub async fn record_event(
         ctx: &BizContext,
         org_id: Option<&str>,
@@ -22,19 +27,13 @@ impl AnalyticsService {
         user_agent: Option<&str>,
     ) -> Result<AnalyticsEventResponse, AppError> {
         let event = AnalyticsEventQueries::create(
-            &ctx.pool,
-            org_id,
-            project_id,
-            user_id,
-            event_type,
-            metadata,
-            ip_address,
-            user_agent,
-        ).await?;
-        
+            &ctx.pool, org_id, project_id, user_id, event_type, metadata, ip_address, user_agent,
+        )
+        .await?;
+
         Ok(event.into())
     }
-    
+
     /// Query analytics events
     pub async fn query_events(
         ctx: &BizContext,
@@ -45,8 +44,10 @@ impl AnalyticsService {
         page_size: u64,
     ) -> Result<AnalyticsQueryResponse, AppError> {
         // Check if user has admin role in the organization
-        ctx.access_control.require_org_admin(user_id, org_id).await?;
-        
+        ctx.access_control
+            .require_org_admin(user_id, org_id)
+            .await?;
+
         let limit = page_size as i64;
         let offset = ((page.saturating_sub(1)) as i64) * limit;
 
@@ -59,11 +60,13 @@ impl AnalyticsService {
             request.end_date,
             limit,
             offset,
-        ).await?;
+        )
+        .await?;
 
-        let event_responses: Vec<AnalyticsEventResponse> = events.into_iter().map(|e| e.into()).collect();
+        let event_responses: Vec<AnalyticsEventResponse> =
+            events.into_iter().map(|e| e.into()).collect();
         let total = event_responses.len() as i64;
-        
+
         Ok(AnalyticsQueryResponse {
             query: request,
             results: vec![],
@@ -73,7 +76,7 @@ impl AnalyticsService {
             page_size: page_size as i64,
         })
     }
-    
+
     /// Get analytics summary
     pub async fn get_summary(
         ctx: &BizContext,
@@ -83,8 +86,10 @@ impl AnalyticsService {
         end_date: chrono::DateTime<chrono::Utc>,
     ) -> Result<serde_json::Value, AppError> {
         // Check if user has admin role in the organization
-        ctx.access_control.require_org_admin(user_id, org_id).await?;
-        
+        ctx.access_control
+            .require_org_admin(user_id, org_id)
+            .await?;
+
         Ok(serde_json::json!({
             "total_events": 0,
             "unique_users": 0,
@@ -107,7 +112,8 @@ impl AnalyticsService {
             request.metadata,
             request.ip_address.as_deref(),
             request.user_agent.as_deref(),
-        ).await
+        )
+        .await
     }
 
     /// List analytics events
@@ -171,9 +177,7 @@ impl AnalyticsService {
     }
 
     /// Get system stats
-    pub async fn get_system_stats(
-        _ctx: &BizContext,
-    ) -> Result<serde_json::Value, AppError> {
+    pub async fn get_system_stats(_ctx: &BizContext) -> Result<serde_json::Value, AppError> {
         Ok(serde_json::json!({ "users": 0, "organizations": 0, "projects": 0 }))
     }
 }
@@ -183,7 +187,9 @@ pub async fn process_analytics_job(
     pool: &cms_db::PgPool,
     payload: &serde_json::Value,
 ) -> Result<(), AppError> {
-    let event_type = payload.get("event_type").and_then(|v| v.as_str())
+    let event_type = payload
+        .get("event_type")
+        .and_then(|v| v.as_str())
         .ok_or_else(|| AppError::InvalidInput("Missing event_type".to_string()))?;
     let org_id = payload.get("org_id").and_then(|v| v.as_str());
     let project_id = payload.get("project_id").and_then(|v| v.as_str());
@@ -191,17 +197,11 @@ pub async fn process_analytics_job(
     let metadata = payload.get("metadata").cloned().unwrap_or_default();
     let ip_address = payload.get("ip_address").and_then(|v| v.as_str());
     let user_agent = payload.get("user_agent").and_then(|v| v.as_str());
-    
+
     AnalyticsEventQueries::create(
-        pool,
-        org_id,
-        project_id,
-        user_id,
-        event_type,
-        metadata,
-        ip_address,
-        user_agent,
-    ).await?;
-    
+        pool, org_id, project_id, user_id, event_type, metadata, ip_address, user_agent,
+    )
+    .await?;
+
     Ok(())
 }

@@ -3,20 +3,27 @@
 //! This module contains business logic for Git integration,
 //! including repository connections, sync operations, and conflict resolution.
 
-use crate::{AppError, BizContext};
 use chrono::Utc;
-use cms_db::git::{
-    GitAuditEventQueries, GitConflictQueries, GitConnectionQueries, GitFileStateQueries,
-    GitPreviewQueries, GitPullRequestQueries, GitSyncOperationQueries, GitWebhookDeliveryQueries,
+use cms_db::{
+    git::{
+        GitAuditEventQueries, GitConflictQueries, GitConnectionQueries, GitFileStateQueries,
+        GitPreviewQueries, GitPullRequestQueries, GitSyncOperationQueries,
+        GitWebhookDeliveryQueries,
+    },
+    project::ProjectQueries,
 };
-use cms_db::project::ProjectQueries;
-use cms_entity::common::{Id, MemberRole, PaginatedResponse};
-use cms_entity::git::{
-    CreateGitConnectionRequest, GitAuditEvent, GitConflict, GitConnection, GitConnectionResponse,
-    GitFileState, GitPreview, GitPullRequest, GitSyncOperation, GitSyncOperationResponse,
-    GitSyncOperationStatus, GitSyncOperationType, GitWebhookDelivery, UpdateGitConnectionRequest,
+use cms_entity::{
+    common::{Id, MemberRole, PaginatedResponse},
+    git::{
+        CreateGitConnectionRequest, GitAuditEvent, GitConflict, GitConnection,
+        GitConnectionResponse, GitFileState, GitPreview, GitPullRequest, GitSyncOperation,
+        GitSyncOperationResponse, GitSyncOperationStatus, GitSyncOperationType, GitWebhookDelivery,
+        UpdateGitConnectionRequest,
+    },
 };
 use uuid::Uuid;
+
+use crate::{AppError, BizContext};
 
 /// Git service
 pub struct GitService;

@@ -1,10 +1,12 @@
 //! Organization database queries
 
 use chrono::{DateTime, Utc};
-use cms_entity::org::{Organization, OrganizationResponse, Member, MemberResponse};
-use cms_entity::common::MemberRole;
+use cms_entity::{
+    common::MemberRole,
+    org::{Member, MemberResponse, Organization, OrganizationResponse},
+};
 use cms_error::AppError;
-use sqlx::{FromRow, PgPool, QueryBuilder, Postgres, Row};
+use sqlx::{FromRow, PgPool, Postgres, QueryBuilder, Row};
 use uuid::Uuid;
 
 /// Database representation of an organization row
@@ -90,40 +92,41 @@ pub struct OrganizationQueries;
 impl OrganizationQueries {
     /// Get an organization by ID
     pub async fn get_by_id(pool: &PgPool, org_id: &str) -> Result<Option<Organization>, AppError> {
-        let row = sqlx::query_as::<_, OrganizationRow>(
-            "SELECT * FROM \"Organization\" WHERE id = $1"
-        )
-        .bind(org_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row =
+            sqlx::query_as::<_, OrganizationRow>("SELECT * FROM \"Organization\" WHERE id = $1")
+                .bind(org_id)
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get an organization by slug
     pub async fn get_by_slug(pool: &PgPool, slug: &str) -> Result<Option<Organization>, AppError> {
-        let row = sqlx::query_as::<_, OrganizationRow>(
-            "SELECT * FROM \"Organization\" WHERE slug = $1"
-        )
-        .bind(slug)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row =
+            sqlx::query_as::<_, OrganizationRow>("SELECT * FROM \"Organization\" WHERE slug = $1")
+                .bind(slug)
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get organizations by IDs
-    pub async fn get_by_ids(pool: &PgPool, org_ids: &[&str]) -> Result<Vec<Organization>, AppError> {
+    pub async fn get_by_ids(
+        pool: &PgPool,
+        org_ids: &[&str],
+    ) -> Result<Vec<Organization>, AppError> {
         let rows = sqlx::query_as::<_, OrganizationRow>(
-            "SELECT * FROM \"Organization\" WHERE id = ANY($1)"
+            "SELECT * FROM \"Organization\" WHERE id = ANY($1)",
         )
         .bind(org_ids)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 
@@ -133,7 +136,9 @@ impl OrganizationQueries {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<Organization>, AppError> {
-        let mut qb = QueryBuilder::<Postgres>::new("SELECT * FROM \"Organization\" ORDER BY created_at DESC");
+        let mut qb = QueryBuilder::<Postgres>::new(
+            "SELECT * FROM \"Organization\" ORDER BY created_at DESC",
+        );
         if let Some(l) = limit {
             qb.push(" LIMIT ");
             qb.push_bind(l);
@@ -142,11 +147,14 @@ impl OrganizationQueries {
             qb.push(" OFFSET ");
             qb.push_bind(o);
         }
-        let rows = qb.build_query_as::<OrganizationRow>().fetch_all(pool).await
+        let rows = qb
+            .build_query_as::<OrganizationRow>()
+            .fetch_all(pool)
+            .await
             .map_err(|e| AppError::Database(e.into()))?;
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     /// Create a new organization
     pub async fn create(
         pool: &PgPool,
@@ -156,13 +164,13 @@ impl OrganizationQueries {
     ) -> Result<Organization, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, OrganizationRow>(
             r#"
             INSERT INTO "Organization" (id, name, slug, description, logo, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(name)
@@ -180,10 +188,10 @@ impl OrganizationQueries {
                 AppError::Database(e.into())
             }
         })?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update an organization
     pub async fn update(
         pool: &PgPool,
@@ -192,10 +200,9 @@ impl OrganizationQueries {
         description: Option<&str>,
         logo: Option<&str>,
     ) -> Result<Organization, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"Organization\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE \"Organization\" SET ");
+
         let mut has_updates = false;
         if let Some(name) = name {
             query_builder.push("name = ");
@@ -218,16 +225,16 @@ impl OrganizationQueries {
             query_builder.push_bind(logo);
             has_updates = true;
         }
-        
+
         if has_updates {
             query_builder.push(", updated_at = ");
             query_builder.push_bind(Utc::now());
         }
-        
+
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(org_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<OrganizationRow>()
             .fetch_one(pool)
@@ -239,10 +246,10 @@ impl OrganizationQueries {
                     AppError::Database(e.into())
                 }
             })?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Delete an organization
     pub async fn delete(pool: &PgPool, org_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"Organization\" WHERE id = $1")
@@ -250,33 +257,32 @@ impl OrganizationQueries {
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
-    
+
     /// Check if a slug is available
     pub async fn is_slug_available(
         pool: &PgPool,
         slug: &str,
         exclude_org_id: Option<&str>,
     ) -> Result<bool, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT COUNT(*) FROM \"Organization\" WHERE slug = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT COUNT(*) FROM \"Organization\" WHERE slug = ");
         query_builder.push_bind(slug);
-        
+
         if let Some(exclude_id) = exclude_org_id {
             query_builder.push(" AND id != ");
             query_builder.push_bind(exclude_id);
         }
-        
+
         let count: i64 = query_builder
             .build()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?
             .get::<i64, _>(0);
-        
+
         Ok(count == 0)
     }
 }
@@ -287,17 +293,15 @@ pub struct MemberQueries;
 impl MemberQueries {
     /// Get a member by ID
     pub async fn get_by_id(pool: &PgPool, member_id: &str) -> Result<Option<Member>, AppError> {
-        let row = sqlx::query_as::<_, MemberRow>(
-            "SELECT * FROM \"Member\" WHERE id = $1"
-        )
-        .bind(member_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row = sqlx::query_as::<_, MemberRow>("SELECT * FROM \"Member\" WHERE id = $1")
+            .bind(member_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get a member by user and organization
     pub async fn get_by_user_and_org(
         pool: &PgPool,
@@ -305,30 +309,28 @@ impl MemberQueries {
         org_id: &str,
     ) -> Result<Option<Member>, AppError> {
         let row = sqlx::query_as::<_, MemberRow>(
-            "SELECT * FROM \"Member\" WHERE user_id = $1 AND organization_id = $2"
+            "SELECT * FROM \"Member\" WHERE user_id = $1 AND organization_id = $2",
         )
         .bind(user_id)
         .bind(org_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get members by user
     pub async fn get_by_user(pool: &PgPool, user_id: &str) -> Result<Vec<Member>, AppError> {
-        let rows = sqlx::query_as::<_, MemberRow>(
-            "SELECT * FROM \"Member\" WHERE user_id = $1"
-        )
-        .bind(user_id)
-        .fetch_all(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let rows = sqlx::query_as::<_, MemberRow>("SELECT * FROM \"Member\" WHERE user_id = $1")
+            .bind(user_id)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     /// Get members by organization
     pub async fn get_by_organization(
         pool: &PgPool,
@@ -339,15 +341,16 @@ impl MemberQueries {
         offset: Option<i64>,
     ) -> Result<Vec<Member>, AppError> {
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT m.id, m.user_id, m.organization_id, m.role, m.created_at, m.updated_at FROM \"Member\" m JOIN \"User\" u ON m.user_id = u.id WHERE m.organization_id = "
+            "SELECT m.id, m.user_id, m.organization_id, m.role, m.created_at, m.updated_at FROM \
+             \"Member\" m JOIN \"User\" u ON m.user_id = u.id WHERE m.organization_id = ",
         );
         query_builder.push_bind(org_id);
-        
+
         if let Some(role) = role {
             query_builder.push(" AND m.role = ");
             query_builder.push_bind(role);
         }
-        
+
         if let Some(search) = search {
             query_builder.push(" AND (u.email ILIKE ");
             query_builder.push_bind(format!("%{}%", search));
@@ -355,28 +358,28 @@ impl MemberQueries {
             query_builder.push_bind(format!("%{}%", search));
             query_builder.push(")");
         }
-        
+
         query_builder.push(" ORDER BY m.created_at DESC");
-        
+
         if let Some(limit) = limit {
             query_builder.push(" LIMIT ");
             query_builder.push_bind(limit);
         }
-        
+
         if let Some(offset) = offset {
             query_builder.push(" OFFSET ");
             query_builder.push_bind(offset);
         }
-        
+
         let rows = query_builder
             .build_query_as::<MemberRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     /// Count members by organization
     pub async fn count_by_organization(
         pool: &PgPool,
@@ -385,15 +388,16 @@ impl MemberQueries {
         search: Option<&str>,
     ) -> Result<i64, AppError> {
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT COUNT(*) FROM \"Member\" m JOIN \"User\" u ON m.user_id = u.id WHERE m.organization_id = "
+            "SELECT COUNT(*) FROM \"Member\" m JOIN \"User\" u ON m.user_id = u.id WHERE \
+             m.organization_id = ",
         );
         query_builder.push_bind(org_id);
-        
+
         if let Some(role) = role {
             query_builder.push(" AND m.role = ");
             query_builder.push_bind(role);
         }
-        
+
         if let Some(search) = search {
             query_builder.push(" AND (u.email ILIKE ");
             query_builder.push_bind(format!("%{}%", search));
@@ -401,17 +405,17 @@ impl MemberQueries {
             query_builder.push_bind(format!("%{}%", search));
             query_builder.push(")");
         }
-        
+
         let count: i64 = query_builder
             .build()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?
             .get::<i64, _>(0);
-        
+
         Ok(count)
     }
-    
+
     /// Create a new member
     pub async fn create(
         pool: &PgPool,
@@ -421,13 +425,13 @@ impl MemberQueries {
     ) -> Result<Member, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, MemberRow>(
             r#"
             INSERT INTO "Member" (id, user_id, organization_id, role, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(user_id)
@@ -444,10 +448,10 @@ impl MemberQueries {
                 AppError::Database(e.into())
             }
         })?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update a member's role
     pub async fn update_role(
         pool: &PgPool,
@@ -455,7 +459,7 @@ impl MemberQueries {
         role: MemberRole,
     ) -> Result<Member, AppError> {
         let row = sqlx::query_as::<_, MemberRow>(
-            "UPDATE \"Member\" SET role = $1, updated_at = $2 WHERE id = $3 RETURNING *"
+            "UPDATE \"Member\" SET role = $1, updated_at = $2 WHERE id = $3 RETURNING *",
         )
         .bind(role)
         .bind(Utc::now())
@@ -463,10 +467,10 @@ impl MemberQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Delete a member
     pub async fn delete(pool: &PgPool, member_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"Member\" WHERE id = $1")
@@ -474,7 +478,7 @@ impl MemberQueries {
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }
@@ -550,13 +554,12 @@ impl InvitationQueries {
         pool: &PgPool,
         token: &str,
     ) -> Result<Option<cms_entity::org::Invitation>, AppError> {
-        let row = sqlx::query_as::<_, InvitationRow>(
-            "SELECT * FROM \"Invitation\" WHERE token = $1"
-        )
-        .bind(token)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
+        let row =
+            sqlx::query_as::<_, InvitationRow>("SELECT * FROM \"Invitation\" WHERE token = $1")
+                .bind(token)
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
 
         Ok(row.map(|r| r.into()))
     }
@@ -567,14 +570,15 @@ impl InvitationQueries {
         org_id: &str,
     ) -> Result<Vec<cms_entity::org::InvitationResponse>, AppError> {
         let rows = sqlx::query_as::<_, InvitationRow>(
-            "SELECT * FROM \"Invitation\" WHERE organization_id = $1 ORDER BY created_at DESC"
+            "SELECT * FROM \"Invitation\" WHERE organization_id = $1 ORDER BY created_at DESC",
         )
         .bind(org_id)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
 
-        Ok(rows.into_iter()
+        Ok(rows
+            .into_iter()
             .map(|r| cms_entity::org::Invitation::from(r).into())
             .collect())
     }
@@ -611,7 +615,8 @@ impl InvitationQueries {
         let offset = (page.unwrap_or(1) - 1) * limit;
 
         let rows = sqlx::query_as::<_, InvitationRow>(
-            "SELECT * FROM \"Invitation\" WHERE organization_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3"
+            "SELECT * FROM \"Invitation\" WHERE organization_id = $1 ORDER BY created_at DESC \
+             LIMIT $2 OFFSET $3",
         )
         .bind(org_id)
         .bind(limit)
@@ -620,21 +625,21 @@ impl InvitationQueries {
         .await
         .map_err(|e| AppError::Database(e.into()))?;
 
-        Ok(rows.into_iter()
+        Ok(rows
+            .into_iter()
             .map(|r| cms_entity::org::Invitation::from(r).into())
             .collect())
     }
 
     /// Count invitations for an organization
     pub async fn count_by_organization(pool: &PgPool, org_id: &str) -> Result<i64, AppError> {
-        let row = sqlx::query("SELECT COUNT(*) as count FROM \"Invitation\" WHERE organization_id = $1")
-            .bind(org_id)
-            .fetch_one(pool)
-            .await
-            .map_err(|e| AppError::Database(e.into()))?;
+        let row =
+            sqlx::query("SELECT COUNT(*) as count FROM \"Invitation\" WHERE organization_id = $1")
+                .bind(org_id)
+                .fetch_one(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
 
         Ok(row.get::<i64, _>("count"))
     }
 }
-
-

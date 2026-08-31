@@ -2,17 +2,24 @@
 //!
 //! This module contains the actual implementation of Git-related handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::git::GitService;
-use cms_entity::git::{CreateGitConnectionRequest, UpdateGitConnectionRequest, GitConnectionResponse, GitSyncOperationResponse, ListGitSyncOperationsQuery};
-use cms_entity::common::{Id, PaginatedResponse};
+use cms_entity::{
+    common::{Id, PaginatedResponse},
+    git::{
+        CreateGitConnectionRequest, GitConnectionResponse, GitSyncOperationResponse,
+        ListGitSyncOperationsQuery, UpdateGitConnectionRequest,
+    },
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// Create a new Git connection
@@ -41,13 +48,10 @@ pub async fn create_git_connection_handler(
     Json(request): Json<CreateGitConnectionRequest>,
 ) -> Result<Json<GitConnectionResponse>, AppError> {
     let project_id = request.project_id.clone();
-    let connection = GitService::create_connection(
-        &state.biz_context,
-        &auth.user.id,
-        &project_id,
-        request,
-    ).await?;
-    
+    let connection =
+        GitService::create_connection(&state.biz_context, &auth.user.id, &project_id, request)
+            .await?;
+
     Ok(Json(connection))
 }
 
@@ -77,12 +81,10 @@ pub async fn get_git_connection_handler(
     auth: AuthExtractor,
     Path(connection_id): Path<Id>,
 ) -> Result<Json<GitConnectionResponse>, AppError> {
-    let connection = GitService::get_connection(
-        &state.biz_context,
-        &auth.user.id,
-        &connection_id,
-    ).await?.ok_or_else(|| AppError::NotFound("Git connection not found".to_string()))?;
-    
+    let connection = GitService::get_connection(&state.biz_context, &auth.user.id, &connection_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Git connection not found".to_string()))?;
+
     Ok(Json(connection))
 }
 
@@ -112,12 +114,9 @@ pub async fn list_git_connections_handler(
     auth: AuthExtractor,
     Path(project_id): Path<Id>,
 ) -> Result<Json<Vec<GitConnectionResponse>>, AppError> {
-    let connections = GitService::list_connections(
-        &state.biz_context,
-        &auth.user.id,
-        &project_id,
-    ).await?;
-    
+    let connections =
+        GitService::list_connections(&state.biz_context, &auth.user.id, &project_id).await?;
+
     Ok(Json(connections))
 }
 
@@ -151,13 +150,10 @@ pub async fn update_git_connection_handler(
     Path(connection_id): Path<Id>,
     Json(request): Json<UpdateGitConnectionRequest>,
 ) -> Result<Json<GitConnectionResponse>, AppError> {
-    let connection = GitService::update_connection(
-        &state.biz_context,
-        &auth.user.id,
-        &connection_id,
-        request,
-    ).await?;
-    
+    let connection =
+        GitService::update_connection(&state.biz_context, &auth.user.id, &connection_id, request)
+            .await?;
+
     Ok(Json(connection))
 }
 
@@ -188,13 +184,11 @@ pub async fn delete_git_connection_handler(
     auth: AuthExtractor,
     Path(connection_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    GitService::delete_connection(
-        &state.biz_context,
-        &auth.user.id,
-        &connection_id,
-    ).await?;
-    
-    Ok(Json(serde_json::json!({"success": true, "message": "Git connection deleted"})))
+    GitService::delete_connection(&state.biz_context, &auth.user.id, &connection_id).await?;
+
+    Ok(Json(
+        serde_json::json!({"success": true, "message": "Git connection deleted"}),
+    ))
 }
 
 /// Trigger a Git sync operation
@@ -229,8 +223,9 @@ pub async fn trigger_git_sync_handler(
         &auth.user.id,
         &connection_id,
         cms_entity::git::GitSyncOperationType::Manual,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(operation))
 }
 
@@ -270,8 +265,9 @@ pub async fn list_git_sync_operations_handler(
         &connection_id,
         query.limit.unwrap_or(1) as u64,
         query.offset.unwrap_or(20) as u64,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(result))
 }
 
@@ -301,12 +297,9 @@ pub async fn get_git_sync_operation_handler(
     auth: AuthExtractor,
     Path(operation_id): Path<Id>,
 ) -> Result<Json<GitSyncOperationResponse>, AppError> {
-    let operation = GitService::get_sync_operation(
-        &state.biz_context,
-        &auth.user.id,
-        &operation_id,
-    ).await?;
-    
+    let operation =
+        GitService::get_sync_operation(&state.biz_context, &auth.user.id, &operation_id).await?;
+
     Ok(Json(operation))
 }
 
@@ -336,11 +329,8 @@ pub async fn get_git_sync_status_handler(
     auth: AuthExtractor,
     Path(connection_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let status = GitService::get_sync_status(
-        &state.biz_context,
-        &auth.user.id,
-        &connection_id,
-    ).await?;
-    
+    let status =
+        GitService::get_sync_status(&state.biz_context, &auth.user.id, &connection_id).await?;
+
     Ok(Json(status))
 }

@@ -21,8 +21,12 @@ pub struct PaginationRequest {
     pub page_size: u64,
 }
 
-fn default_page() -> u64 { 1 }
-fn default_page_size() -> u64 { 20 }
+fn default_page() -> u64 {
+    1
+}
+fn default_page_size() -> u64 {
+    20
+}
 
 /// Paginated response wrapper
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,11 +41,11 @@ pub struct PaginatedResponse<T> {
 impl<T> PaginatedResponse<T> {
     pub fn new(data: Vec<T>, total: u64, page: u64, page_size: u64) -> Self {
         let total_pages = if page_size > 0 {
-            (total + page_size - 1) / page_size
+            total.div_ceil(page_size)
         } else {
             0
         };
-        
+
         Self {
             data,
             total,
@@ -53,17 +57,12 @@ impl<T> PaginatedResponse<T> {
 }
 
 /// Sort order
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum SortOrder {
+    #[default]
     Asc,
     Desc,
-}
-
-impl Default for SortOrder {
-    fn default() -> Self {
-        SortOrder::Asc
-    }
 }
 
 /// Sort direction for queries
@@ -123,7 +122,7 @@ impl SuccessResponse {
             message: None,
         }
     }
-    
+
     pub fn with_message(message: impl Into<String>) -> Self {
         Self {
             success: true,
@@ -133,7 +132,9 @@ impl SuccessResponse {
 }
 
 /// Member role in an organization
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, sqlx::Type)]
+#[derive(
+    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, sqlx::Type, Default,
+)]
 #[serde(rename_all = "lowercase")]
 #[sqlx(type_name = "member_role", rename_all = "lowercase")]
 pub enum MemberRole {
@@ -142,31 +143,20 @@ pub enum MemberRole {
     Viewer,
     /// Editor = full content edit (alias for Member level in access checks)
     Editor,
+    #[default]
     Member,
     Admin,
     Owner,
 }
 
-
-impl Default for MemberRole {
-    fn default() -> Self {
-        MemberRole::Member
-    }
-}
-
 /// Project role
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum ProjectRole {
     Admin,
     Editor,
+    #[default]
     Viewer,
-}
-
-impl Default for ProjectRole {
-    fn default() -> Self {
-        ProjectRole::Viewer
-    }
 }
 
 /// Entity audit information
@@ -223,24 +213,24 @@ pub struct FilterCondition {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_pagination() {
         let items: Vec<i32> = (0..100).collect();
         let response = PaginatedResponse::new(items, 100, 1, 10);
-        
+
         assert_eq!(response.total, 100);
         assert_eq!(response.page, 1);
         assert_eq!(response.page_size, 10);
         assert_eq!(response.total_pages, 10);
     }
-    
+
     #[test]
     fn test_member_role_serialization() {
         let role = MemberRole::Owner;
         let json = serde_json::to_string(&role).unwrap();
         assert_eq!(json, "\"owner\"");
-        
+
         let deserialized: MemberRole = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized, MemberRole::Owner);
     }

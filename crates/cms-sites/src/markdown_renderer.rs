@@ -2,11 +2,11 @@
 //!
 //! This module provides Markdown to HTML rendering for published pages.
 
-use ammonia::Builder;
-use cms_entity::page::Page;
-use cms_entity::project::Project;
-use pulldown_cmark::{html, Options, Parser};
 use std::collections::HashSet;
+
+use ammonia::Builder;
+use cms_entity::{page::Page, project::Project};
+use pulldown_cmark::{html, Options, Parser};
 
 /// Markdown renderer configuration
 #[derive(Debug, Clone)]
@@ -225,7 +225,6 @@ impl MarkdownRenderer {
         let mut a_attrs = HashSet::new();
         a_attrs.insert("href");
         a_attrs.insert("title");
-        a_attrs.insert("rel");
         a_attrs.insert("target");
         attrs.insert("a", a_attrs);
 
@@ -288,7 +287,9 @@ impl MarkdownRenderer {
         let mut tags = HashSet::new();
         tags.insert("script");
         tags.insert("style");
-        tags.insert("iframe");
+        if !self.config.enable_syntax_highlighting {
+            tags.insert("iframe");
+        }
         tags.insert("object");
         tags.insert("embed");
         tags
@@ -422,11 +423,9 @@ impl MarkdownRenderer {
                 pulldown_cmark::Event::End(pulldown_cmark::TagEnd::Heading(_)) => {
                     toc.push_str("</li>\n");
                 }
-                pulldown_cmark::Event::End(pulldown_cmark::TagEnd::Paragraph) => {
-                    if in_list {
-                        toc.push_str("</ul>\n");
-                        in_list = false;
-                    }
+                pulldown_cmark::Event::End(pulldown_cmark::TagEnd::Paragraph) if in_list => {
+                    toc.push_str("</ul>\n");
+                    in_list = false;
                 }
                 _ => {}
             }

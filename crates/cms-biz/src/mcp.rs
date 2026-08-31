@@ -3,12 +3,13 @@
 //! This module contains business logic for the Model Context Protocol (MCP) server.
 //! MCP allows AI agents to query CMS's documentation programmatically.
 
+use cms_db::{mcp::McpAuditEventQueries, page::PageQueries, project::ProjectQueries};
+use cms_entity::{
+    common::MemberRole,
+    mcp::{McpCapabilities, McpPrompt, McpRequest, McpResource, McpResponse, McpTool},
+};
+
 use crate::{AppError, BizContext};
-use cms_db::mcp::McpAuditEventQueries;
-use cms_db::page::PageQueries;
-use cms_db::project::ProjectQueries;
-use cms_entity::common::MemberRole;
-use cms_entity::mcp::{McpCapabilities, McpPrompt, McpRequest, McpResource, McpResponse, McpTool};
 
 /// MCP service
 pub struct McpService;
@@ -285,6 +286,7 @@ impl McpService {
     }
 
     /// List audit events
+    #[allow(clippy::too_many_arguments)]
     pub async fn list_audit_events(
         ctx: &BizContext,
         _user_id: &str,

@@ -4,12 +4,14 @@
 //! - Postgres as default backend
 //! - ClickHouse as optional backend
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use cms_config::AnalyticsConfig;
 use cms_error::AppError;
-use std::sync::Arc;
 
 /// Analytics store trait
+#[allow(clippy::too_many_arguments)]
 #[async_trait]
 pub trait AnalyticsStore: Send + Sync {
     /// Record an analytics event
@@ -88,6 +90,12 @@ pub struct PostgresAnalyticsStore;
 impl PostgresAnalyticsStore {
     pub fn new() -> Self {
         Self
+    }
+}
+
+impl Default for PostgresAnalyticsStore {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

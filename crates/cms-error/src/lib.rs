@@ -180,6 +180,9 @@ pub enum AppError {
     ProviderError(String),
 
     // === Internal Errors ===
+    #[error("Serialization error: {0}")]
+    Serialization(#[from] serde_json::Error),
+
     #[error("Internal server error")]
     Internal(#[from] anyhow::Error),
 
@@ -286,6 +289,7 @@ impl AppError {
             AppError::ProviderError(_) => StatusCode::INTERNAL_SERVER_ERROR,
 
             // Internal Errors
+            AppError::Serialization(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
 
             // Custom Error
@@ -353,6 +357,7 @@ impl AppError {
 
             AppError::ProviderError(_) => "provider:error".to_string(),
 
+            AppError::Serialization(_) => "internal:serialization_error".to_string(),
             AppError::Internal(_) => "internal:error".to_string(),
 
             AppError::Custom { .. } => "internal:error".to_string(),
@@ -381,6 +386,7 @@ impl AppError {
             AppError::InvalidToken(details) => Some(json!({ "details": details })),
             AppError::InsufficientRole(details) => Some(json!({ "details": details })),
             AppError::AccessDenied(details) => Some(json!({ "details": details })),
+            AppError::Serialization(err) => Some(json!({ "details": err.to_string() })),
             AppError::Custom { message, .. } => Some(json!({ "message": message })),
             _ => None,
         }

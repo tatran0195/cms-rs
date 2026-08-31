@@ -80,7 +80,6 @@ pub struct UpdateDeploymentRequest {
     pub branch_id: Option<Id>,
 }
 
-
 /// List deployments query
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ListDeploymentsQuery {
@@ -93,5 +92,3 @@ pub struct ListDeploymentsQuery {
     #[serde(default)]
     pub offset: Option<i64>,
 }
-
-

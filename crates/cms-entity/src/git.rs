@@ -32,7 +32,6 @@ pub enum GitSyncOperationType {
     MANUAL,
 }
 
-
 /// Git sync operation status
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "GitSyncOperationStatus", rename_all = "lowercase")]

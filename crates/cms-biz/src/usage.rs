@@ -3,20 +3,22 @@
 //! This module contains business logic for usage tracking, metering,
 //! and entitlement management.
 
-use crate::{BizContext, AppError};
-use cms_db::usage::{
-    UsagePlanQueries, UsageMeterQueries, UsagePlanMeterQueries, 
-    UsageEntitlementQueries, OrganizationUsagePlanQueries, AnalyticsEventQueries, 
-    UsageCheckpointQueries,
-};
-use cms_entity::usage::{
-    UsagePlan, UsagePlanResponse, UsageMeter, UsageMeterResponse, 
-    UsagePlanMeter, UsagePlanMeterResponse, UsageEntitlement, UsageEntitlementResponse,
-    OrganizationUsagePlan, OrganizationUsagePlanResponse,
-};
-use cms_entity::common::{Id, PaginatedResponse, MemberRole};
-use uuid::Uuid;
 use chrono::Utc;
+use cms_db::usage::{
+    AnalyticsEventQueries, OrganizationUsagePlanQueries, UsageCheckpointQueries,
+    UsageEntitlementQueries, UsageMeterQueries, UsagePlanMeterQueries, UsagePlanQueries,
+};
+use cms_entity::{
+    common::{Id, MemberRole, PaginatedResponse},
+    usage::{
+        OrganizationUsagePlan, OrganizationUsagePlanResponse, UsageEntitlement,
+        UsageEntitlementResponse, UsageMeter, UsageMeterResponse, UsagePlan, UsagePlanMeter,
+        UsagePlanMeterResponse, UsagePlanResponse,
+    },
+};
+use uuid::Uuid;
+
+use crate::{AppError, BizContext};
 
 /// Usage service
 pub struct UsageService;
@@ -33,18 +35,13 @@ impl UsageService {
     ) -> Result<UsagePlanResponse, AppError> {
         // Check if user has admin permissions
         // (This would need to be implemented)
-        
-        let plan = UsagePlanQueries::create(
-            &ctx.pool,
-            name,
-            description,
-            price,
-            billing_period,
-        ).await?;
-        
+
+        let plan =
+            UsagePlanQueries::create(&ctx.pool, name, description, price, billing_period).await?;
+
         Ok(plan.into())
     }
-    
+
     /// Get a usage plan
     pub async fn get_usage_plan(
         ctx: &BizContext,
@@ -53,24 +50,21 @@ impl UsageService {
         let plan = UsagePlanQueries::get_by_id(&ctx.pool, plan_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Usage plan not found".to_string()))?;
-        
+
         Ok(plan.into())
     }
-    
+
     /// List usage plans
     pub async fn list_usage_plans(
         ctx: &BizContext,
         page: u64,
         page_size: u64,
     ) -> Result<PaginatedResponse<UsagePlanResponse>, AppError> {
-        let plans = UsagePlanQueries::get_all(
-            &ctx.pool,
-            Some(page as i64),
-            Some(page_size as i64),
-        ).await?;
-        
+        let plans =
+            UsagePlanQueries::get_all(&ctx.pool, Some(page as i64), Some(page_size as i64)).await?;
+
         let total = UsagePlanQueries::count(&ctx.pool).await?;
-        
+
         Ok(PaginatedResponse::new(
             plans.into_iter().map(|p| p.into()).collect(),
             total as u64,
@@ -78,7 +72,7 @@ impl UsageService {
             page_size,
         ))
     }
-    
+
     /// Create a usage meter
     pub async fn create_usage_meter(
         ctx: &BizContext,
@@ -89,18 +83,12 @@ impl UsageService {
         unit: &str,
     ) -> Result<UsageMeterResponse, AppError> {
         // Check if user has admin permissions
-        
-        let meter = UsageMeterQueries::create(
-            &ctx.pool,
-            code,
-            name,
-            description,
-            unit,
-        ).await?;
-        
+
+        let meter = UsageMeterQueries::create(&ctx.pool, code, name, description, unit).await?;
+
         Ok(meter.into())
     }
-    
+
     /// Get a usage meter
     pub async fn get_usage_meter(
         ctx: &BizContext,
@@ -109,24 +97,22 @@ impl UsageService {
         let meter = UsageMeterQueries::get_by_id(&ctx.pool, meter_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Usage meter not found".to_string()))?;
-        
+
         Ok(meter.into())
     }
-    
+
     /// List usage meters
     pub async fn list_usage_meters(
         ctx: &BizContext,
         page: u64,
         page_size: u64,
     ) -> Result<PaginatedResponse<UsageMeterResponse>, AppError> {
-        let meters = UsageMeterQueries::get_all(
-            &ctx.pool,
-            Some(page as i64),
-            Some(page_size as i64),
-        ).await?;
-        
+        let meters =
+            UsageMeterQueries::get_all(&ctx.pool, Some(page as i64), Some(page_size as i64))
+                .await?;
+
         let total = UsageMeterQueries::count(&ctx.pool).await?;
-        
+
         Ok(PaginatedResponse::new(
             meters.into_iter().map(|m| m.into()).collect(),
             total as u64,
@@ -134,7 +120,7 @@ impl UsageService {
             page_size,
         ))
     }
-    
+
     /// Assign usage plan to organization
     pub async fn assign_usage_plan(
         ctx: &BizContext,
@@ -145,29 +131,29 @@ impl UsageService {
         ends_at: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<OrganizationUsagePlanResponse, AppError> {
         // Check if user has admin permissions for the organization
-        ctx.access_control.require_org_admin(user_id, org_id).await?;
-        
+        ctx.access_control
+            .require_org_admin(user_id, org_id)
+            .await?;
+
         let plan = UsagePlanQueries::get_by_id(&ctx.pool, plan_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Usage plan not found".to_string()))?;
-        
+
         // Check if organization already has a plan
         let existing = OrganizationUsagePlanQueries::get_by_organization(&ctx.pool, org_id).await?;
         if existing.is_some() {
-            return Err(AppError::Conflict("Organization already has a usage plan".to_string()));
+            return Err(AppError::Conflict(
+                "Organization already has a usage plan".to_string(),
+            ));
         }
-        
-        let org_plan = OrganizationUsagePlanQueries::create(
-            &ctx.pool,
-            org_id,
-            plan_id,
-            starts_at,
-            ends_at,
-        ).await?;
-        
+
+        let org_plan =
+            OrganizationUsagePlanQueries::create(&ctx.pool, org_id, plan_id, starts_at, ends_at)
+                .await?;
+
         Ok(org_plan.into())
     }
-    
+
     /// Get organization usage plan
     pub async fn get_organization_usage_plan(
         ctx: &BizContext,
@@ -175,13 +161,15 @@ impl UsageService {
         org_id: &str,
     ) -> Result<Option<OrganizationUsagePlanResponse>, AppError> {
         // Check if user has admin permissions for the organization
-        ctx.access_control.require_org_admin(user_id, org_id).await?;
-        
+        ctx.access_control
+            .require_org_admin(user_id, org_id)
+            .await?;
+
         let org_plan = OrganizationUsagePlanQueries::get_by_organization(&ctx.pool, org_id).await?;
-        
+
         Ok(org_plan.map(|p| p.into()))
     }
-    
+
     /// Record usage event
     pub async fn record_usage_event(
         ctx: &BizContext,
@@ -201,11 +189,12 @@ impl UsageService {
             metadata,
             ip_address,
             user_agent,
-        ).await?;
-        
+        )
+        .await?;
+
         Ok(())
     }
-    
+
     /// Check entitlement
     pub async fn check_entitlement(
         ctx: &BizContext,
@@ -215,24 +204,25 @@ impl UsageService {
         let entitlement = UsageEntitlementQueries::get_by_code(&ctx.pool, entitlement_code)
             .await?
             .ok_or_else(|| AppError::NotFound("Entitlement not found".to_string()))?;
-        
+
         if !entitlement.is_enabled {
             return Ok(false);
         }
-        
+
         // Check if organization has the entitlement
         let org_plan = OrganizationUsagePlanQueries::get_by_organization(&ctx.pool, org_id).await?;
-        
+
         if let Some(org_plan) = org_plan {
-            let plan_meters = UsagePlanMeterQueries::get_by_plan(&ctx.pool, &org_plan.usage_plan_id).await?;
-            
+            let plan_meters =
+                UsagePlanMeterQueries::get_by_plan(&ctx.pool, &org_plan.usage_plan_id).await?;
+
             for meter in plan_meters {
                 if meter.usage_meter_id == entitlement.id {
                     return Ok(true);
                 }
             }
         }
-        
+
         Ok(false)
     }
 
@@ -252,15 +242,13 @@ impl UsageService {
         org_id: &str,
         plan_id: &str,
     ) -> Result<OrganizationUsagePlanResponse, AppError> {
-        ctx.access_control.require_org_admin(user_id, org_id).await?;
+        ctx.access_control
+            .require_org_admin(user_id, org_id)
+            .await?;
         let starts_at = Utc::now();
-        let plan = OrganizationUsagePlanQueries::create(
-            &ctx.pool,
-            org_id,
-            plan_id,
-            starts_at,
-            None,
-        ).await?;
+        let plan =
+            OrganizationUsagePlanQueries::create(&ctx.pool, org_id, plan_id, starts_at, None)
+                .await?;
         Ok(plan.into())
     }
 
@@ -277,7 +265,8 @@ impl UsageService {
             request.metadata,
             request.ip_address.as_deref(),
             request.user_agent.as_deref(),
-        ).await
+        )
+        .await
     }
 
     /// Get usage summary for an organization
@@ -286,7 +275,9 @@ impl UsageService {
         user_id: &str,
         org_id: &str,
     ) -> Result<serde_json::Value, AppError> {
-        ctx.access_control.require_org_admin(user_id, org_id).await?;
+        ctx.access_control
+            .require_org_admin(user_id, org_id)
+            .await?;
         let plan = Self::get_organization_usage_plan(ctx, user_id, org_id).await?;
         Ok(serde_json::json!({
             "organization_id": org_id,
@@ -302,39 +293,31 @@ pub async fn process_usage_job(
     payload: &serde_json::Value,
 ) -> Result<(), AppError> {
     // Parse the job payload
-    let event_type = payload.get("event_type").and_then(|v| v.as_str())
+    let event_type = payload
+        .get("event_type")
+        .and_then(|v| v.as_str())
         .ok_or_else(|| AppError::InvalidInput("Missing event_type".to_string()))?;
     let org_id = payload.get("org_id").and_then(|v| v.as_str());
     let user_id = payload.get("user_id").and_then(|v| v.as_str());
     let metadata = payload.get("metadata").cloned().unwrap_or_default();
-    
+
     // Record the usage event
     AnalyticsEventQueries::create(
-        pool,
-        org_id,
-        None,
-        user_id,
-        event_type,
-        metadata,
-        None,
-        None,
-    ).await?;
-    
+        pool, org_id, None, user_id, event_type, metadata, None, None,
+    )
+    .await?;
+
     // Check for idempotent ingestion
     if let Some(org_id) = org_id {
         let today = chrono::Utc::now().date_naive();
         let period_start = today.and_hms_opt(0, 0, 0).unwrap().and_utc();
-        
-        let checkpoint = UsageCheckpointQueries::create(
-            pool,
-            event_type,
-            org_id,
-            period_start,
-        ).await?;
-        
+
+        let checkpoint =
+            UsageCheckpointQueries::create(pool, event_type, org_id, period_start).await?;
+
         // If checkpoint already existed, this event was already processed
         // In a real implementation, we'd check this before processing
     }
-    
+
     Ok(())
 }

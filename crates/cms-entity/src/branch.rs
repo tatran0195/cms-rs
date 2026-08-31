@@ -3,7 +3,7 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use crate::common::{Id, Timestamp, PaginatedResponse};
+use crate::common::{Id, PaginatedResponse, Timestamp};
 
 /// Branch entity
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -101,7 +101,7 @@ pub struct SetDefaultBranchRequest {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_branch_response_conversion() {
         let branch = Branch {
@@ -115,7 +115,7 @@ mod tests {
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
-        
+
         let response: BranchResponse = branch.into();
         assert_eq!(response.id, "branch-1");
         assert!(response.is_default);

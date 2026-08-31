@@ -2,17 +2,21 @@
 //!
 //! This module contains the actual implementation of branch handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::branch::BranchService;
-use cms_entity::branch::{CreateBranchRequest, UpdateBranchRequest, BranchResponse, ListBranchesQuery};
-use cms_entity::common::{Id, PaginatedResponse};
+use cms_entity::{
+    branch::{BranchResponse, CreateBranchRequest, ListBranchesQuery, UpdateBranchRequest},
+    common::{Id, PaginatedResponse},
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// List branches for a project
@@ -44,14 +48,9 @@ pub async fn list_branches_handler(
     auth: AuthExtractor,
     Query(query): Query<ListBranchesQuery>,
 ) -> Result<Json<PaginatedResponse<BranchResponse>>, AppError> {
-    let result = BranchService::list_branches(
-        &state.biz_context,
-        &auth.user.id,
-        query,
-        1,
-        20,
-    ).await?;
-    
+    let result =
+        BranchService::list_branches(&state.biz_context, &auth.user.id, query, 1, 20).await?;
+
     Ok(Json(result))
 }
 
@@ -81,13 +80,10 @@ pub async fn create_branch_handler(
     Json(request): Json<CreateBranchRequest>,
 ) -> Result<Json<BranchResponse>, AppError> {
     let project_id = request.project_id.clone();
-    let branch = BranchService::create_branch(
-        &state.biz_context,
-        &auth.user.id,
-        &project_id,
-        request,
-    ).await?;
-    
+    let branch =
+        BranchService::create_branch(&state.biz_context, &auth.user.id, &project_id, request)
+            .await?;
+
     Ok(Json(branch.branch))
 }
 
@@ -117,12 +113,8 @@ pub async fn get_branch_handler(
     auth: AuthExtractor,
     Path(branch_id): Path<Id>,
 ) -> Result<Json<BranchResponse>, AppError> {
-    let branch = BranchService::get_branch(
-        &state.biz_context,
-        &auth.user.id,
-        &branch_id,
-    ).await?;
-    
+    let branch = BranchService::get_branch(&state.biz_context, &auth.user.id, &branch_id).await?;
+
     Ok(Json(branch.branch))
 }
 
@@ -156,13 +148,10 @@ pub async fn update_branch_handler(
     Path(branch_id): Path<Id>,
     Json(request): Json<UpdateBranchRequest>,
 ) -> Result<Json<BranchResponse>, AppError> {
-    let branch = BranchService::update_branch(
-        &state.biz_context,
-        &auth.user.id,
-        &branch_id,
-        request,
-    ).await?;
-    
+    let branch =
+        BranchService::update_branch(&state.biz_context, &auth.user.id, &branch_id, request)
+            .await?;
+
     Ok(Json(branch))
 }
 
@@ -193,11 +182,7 @@ pub async fn delete_branch_handler(
     auth: AuthExtractor,
     Path(branch_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    BranchService::delete_branch(
-        &state.biz_context,
-        &auth.user.id,
-        &branch_id,
-    ).await?;
-    
+    BranchService::delete_branch(&state.biz_context, &auth.user.id, &branch_id).await?;
+
     Ok(Json(serde_json::json!({"success": true, "id": branch_id})))
 }

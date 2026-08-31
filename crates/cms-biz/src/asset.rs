@@ -2,19 +2,19 @@
 //!
 //! This module contains business logic for asset management (images, files, etc.).
 
-use crate::{BizContext, AppError};
-use cms_db::asset::AssetQueries;
-use cms_db::page::PageQueries;
-use cms_db::project::ProjectQueries;
-use cms_db::PgPool;
-use cms_entity::asset::{Asset, AssetResponse, CreateAssetRequest};
-use cms_entity::common::{Id, PaginatedResponse, MemberRole};
-use cms_storage::Storage;
 use std::sync::Arc;
-use uuid::Uuid;
-use chrono::Utc;
-use bytes::Bytes;
 
+use bytes::Bytes;
+use chrono::Utc;
+use cms_db::{asset::AssetQueries, page::PageQueries, project::ProjectQueries, PgPool};
+use cms_entity::{
+    asset::{Asset, AssetResponse, CreateAssetRequest},
+    common::{Id, MemberRole, PaginatedResponse},
+};
+use cms_storage::Storage;
+use uuid::Uuid;
+
+use crate::{AppError, BizContext};
 
 /// Asset service
 pub struct AssetService;
@@ -34,33 +34,34 @@ impl AssetService {
         let _project = ProjectQueries::get_by_id(&ctx.pool, project_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
-        
+
         // Verify page exists (if specified)
         if let Some(page_id) = page_id {
             let _page = PageQueries::get_by_id(&ctx.pool, page_id)
                 .await?
                 .ok_or_else(|| AppError::NotFound("Page not found".to_string()))?;
         }
-        
+
         // Check if user has access to the project
-        ctx.access_control.require_project_role(
-            user_id,
-            project_id,
-            MemberRole::Editor,
-        ).await?;
-        
+        ctx.access_control
+            .require_project_role(user_id, project_id, MemberRole::Editor)
+            .await?;
+
         // Generate storage key
-        let storage_key = format!("assets/{}/{}/{}", 
-            project_id, 
+        let storage_key = format!(
+            "assets/{}/{}/{}",
+            project_id,
             Utc::now().timestamp(),
             request.file_name
         );
-        
+
         let file_size = request.file_size.unwrap_or(content.len() as i64);
-        
+
         // Store the file
-        storage.put(&storage_key, content, &request.content_type).await?;
-        
+        storage
+            .put(&storage_key, content, &request.content_type)
+            .await?;
+
         // Create asset record
         let asset = AssetQueries::create(
             &ctx.pool,
@@ -73,11 +74,12 @@ impl AssetService {
             request.width,
             request.height,
             request.alt_text.as_deref(),
-        ).await?;
-        
+        )
+        .await?;
+
         Ok(asset.into())
     }
-    
+
     /// Get an asset
     pub async fn get_asset(
         ctx: &BizContext,
@@ -87,17 +89,15 @@ impl AssetService {
         let asset = AssetQueries::get_by_id(&ctx.pool, asset_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Asset not found".to_string()))?;
-        
+
         // Check if user has access to the project
-        ctx.access_control.require_project_role(
-            user_id,
-            &asset.project_id,
-            MemberRole::Viewer,
-        ).await?;
-        
+        ctx.access_control
+            .require_project_role(user_id, &asset.project_id, MemberRole::Viewer)
+            .await?;
+
         Ok(asset.into())
     }
-    
+
     /// List assets for a project
     pub async fn list_assets(
         ctx: &BizContext,
@@ -109,23 +109,22 @@ impl AssetService {
         let _project = ProjectQueries::get_by_id(&ctx.pool, project_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
-        
+
         // Check if user has access to the project
-        ctx.access_control.require_project_role(
-            user_id,
-            project_id,
-            MemberRole::Viewer,
-        ).await?;
-        
+        ctx.access_control
+            .require_project_role(user_id, project_id, MemberRole::Viewer)
+            .await?;
+
         let assets = AssetQueries::get_by_project(
             &ctx.pool,
             project_id,
             Some(page as i64),
             Some(page_size as i64),
-        ).await?;
-        
+        )
+        .await?;
+
         let total = AssetQueries::count_by_project(&ctx.pool, project_id).await?;
-        
+
         Ok(PaginatedResponse::new(
             assets.into_iter().map(|a| a.into()).collect(),
             total as u64,
@@ -133,7 +132,7 @@ impl AssetService {
             page_size,
         ))
     }
-    
+
     /// List assets for a page
     pub async fn list_assets_for_page(
         ctx: &BizContext,
@@ -143,19 +142,17 @@ impl AssetService {
         let page = PageQueries::get_by_id(&ctx.pool, page_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Page not found".to_string()))?;
-        
+
         // Check if user has access to the project
-        ctx.access_control.require_project_role(
-            user_id,
-            &page.project_id,
-            MemberRole::Viewer,
-        ).await?;
-        
+        ctx.access_control
+            .require_project_role(user_id, &page.project_id, MemberRole::Viewer)
+            .await?;
+
         let assets = AssetQueries::get_by_page(&ctx.pool, page_id).await?;
-        
+
         Ok(assets.into_iter().map(|a| a.into()).collect())
     }
-    
+
     /// Update an asset
     pub async fn update_asset(
         ctx: &BizContext,
@@ -166,23 +163,17 @@ impl AssetService {
         let asset = AssetQueries::get_by_id(&ctx.pool, asset_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Asset not found".to_string()))?;
-        
+
         // Check if user has access to the project
-        ctx.access_control.require_project_role(
-            user_id,
-            &asset.project_id,
-            MemberRole::Editor,
-        ).await?;
-        
-        let updated = AssetQueries::update(
-            &ctx.pool,
-            asset_id,
-            alt_text,
-        ).await?;
-        
+        ctx.access_control
+            .require_project_role(user_id, &asset.project_id, MemberRole::Editor)
+            .await?;
+
+        let updated = AssetQueries::update(&ctx.pool, asset_id, alt_text).await?;
+
         Ok(updated.into())
     }
-    
+
     /// Delete an asset
     pub async fn delete_asset(
         ctx: &BizContext,
@@ -193,17 +184,15 @@ impl AssetService {
         let asset = AssetQueries::get_by_id(&ctx.pool, asset_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Asset not found".to_string()))?;
-        
+
         // Check if user has access to the project
-        ctx.access_control.require_project_role(
-            user_id,
-            &asset.project_id,
-            MemberRole::Editor,
-        ).await?;
-        
+        ctx.access_control
+            .require_project_role(user_id, &asset.project_id, MemberRole::Editor)
+            .await?;
+
         // Delete from storage
         storage.delete(&asset.storage_key).await?;
-        
+
         // Delete from database
         AssetQueries::delete(&ctx.pool, asset_id).await
     }
@@ -218,12 +207,15 @@ impl AssetService {
         content_type: &str,
         alt_text: Option<&str>,
     ) -> Result<AssetResponse, AppError> {
-        ctx.access_control.require_project_role(
-            user_id,
+        ctx.access_control
+            .require_project_role(user_id, project_id, MemberRole::Editor)
+            .await?;
+        let storage_key = format!(
+            "assets/{}/{}/{}",
             project_id,
-            MemberRole::Editor,
-        ).await?;
-        let storage_key = format!("assets/{}/{}/{}", project_id, Utc::now().timestamp(), file_name);
+            Utc::now().timestamp(),
+            file_name
+        );
         let asset = AssetQueries::create(
             &ctx.pool,
             project_id,
@@ -235,7 +227,8 @@ impl AssetService {
             None,
             None,
             alt_text,
-        ).await?;
+        )
+        .await?;
         Ok(asset.into())
     }
 
@@ -266,6 +259,7 @@ impl AssetService {
                 alt_text: None,
             },
             Bytes::copy_from_slice(file_data),
-        ).await
+        )
+        .await
     }
 }

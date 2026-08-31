@@ -9,6 +9,8 @@
 //! - Observability includes request tracing, logging, timing, and metrics
 //! - All middleware configurations are validated before use
 
+use std::sync::Arc;
+
 use axum::Router;
 use cms_middleware::{
     app_state::AppState,
@@ -18,7 +20,6 @@ use cms_middleware::{
     rate_limit::{create_per_client_rate_limit_layer, RateLimitConfig},
     security_headers::{create_security_headers_layer, SecurityHeadersConfig},
 };
-use std::sync::Arc;
 
 use crate::create_api_router;
 
@@ -192,8 +193,10 @@ pub fn create_api_router_with_compression(state: Arc<AppState>) -> Router {
 /// Full API router with all middleware
 pub fn create_full_api_router(state: Arc<AppState>) -> Router {
     use axum::http::{header, HeaderName, Method};
-    use tower_http::compression::CompressionLayer;
-    use tower_http::cors::{Any, CorsLayer};
+    use tower_http::{
+        compression::CompressionLayer,
+        cors::{Any, CorsLayer},
+    };
 
     let router = create_api_router(state.clone());
 

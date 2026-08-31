@@ -15,6 +15,8 @@ pub mod oauth;
 pub mod password;
 pub mod session;
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use axum::{
     extract::FromRequestParts,
@@ -29,8 +31,6 @@ use cms_entity::auth::{ApiKey, ApiKeyResponse, ApiKeyWithSecretResponse, User};
 use cms_error::AppError;
 use jsonwebtoken::{DecodingKey, EncodingKey, Validation};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-
 pub use session::*;
 
 /// Authentication service
@@ -203,8 +203,10 @@ where
 
 /// Helper to hash API keys using SHA-256 (simpler and faster than Argon2 for key lookup)
 pub fn hash_api_key(api_key: &str, prefix: &str) -> Result<String, AppError> {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
+    use std::{
+        collections::hash_map::DefaultHasher,
+        hash::{Hash, Hasher},
+    };
 
     // Use a deterministic hash for API key lookup (stored separately from user passwords)
     let combined = format!("{}-{}", prefix, api_key);

@@ -2,17 +2,21 @@
 //!
 //! This module contains the actual implementation of MCP-related handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::mcp::McpService;
-use cms_entity::mcp::{McpAuditEventResponse, ListMcpAuditEventsQuery};
-use cms_entity::common::{Id, PaginatedResponse};
+use cms_entity::{
+    common::{Id, PaginatedResponse},
+    mcp::{ListMcpAuditEventsQuery, McpAuditEventResponse},
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// List MCP audit events
@@ -59,8 +63,9 @@ pub async fn list_mcp_audit_events_handler(
         query.end_date,
         query.limit,
         query.offset,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(result))
 }
 
@@ -79,7 +84,7 @@ pub async fn get_mcp_server_info_handler(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let info = McpService::get_server_info(&state.biz_context).await?;
-    
+
     Ok(Json(serde_json::json!(info)))
 }
 
@@ -98,7 +103,7 @@ pub async fn list_mcp_tools_handler(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let tools = McpService::list_tools(&state.biz_context).await?;
-    
+
     Ok(Json(serde_json::json!(tools)))
 }
 
@@ -131,13 +136,9 @@ pub async fn call_mcp_tool_handler(
     Path(tool_name): Path<String>,
     Json(request): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let result = McpService::call_tool(
-        &state.biz_context,
-        &auth.user.id,
-        &tool_name,
-        request,
-    ).await?;
-    
+    let result =
+        McpService::call_tool(&state.biz_context, &auth.user.id, &tool_name, request).await?;
+
     Ok(Json(result))
 }
 
@@ -162,11 +163,8 @@ pub async fn list_mcp_resources_handler(
     State(state): State<Arc<AppState>>,
     auth: AuthExtractor,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let resources = McpService::list_resources(
-        &state.biz_context,
-        &auth.user.id,
-    ).await?;
-    
+    let resources = McpService::list_resources(&state.biz_context, &auth.user.id).await?;
+
     Ok(Json(serde_json::json!(resources)))
 }
 
@@ -196,11 +194,7 @@ pub async fn read_mcp_resource_handler(
     auth: AuthExtractor,
     Path(uri): Path<String>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let content = McpService::read_resource(
-        &state.biz_context,
-        &auth.user.id,
-        &uri,
-    ).await?;
-    
+    let content = McpService::read_resource(&state.biz_context, &auth.user.id, &uri).await?;
+
     Ok(Json(serde_json::json!(content)))
 }

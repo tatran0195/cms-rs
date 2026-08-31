@@ -3,10 +3,10 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use crate::common::{Id, Timestamp, PaginatedResponse};
+use crate::common::{Id, PaginatedResponse, Timestamp};
 
 /// Language entity
-/// 
+///
 /// Note: Per the architecture decision (doc 04), the system is retargeted
 /// from Arabic to Japanese. The RTL layout requirement is dropped since
 /// Japanese is LTR.
@@ -129,7 +129,7 @@ pub struct SetDefaultLanguageRequest {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_language_response_conversion() {
         let lang = Language {
@@ -142,7 +142,7 @@ mod tests {
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
-        
+
         let response: LanguageResponse = lang.into();
         assert_eq!(response.code, "ja");
         assert_eq!(response.name, "Japanese");

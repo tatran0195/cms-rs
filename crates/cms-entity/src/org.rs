@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-use crate::common::{Id, Timestamp, MemberRole, PaginatedResponse};
+use crate::common::{Id, MemberRole, PaginatedResponse, Timestamp};
 
 /// Organization entity
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -22,7 +22,11 @@ pub struct Organization {
 /// Organization create request
 #[derive(Debug, Clone, Deserialize, Serialize, Validate)]
 pub struct CreateOrganizationRequest {
-    #[validate(length(min = 1, max = 100, message = "Organization name must be between 1 and 100 characters"))]
+    #[validate(length(
+        min = 1,
+        max = 100,
+        message = "Organization name must be between 1 and 100 characters"
+    ))]
     pub name: String,
     #[serde(default)]
     #[validate(length(max = 500, message = "Description must be at most 500 characters"))]
@@ -33,7 +37,11 @@ pub struct CreateOrganizationRequest {
 #[derive(Debug, Clone, Deserialize, Serialize, Validate)]
 pub struct UpdateOrganizationRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[validate(length(min = 1, max = 100, message = "Organization name must be between 1 and 100 characters"))]
+    #[validate(length(
+        min = 1,
+        max = 100,
+        message = "Organization name must be between 1 and 100 characters"
+    ))]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[validate(length(max = 500, message = "Description must be at most 500 characters"))]
@@ -191,7 +199,7 @@ pub type ListInvitationsResponse = PaginatedResponse<InvitationResponse>;
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_member_role_default() {
         let request = CreateInvitationRequest {

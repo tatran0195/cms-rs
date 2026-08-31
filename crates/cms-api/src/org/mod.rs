@@ -2,16 +2,18 @@
 //!
 //! This module contains handlers for organization routes.
 
+use std::sync::Arc;
+
 use axum::{
-    routing::{get, post, put, delete},
+    routing::{delete, get, post, put},
     Router,
 };
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
 
 pub mod handlers;
 
 use handlers::*;
+
 use crate::extractors::UserId;
 
 /// Create the org router
@@ -30,6 +32,9 @@ pub fn router(state: Arc<AppState>) -> Router {
         // Invitation routes
         .route("/:id/invitations", get(list_invitations_handler))
         .route("/:id/invitations", post(create_invitation_handler))
-        .route("/:id/invitations/:invitation_id", delete(revoke_invitation_handler))
+        .route(
+            "/:id/invitations/:invitation_id",
+            delete(revoke_invitation_handler),
+        )
         .with_state(state)
 }

@@ -1,13 +1,13 @@
-﻿//! Git database queries
+//! Git database queries
 
 use chrono::{DateTime, Utc};
 use cms_entity::git::{
-    GitConnection, GitSyncOperation, GitFileState, GitConflict, 
-    GitPullRequest, GitPreview, GitWebhookDelivery, GitAuditEvent,
-    GitProvider, GitSyncOperationStatus, GitSyncOperationType,
+    GitAuditEvent, GitConflict, GitConnection, GitFileState, GitPreview, GitProvider,
+    GitPullRequest, GitSyncOperation, GitSyncOperationStatus, GitSyncOperationType,
+    GitWebhookDelivery,
 };
 use cms_error::AppError;
-use sqlx::{FromRow, PgPool, QueryBuilder, Postgres};
+use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
 use uuid::Uuid;
 
 // ============================================
@@ -45,30 +45,35 @@ impl From<GitConnectionRow> for GitConnection {
 pub struct GitConnectionQueries;
 
 impl GitConnectionQueries {
-    pub async fn get_by_id(pool: &PgPool, connection_id: &str) -> Result<Option<GitConnection>, AppError> {
-        let row = sqlx::query_as::<_, GitConnectionRow>(
-            "SELECT * FROM \"GitConnection\" WHERE id = $1"
-        )
-        .bind(connection_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+    pub async fn get_by_id(
+        pool: &PgPool,
+        connection_id: &str,
+    ) -> Result<Option<GitConnection>, AppError> {
+        let row =
+            sqlx::query_as::<_, GitConnectionRow>("SELECT * FROM \"GitConnection\" WHERE id = $1")
+                .bind(connection_id)
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
-    pub async fn get_by_project(pool: &PgPool, project_id: &str) -> Result<Option<GitConnection>, AppError> {
+
+    pub async fn get_by_project(
+        pool: &PgPool,
+        project_id: &str,
+    ) -> Result<Option<GitConnection>, AppError> {
         let row = sqlx::query_as::<_, GitConnectionRow>(
-            "SELECT * FROM \"GitConnection\" WHERE project_id = $1 LIMIT 1"
+            "SELECT * FROM \"GitConnection\" WHERE project_id = $1 LIMIT 1",
         )
         .bind(project_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         project_id: &str,
@@ -79,7 +84,7 @@ impl GitConnectionQueries {
     ) -> Result<GitConnection, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, GitConnectionRow>(
             r#"
             INSERT INTO "GitConnection" (id, project_id, provider, repository, branch, access_token, created_at, updated_at)
@@ -98,10 +103,10 @@ impl GitConnectionQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn update(
         pool: &PgPool,
         connection_id: &str,
@@ -109,10 +114,9 @@ impl GitConnectionQueries {
         branch: Option<&str>,
         access_token: Option<&str>,
     ) -> Result<GitConnection, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"GitConnection\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE \"GitConnection\" SET ");
+
         let mut has_updates = false;
         if let Some(repository) = repository {
             query_builder.push("repository = ");
@@ -135,32 +139,32 @@ impl GitConnectionQueries {
             query_builder.push_bind(access_token);
             has_updates = true;
         }
-        
+
         if has_updates {
             query_builder.push(", updated_at = ");
             query_builder.push_bind(Utc::now());
         }
-        
+
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(connection_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<GitConnectionRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn delete(pool: &PgPool, connection_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"GitConnection\" WHERE id = $1")
             .bind(connection_id)
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }
@@ -204,62 +208,64 @@ impl From<GitSyncOperationRow> for GitSyncOperation {
 pub struct GitSyncOperationQueries;
 
 impl GitSyncOperationQueries {
-    pub async fn get_by_id(pool: &PgPool, operation_id: &str) -> Result<Option<GitSyncOperation>, AppError> {
+    pub async fn get_by_id(
+        pool: &PgPool,
+        operation_id: &str,
+    ) -> Result<Option<GitSyncOperation>, AppError> {
         let row = sqlx::query_as::<_, GitSyncOperationRow>(
-            "SELECT * FROM \"GitSyncOperation\" WHERE id = $1"
+            "SELECT * FROM \"GitSyncOperation\" WHERE id = $1",
         )
         .bind(operation_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn get_by_connection(
         pool: &PgPool,
         connection_id: &str,
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<GitSyncOperation>, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT * FROM \"GitSyncOperation\" WHERE connection_id = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT * FROM \"GitSyncOperation\" WHERE connection_id = ");
         query_builder.push_bind(connection_id);
-        
+
         query_builder.push(" ORDER BY created_at DESC");
-        
+
         if let Some(limit) = limit {
             query_builder.push(" LIMIT ");
             query_builder.push_bind(limit);
         }
-        
+
         if let Some(offset) = offset {
             query_builder.push(" OFFSET ");
             query_builder.push_bind(offset);
         }
-        
+
         let rows = query_builder
             .build_query_as::<GitSyncOperationRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     pub async fn count_by_connection(pool: &PgPool, connection_id: &str) -> Result<i64, AppError> {
         let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM \"GitSyncOperation\" WHERE connection_id = $1"
+            "SELECT COUNT(*) FROM \"GitSyncOperation\" WHERE connection_id = $1",
         )
         .bind(connection_id)
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(count)
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         connection_id: &str,
@@ -268,7 +274,7 @@ impl GitSyncOperationQueries {
     ) -> Result<GitSyncOperation, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, GitSyncOperationRow>(
             r#"
             INSERT INTO "GitSyncOperation" (id, connection_id, operation_type, status, created_at, updated_at)
@@ -285,17 +291,18 @@ impl GitSyncOperationQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn update_status(
         pool: &PgPool,
         operation_id: &str,
         status: GitSyncOperationStatus,
     ) -> Result<GitSyncOperation, AppError> {
         let row = sqlx::query_as::<_, GitSyncOperationRow>(
-            "UPDATE \"GitSyncOperation\" SET status = $1, updated_at = $2 WHERE id = $3 RETURNING *"
+            "UPDATE \"GitSyncOperation\" SET status = $1, updated_at = $2 WHERE id = $3 RETURNING \
+             *",
         )
         .bind(status)
         .bind(Utc::now())
@@ -303,17 +310,18 @@ impl GitSyncOperationQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn update_error(
         pool: &PgPool,
         operation_id: &str,
         error_message: &str,
     ) -> Result<GitSyncOperation, AppError> {
         let row = sqlx::query_as::<_, GitSyncOperationRow>(
-            "UPDATE \"GitSyncOperation\" SET error_message = $1, status = $2, updated_at = $3 WHERE id = $4 RETURNING *"
+            "UPDATE \"GitSyncOperation\" SET error_message = $1, status = $2, updated_at = $3 \
+             WHERE id = $4 RETURNING *",
         )
         .bind(error_message)
         .bind(GitSyncOperationStatus::Failed)
@@ -322,16 +330,17 @@ impl GitSyncOperationQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn update_started(
         pool: &PgPool,
         operation_id: &str,
     ) -> Result<GitSyncOperation, AppError> {
         let row = sqlx::query_as::<_, GitSyncOperationRow>(
-            "UPDATE \"GitSyncOperation\" SET started_at = $1, status = $2, updated_at = $3 WHERE id = $4 RETURNING *"
+            "UPDATE \"GitSyncOperation\" SET started_at = $1, status = $2, updated_at = $3 WHERE \
+             id = $4 RETURNING *",
         )
         .bind(Utc::now())
         .bind(GitSyncOperationStatus::Processing)
@@ -340,16 +349,17 @@ impl GitSyncOperationQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn update_completed(
         pool: &PgPool,
         operation_id: &str,
     ) -> Result<GitSyncOperation, AppError> {
         let row = sqlx::query_as::<_, GitSyncOperationRow>(
-            "UPDATE \"GitSyncOperation\" SET completed_at = $1, status = $2, updated_at = $3 WHERE id = $4 RETURNING *"
+            "UPDATE \"GitSyncOperation\" SET completed_at = $1, status = $2, updated_at = $3 \
+             WHERE id = $4 RETURNING *",
         )
         .bind(Utc::now())
         .bind(GitSyncOperationStatus::Completed)
@@ -358,7 +368,7 @@ impl GitSyncOperationQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
 }
@@ -398,31 +408,38 @@ impl From<GitFileStateRow> for GitFileState {
 pub struct GitFileStateQueries;
 
 impl GitFileStateQueries {
-    pub async fn get_by_path(pool: &PgPool, project_id: &str, path: &str) -> Result<Option<GitFileState>, AppError> {
+    pub async fn get_by_path(
+        pool: &PgPool,
+        project_id: &str,
+        path: &str,
+    ) -> Result<Option<GitFileState>, AppError> {
         let row = sqlx::query_as::<_, GitFileStateRow>(
-            "SELECT * FROM \"GitFileState\" WHERE project_id = $1 AND path = $2"
+            "SELECT * FROM \"GitFileState\" WHERE project_id = $1 AND path = $2",
         )
         .bind(project_id)
         .bind(path)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
-    pub async fn get_by_project(pool: &PgPool, project_id: &str) -> Result<Vec<GitFileState>, AppError> {
+
+    pub async fn get_by_project(
+        pool: &PgPool,
+        project_id: &str,
+    ) -> Result<Vec<GitFileState>, AppError> {
         let rows = sqlx::query_as::<_, GitFileStateRow>(
-            "SELECT * FROM \"GitFileState\" WHERE project_id = $1"
+            "SELECT * FROM \"GitFileState\" WHERE project_id = $1",
         )
         .bind(project_id)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         project_id: &str,
@@ -431,13 +448,13 @@ impl GitFileStateQueries {
     ) -> Result<GitFileState, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, GitFileStateRow>(
             r#"
             INSERT INTO "GitFileState" (id, project_id, path, git_path, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(project_id)
@@ -448,48 +465,47 @@ impl GitFileStateQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn update(
         pool: &PgPool,
         file_state_id: &str,
         commit_hash: Option<&str>,
     ) -> Result<GitFileState, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"GitFileState\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE \"GitFileState\" SET ");
+
         if let Some(commit_hash) = commit_hash {
             query_builder.push("last_commit_hash = ");
             query_builder.push_bind(commit_hash);
             query_builder.push(", last_sync_at = ");
             query_builder.push_bind(Utc::now());
         }
-        
+
         query_builder.push(", updated_at = ");
         query_builder.push_bind(Utc::now());
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(file_state_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<GitFileStateRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn delete(pool: &PgPool, file_state_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"GitFileState\" WHERE id = $1")
             .bind(file_state_id)
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }
@@ -502,20 +518,41 @@ impl GitFileStateQueries {
 pub struct GitConflictQueries;
 
 impl GitConflictQueries {
-    pub async fn get_by_id(pool: &PgPool, conflict_id: &str) -> Result<Option<GitConflict>, AppError> {
-        Err(AppError::NotFound("GitConflict queries not yet implemented".to_string()))
+    pub async fn get_by_id(
+        pool: &PgPool,
+        conflict_id: &str,
+    ) -> Result<Option<GitConflict>, AppError> {
+        Err(AppError::NotFound(
+            "GitConflict queries not yet implemented".to_string(),
+        ))
     }
-    
-    pub async fn get_by_project(pool: &PgPool, project_id: &str, limit: Option<i64>, offset: Option<i64>) -> Result<Vec<GitConflict>, AppError> {
-        Err(AppError::NotFound("GitConflict queries not yet implemented".to_string()))
+
+    pub async fn get_by_project(
+        pool: &PgPool,
+        project_id: &str,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> Result<Vec<GitConflict>, AppError> {
+        Err(AppError::NotFound(
+            "GitConflict queries not yet implemented".to_string(),
+        ))
     }
-    
+
     pub async fn count_by_project(pool: &PgPool, project_id: &str) -> Result<i64, AppError> {
-        Err(AppError::NotFound("GitConflict queries not yet implemented".to_string()))
+        Err(AppError::NotFound(
+            "GitConflict queries not yet implemented".to_string(),
+        ))
     }
-    
-    pub async fn resolve(pool: &PgPool, conflict_id: &str, resolved_by: &str, resolved_content: &str) -> Result<GitConflict, AppError> {
-        Err(AppError::NotFound("GitConflict queries not yet implemented".to_string()))
+
+    pub async fn resolve(
+        pool: &PgPool,
+        conflict_id: &str,
+        resolved_by: &str,
+        resolved_content: &str,
+    ) -> Result<GitConflict, AppError> {
+        Err(AppError::NotFound(
+            "GitConflict queries not yet implemented".to_string(),
+        ))
     }
 }
 
@@ -524,15 +561,26 @@ pub struct GitPullRequestQueries;
 
 impl GitPullRequestQueries {
     pub async fn get_by_id(pool: &PgPool, pr_id: &str) -> Result<Option<GitPullRequest>, AppError> {
-        Err(AppError::NotFound("GitPullRequest queries not yet implemented".to_string()))
+        Err(AppError::NotFound(
+            "GitPullRequest queries not yet implemented".to_string(),
+        ))
     }
-    
-    pub async fn get_by_connection(pool: &PgPool, connection_id: &str, limit: Option<i64>, offset: Option<i64>) -> Result<Vec<GitPullRequest>, AppError> {
-        Err(AppError::NotFound("GitPullRequest queries not yet implemented".to_string()))
+
+    pub async fn get_by_connection(
+        pool: &PgPool,
+        connection_id: &str,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> Result<Vec<GitPullRequest>, AppError> {
+        Err(AppError::NotFound(
+            "GitPullRequest queries not yet implemented".to_string(),
+        ))
     }
-    
+
     pub async fn count_by_connection(pool: &PgPool, connection_id: &str) -> Result<i64, AppError> {
-        Err(AppError::NotFound("GitPullRequest queries not yet implemented".to_string()))
+        Err(AppError::NotFound(
+            "GitPullRequest queries not yet implemented".to_string(),
+        ))
     }
 }
 
@@ -540,12 +588,22 @@ impl GitPullRequestQueries {
 pub struct GitPreviewQueries;
 
 impl GitPreviewQueries {
-    pub async fn get_by_id(pool: &PgPool, preview_id: &str) -> Result<Option<GitPreview>, AppError> {
-        Err(AppError::NotFound("GitPreview queries not yet implemented".to_string()))
+    pub async fn get_by_id(
+        pool: &PgPool,
+        preview_id: &str,
+    ) -> Result<Option<GitPreview>, AppError> {
+        Err(AppError::NotFound(
+            "GitPreview queries not yet implemented".to_string(),
+        ))
     }
-    
-    pub async fn get_by_pull_request(pool: &PgPool, pr_id: &str) -> Result<Vec<GitPreview>, AppError> {
-        Err(AppError::NotFound("GitPreview queries not yet implemented".to_string()))
+
+    pub async fn get_by_pull_request(
+        pool: &PgPool,
+        pr_id: &str,
+    ) -> Result<Vec<GitPreview>, AppError> {
+        Err(AppError::NotFound(
+            "GitPreview queries not yet implemented".to_string(),
+        ))
     }
 }
 
@@ -553,8 +611,13 @@ impl GitPreviewQueries {
 pub struct GitWebhookDeliveryQueries;
 
 impl GitWebhookDeliveryQueries {
-    pub async fn get_by_id(pool: &PgPool, delivery_id: &str) -> Result<Option<GitWebhookDelivery>, AppError> {
-        Err(AppError::NotFound("GitWebhookDelivery queries not yet implemented".to_string()))
+    pub async fn get_by_id(
+        pool: &PgPool,
+        delivery_id: &str,
+    ) -> Result<Option<GitWebhookDelivery>, AppError> {
+        Err(AppError::NotFound(
+            "GitWebhookDelivery queries not yet implemented".to_string(),
+        ))
     }
 }
 
@@ -562,7 +625,12 @@ impl GitWebhookDeliveryQueries {
 pub struct GitAuditEventQueries;
 
 impl GitAuditEventQueries {
-    pub async fn get_by_id(pool: &PgPool, event_id: &str) -> Result<Option<GitAuditEvent>, AppError> {
-        Err(AppError::NotFound("GitAuditEvent queries not yet implemented".to_string()))
+    pub async fn get_by_id(
+        pool: &PgPool,
+        event_id: &str,
+    ) -> Result<Option<GitAuditEvent>, AppError> {
+        Err(AppError::NotFound(
+            "GitAuditEvent queries not yet implemented".to_string(),
+        ))
     }
 }

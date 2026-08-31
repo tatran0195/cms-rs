@@ -2,16 +2,17 @@
 //!
 //! This module handles resolving request hosts to projects and deployments.
 
-use axum::http::{HeaderMap, header};
-use cms_db::domain::DomainQueries;
-use cms_db::deployment::DeploymentQueries;
-use cms_db::project::ProjectQueries;
+use std::{
+    collections::HashMap,
+    sync::RwLock,
+    time::{Duration, Instant},
+};
+
+use axum::http::{header, HeaderMap};
+use cms_db::{deployment::DeploymentQueries, domain::DomainQueries, project::ProjectQueries};
 use cms_entity::common::Id;
 use cms_error::AppError;
 use sqlx::PgPool;
-use std::collections::HashMap;
-use std::sync::RwLock;
-use std::time::{Instant, Duration};
 
 /// Host resolution result
 #[derive(Debug, Clone)]
@@ -47,7 +48,7 @@ impl HostResolver {
             cache_ttl: Duration::from_secs(300), // 5 minutes
         }
     }
-    
+
     /// Resolve host to project
     pub async fn resolve(
         &self,
@@ -55,17 +56,17 @@ impl HostResolver {
     ) -> Result<Option<HostResolutionResult>, AppError> {
         // Get Host header
         let host = self.get_host(headers)?;
-        
+
         // Check cache first
         if let Some(entry) = self.cache.read().unwrap().get(&host) {
             if entry.expires_at > Instant::now() {
                 return Ok(entry.result.clone());
             }
         }
-        
+
         // Try to find domain by hostname
         let result = self.resolve_from_database(&host).await?;
-        
+
         // Cache the result
         self.cache.write().unwrap().insert(
             host.clone(),
@@ -74,10 +75,10 @@ impl HostResolver {
                 expires_at: Instant::now() + self.cache_ttl,
             },
         );
-        
+
         Ok(result)
     }
-    
+
     /// Get host from headers
     fn get_host(&self, headers: &HeaderMap) -> Result<String, AppError> {
         // Get from X-Forwarded-Host (for reverse proxy)
@@ -86,7 +87,7 @@ impl HostResolver {
                 return Ok(host.to_string());
             }
         }
-        
+
         // Get from Host header
         if let Some(host) = headers.get(header::HOST) {
             if let Ok(host_str) = host.to_str() {
@@ -95,11 +96,11 @@ impl HostResolver {
                 return Ok(host_without_port.to_string());
             }
         }
-        
+
         // Fall back to default host
         Ok(self.default_host.clone())
     }
-    
+
     /// Resolve host from database
     async fn resolve_from_database(
         &self,
@@ -108,9 +109,13 @@ impl HostResolver {
         // Try to find domain by hostname
         if let Some(domain) = DomainQueries::get_by_hostname(&self.pool, host).await? {
             // Get deployment for this domain
-            if let Some(deployment) = DeploymentQueries::get_by_id(&self.pool, &domain.deployment_id).await? {
+            if let Some(deployment) =
+                DeploymentQueries::get_by_id(&self.pool, &domain.deployment_id).await?
+            {
                 // Get project for this deployment
-                if let Some(project) = ProjectQueries::get_by_id(&self.pool, &deployment.project_id).await? {
+                if let Some(project) =
+                    ProjectQueries::get_by_id(&self.pool, &deployment.project_id).await?
+                {
                     return Ok(Some(HostResolutionResult {
                         project_id: project.id,
                         deployment_id: Some(deployment.id),
@@ -121,15 +126,18 @@ impl HostResolver {
                 }
             }
         }
-        
+
         // If no custom domain found, check if it's the default app domain
-        if host == self.default_host || 
-           host.ends_with(".cms.app") || 
-           host.ends_with(".cms.com") ||
-           host.ends_with(".cms.dev") {
+        if host == self.default_host
+            || host.ends_with(".cms.app")
+            || host.ends_with(".cms.com")
+            || host.ends_with(".cms.dev")
+        {
             // Extract project from subdomain
             if let Some(project_slug) = self.extract_subdomain(host) {
-                if let Some(project) = ProjectQueries::get_by_slug_global(&self.pool, &project_slug).await? {
+                if let Some(project) =
+                    ProjectQueries::get_by_slug_global(&self.pool, &project_slug).await?
+                {
                     return Ok(Some(HostResolutionResult {
                         project_id: project.id,
                         deployment_id: None,
@@ -140,19 +148,19 @@ impl HostResolver {
                 }
             }
         }
-        
+
         Ok(None)
     }
-    
+
     /// Extract subdomain from host
     fn extract_subdomain(&self, host: &str) -> Option<String> {
         if host == self.default_host {
             return None;
         }
-        
+
         // Split by dots
         let parts: Vec<&str> = host.split('.').collect();
-        
+
         // If we have at least 3 parts (e.g., project.cms.app), the first part is the subdomain
         if parts.len() >= 3 {
             // Check if the last two parts match our default host
@@ -160,28 +168,29 @@ impl HostResolver {
             if last_two == self.default_host {
                 return Some(parts[0].to_string());
             }
-            
+
             // Check for .cms.app or .cms.com
-            if parts[parts.len() - 1] == "app" || parts[parts.len() - 1] == "com" {
-                if parts.len() >= 2 && parts[parts.len() - 2] == "cms" {
-                    return Some(parts[0].to_string());
-                }
+            if (parts[parts.len() - 1] == "app" || parts[parts.len() - 1] == "com")
+                && parts.len() >= 2
+                && parts[parts.len() - 2] == "cms"
+            {
+                return Some(parts[0].to_string());
             }
         }
-        
+
         // If only 2 parts, the first part might be the subdomain
         if parts.len() == 2 && parts[1] == self.default_host {
             return Some(parts[0].to_string());
         }
-        
+
         None
     }
-    
+
     /// Clear cache
     pub fn clear_cache(&self) {
         self.cache.write().unwrap().clear();
     }
-    
+
     /// Get cache size
     pub fn cache_size(&self) -> usize {
         self.cache.read().unwrap().len()
@@ -190,35 +199,26 @@ impl HostResolver {
 
 /// Default host resolver
 pub fn create_host_resolver(pool: PgPool) -> HostResolver {
-    HostResolver::new(
-        pool,
-        "cms.app".to_string(),
-    )
+    HostResolver::new(pool, "cms.app".to_string())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
-    #[test]
-    fn test_extract_subdomain() {
+
+    #[tokio::test]
+    async fn test_extract_subdomain() {
         let resolver = HostResolver::new(
             sqlx::PgPool::connect_lazy("postgres://user:pass@localhost/db").unwrap(),
             "cms.app".to_string(),
         );
-        
+
         assert_eq!(
             resolver.extract_subdomain("myproject.cms.app"),
             Some("myproject".to_string())
         );
-        assert_eq!(
-            resolver.extract_subdomain("cms.app"),
-            None
-        );
-        assert_eq!(
-            resolver.extract_subdomain("localhost:3000"),
-            None
-        );
+        assert_eq!(resolver.extract_subdomain("cms.app"), None);
+        assert_eq!(resolver.extract_subdomain("localhost:3000"), None);
         assert_eq!(
             resolver.extract_subdomain("myproject.cms.com"),
             Some("myproject".to_string())

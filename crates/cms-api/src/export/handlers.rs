@@ -2,17 +2,24 @@
 //!
 //! This module contains the actual implementation of export handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::export::ExportService;
-use cms_entity::export::{ExportJobResponse, ListExportJobsQuery, CreateExportJobRequest, ExportScheduleResponse, CreateExportScheduleRequest, UpdateExportScheduleRequest};
-use cms_entity::common::{Id, PaginatedResponse};
+use cms_entity::{
+    common::{Id, PaginatedResponse},
+    export::{
+        CreateExportJobRequest, CreateExportScheduleRequest, ExportJobResponse,
+        ExportScheduleResponse, ListExportJobsQuery, UpdateExportScheduleRequest,
+    },
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// List export jobs
@@ -52,8 +59,9 @@ pub async fn list_export_jobs_handler(
         snapshot_id,
         query.limit.unwrap_or(1) as u64,
         query.offset.unwrap_or(20) as u64,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(PaginatedResponse::new(
         result.data.into_iter().map(|j| j.into()).collect(),
         result.total,
@@ -92,8 +100,9 @@ pub async fn create_export_job_handler(
         &auth.user.id,
         &request.snapshot_id,
         request.format,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(job.into()))
 }
 
@@ -123,12 +132,8 @@ pub async fn get_export_job_handler(
     auth: AuthExtractor,
     Path(job_id): Path<Id>,
 ) -> Result<Json<ExportJobResponse>, AppError> {
-    let job = ExportService::get_export_job(
-        &state.biz_context,
-        &auth.user.id,
-        &job_id,
-    ).await?;
-    
+    let job = ExportService::get_export_job(&state.biz_context, &auth.user.id, &job_id).await?;
+
     Ok(Json(job.into()))
 }
 
@@ -158,12 +163,9 @@ pub async fn download_export_handler(
     auth: AuthExtractor,
     Path(job_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let download_url = ExportService::get_download_url(
-        &state.biz_context,
-        &auth.user.id,
-        &job_id,
-    ).await?;
-    
+    let download_url =
+        ExportService::get_download_url(&state.biz_context, &auth.user.id, &job_id).await?;
+
     Ok(Json(serde_json::json!({"download_url": download_url})))
 }
 
@@ -193,12 +195,10 @@ pub async fn list_export_schedules_handler(
     auth: AuthExtractor,
     Path(project_id): Path<Id>,
 ) -> Result<Json<Vec<ExportScheduleResponse>>, AppError> {
-    let schedules = ExportService::list_export_schedules(
-        &state.biz_context,
-        &auth.user.id,
-        &project_id,
-    ).await?;
-    
+    let schedules =
+        ExportService::list_export_schedules(&state.biz_context, &auth.user.id, &project_id)
+            .await?;
+
     Ok(Json(schedules.into_iter().map(|s| s.into()).collect()))
 }
 
@@ -240,8 +240,9 @@ pub async fn create_export_schedule_handler(
         request.day_of_week,
         request.day_of_month,
         &request.time_of_day,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(schedule.into()))
 }
 
@@ -280,8 +281,9 @@ pub async fn update_export_schedule_handler(
         &auth.user.id,
         &schedule_id,
         request,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(schedule.into()))
 }
 
@@ -312,11 +314,9 @@ pub async fn delete_export_schedule_handler(
     auth: AuthExtractor,
     Path(schedule_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    ExportService::delete_export_schedule(
-        &state.biz_context,
-        &auth.user.id,
-        &schedule_id,
-    ).await?;
-    
-    Ok(Json(serde_json::json!({"success": true, "id": schedule_id})))
+    ExportService::delete_export_schedule(&state.biz_context, &auth.user.id, &schedule_id).await?;
+
+    Ok(Json(
+        serde_json::json!({"success": true, "id": schedule_id}),
+    ))
 }

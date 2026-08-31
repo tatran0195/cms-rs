@@ -1,16 +1,14 @@
-﻿//! Integration database queries
+//! Integration database queries
 
 use chrono::{DateTime, Utc};
 use cms_entity::integration::{
-    ProjectIntegration, ProjectIntegrationResponse,
-    IntegrationAuditEvent, IntegrationAuditEventResponse,
-    IntegrationConfirmation, IntegrationConfirmationResponse,
-    IntegrationWebhookDelivery, IntegrationWebhookDeliveryResponse,
-    IntegrationIdempotencyRecord, IntegrationIdempotencyRecordResponse,
-    IntegrationProvider,
+    IntegrationAuditEvent, IntegrationAuditEventResponse, IntegrationConfirmation,
+    IntegrationConfirmationResponse, IntegrationIdempotencyRecord,
+    IntegrationIdempotencyRecordResponse, IntegrationProvider, IntegrationWebhookDelivery,
+    IntegrationWebhookDeliveryResponse, ProjectIntegration, ProjectIntegrationResponse,
 };
 use cms_error::AppError;
-use sqlx::{FromRow, PgPool, QueryBuilder, Postgres};
+use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
 use uuid::Uuid;
 
 // ============================================
@@ -72,32 +70,32 @@ impl ProjectIntegrationQueries {
         integration_id: &str,
     ) -> Result<Option<ProjectIntegration>, AppError> {
         let row = sqlx::query_as::<_, ProjectIntegrationRow>(
-            "SELECT * FROM \"ProjectIntegration\" WHERE id = $1"
+            "SELECT * FROM \"ProjectIntegration\" WHERE id = $1",
         )
         .bind(integration_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get integrations by project ID
     pub async fn get_by_project(
         pool: &PgPool,
         project_id: &str,
     ) -> Result<Vec<ProjectIntegration>, AppError> {
         let rows = sqlx::query_as::<_, ProjectIntegrationRow>(
-            "SELECT * FROM \"ProjectIntegration\" WHERE project_id = $1 ORDER BY created_at ASC"
+            "SELECT * FROM \"ProjectIntegration\" WHERE project_id = $1 ORDER BY created_at ASC",
         )
         .bind(project_id)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     /// Get integrations by project ID and provider
     pub async fn get_by_project_and_provider(
         pool: &PgPool,
@@ -105,17 +103,18 @@ impl ProjectIntegrationQueries {
         provider: IntegrationProvider,
     ) -> Result<Vec<ProjectIntegration>, AppError> {
         let rows = sqlx::query_as::<_, ProjectIntegrationRow>(
-            "SELECT * FROM \"ProjectIntegration\" WHERE project_id = $1 AND provider = $2 ORDER BY created_at ASC"
+            "SELECT * FROM \"ProjectIntegration\" WHERE project_id = $1 AND provider = $2 ORDER \
+             BY created_at ASC",
         )
         .bind(project_id)
         .bind(provider)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     /// Create a new project integration
     pub async fn create(
         pool: &PgPool,
@@ -127,7 +126,7 @@ impl ProjectIntegrationQueries {
     ) -> Result<ProjectIntegration, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, ProjectIntegrationRow>(
             r#"
             INSERT INTO "ProjectIntegration" (id, project_id, provider, name, config, webhook_url, is_active, created_at, updated_at)
@@ -147,10 +146,10 @@ impl ProjectIntegrationQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update a project integration
     pub async fn update(
         pool: &PgPool,
@@ -160,10 +159,9 @@ impl ProjectIntegrationQueries {
         webhook_url: Option<&str>,
         is_active: Option<bool>,
     ) -> Result<ProjectIntegration, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"ProjectIntegration\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE \"ProjectIntegration\" SET ");
+
         let mut has_updates = false;
         if let Some(name) = name {
             query_builder.push("name = ");
@@ -194,26 +192,26 @@ impl ProjectIntegrationQueries {
             query_builder.push_bind(is_active);
             has_updates = true;
         }
-        
+
         if has_updates {
             query_builder.push(", ");
         }
         query_builder.push("updated_at = ");
         query_builder.push_bind(Utc::now());
-        
+
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(integration_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<ProjectIntegrationRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Delete a project integration
     pub async fn delete(pool: &PgPool, integration_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"ProjectIntegration\" WHERE id = $1")
@@ -221,7 +219,7 @@ impl ProjectIntegrationQueries {
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }
@@ -278,48 +276,47 @@ impl IntegrationAuditEventQueries {
         event_id: &str,
     ) -> Result<Option<IntegrationAuditEvent>, AppError> {
         let row = sqlx::query_as::<_, IntegrationAuditEventRow>(
-            "SELECT * FROM \"IntegrationAuditEvent\" WHERE id = $1"
+            "SELECT * FROM \"IntegrationAuditEvent\" WHERE id = $1",
         )
         .bind(event_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn get_by_integration(
         pool: &PgPool,
         integration_id: &str,
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<IntegrationAuditEvent>, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT * FROM \"IntegrationAuditEvent\" WHERE integration_id = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT * FROM \"IntegrationAuditEvent\" WHERE integration_id = ");
         query_builder.push_bind(integration_id);
-        
+
         query_builder.push(" ORDER BY created_at DESC");
-        
+
         if let Some(limit) = limit {
             query_builder.push(" LIMIT ");
             query_builder.push_bind(limit);
         }
-        
+
         if let Some(offset) = offset {
             query_builder.push(" OFFSET ");
             query_builder.push_bind(offset);
         }
-        
+
         let rows = query_builder
             .build_query_as::<IntegrationAuditEventRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         integration_id: &str,
@@ -330,7 +327,7 @@ impl IntegrationAuditEventQueries {
     ) -> Result<IntegrationAuditEvent, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, IntegrationAuditEventRow>(
             r#"
             INSERT INTO "IntegrationAuditEvent" (id, integration_id, event_type, payload, status, error_message, created_at)
@@ -348,7 +345,7 @@ impl IntegrationAuditEventQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
 }
@@ -398,31 +395,31 @@ impl IntegrationConfirmationQueries {
         confirmation_id: &str,
     ) -> Result<Option<IntegrationConfirmation>, AppError> {
         let row = sqlx::query_as::<_, IntegrationConfirmationRow>(
-            "SELECT * FROM \"IntegrationConfirmation\" WHERE id = $1"
+            "SELECT * FROM \"IntegrationConfirmation\" WHERE id = $1",
         )
         .bind(confirmation_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn get_by_token(
         pool: &PgPool,
         token: &str,
     ) -> Result<Option<IntegrationConfirmation>, AppError> {
         let row = sqlx::query_as::<_, IntegrationConfirmationRow>(
-            "SELECT * FROM \"IntegrationConfirmation\" WHERE confirmation_token = $1"
+            "SELECT * FROM \"IntegrationConfirmation\" WHERE confirmation_token = $1",
         )
         .bind(token)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         integration_id: &str,
@@ -430,7 +427,7 @@ impl IntegrationConfirmationQueries {
     ) -> Result<IntegrationConfirmation, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, IntegrationConfirmationRow>(
             r#"
             INSERT INTO "IntegrationConfirmation" (id, integration_id, confirmation_token, created_at)
@@ -445,23 +442,23 @@ impl IntegrationConfirmationQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn confirm(
         pool: &PgPool,
         confirmation_id: &str,
     ) -> Result<IntegrationConfirmation, AppError> {
         let row = sqlx::query_as::<_, IntegrationConfirmationRow>(
-            "UPDATE \"IntegrationConfirmation\" SET confirmed_at = $1 WHERE id = $2 RETURNING *"
+            "UPDATE \"IntegrationConfirmation\" SET confirmed_at = $1 WHERE id = $2 RETURNING *",
         )
         .bind(Utc::now())
         .bind(confirmation_id)
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
 }
@@ -527,34 +524,36 @@ impl IntegrationWebhookDeliveryQueries {
         delivery_id: &str,
     ) -> Result<Option<IntegrationWebhookDelivery>, AppError> {
         let row = sqlx::query_as::<_, IntegrationWebhookDeliveryRow>(
-            "SELECT * FROM \"IntegrationWebhookDelivery\" WHERE id = $1"
+            "SELECT * FROM \"IntegrationWebhookDelivery\" WHERE id = $1",
         )
         .bind(delivery_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn get_pending_deliveries(
         pool: &PgPool,
         limit: Option<i64>,
     ) -> Result<Vec<IntegrationWebhookDelivery>, AppError> {
-        let mut query = "SELECT * FROM \"IntegrationWebhookDelivery\" WHERE status = 'PENDING' ORDER BY created_at ASC".to_string();
-        
+        let mut query = "SELECT * FROM \"IntegrationWebhookDelivery\" WHERE status = 'PENDING' \
+                         ORDER BY created_at ASC"
+            .to_string();
+
         if let Some(limit) = limit {
             query.push_str(&format!(" LIMIT {}", limit));
         }
-        
+
         let rows = sqlx::query_as::<_, IntegrationWebhookDeliveryRow>(&query)
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         integration_id: &str,
@@ -563,7 +562,7 @@ impl IntegrationWebhookDeliveryQueries {
     ) -> Result<IntegrationWebhookDelivery, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, IntegrationWebhookDeliveryRow>(
             r#"
             INSERT INTO "IntegrationWebhookDelivery" (id, integration_id, event_type, payload, status, attempts, created_at, updated_at)
@@ -582,10 +581,10 @@ impl IntegrationWebhookDeliveryQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn update_status(
         pool: &PgPool,
         delivery_id: &str,
@@ -593,33 +592,32 @@ impl IntegrationWebhookDeliveryQueries {
         response_status: Option<i32>,
         error_message: Option<&str>,
     ) -> Result<IntegrationWebhookDelivery, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"IntegrationWebhookDelivery\" SET status = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE \"IntegrationWebhookDelivery\" SET status = ");
         query_builder.push_bind(status);
-        
+
         if let Some(response_status) = response_status {
             query_builder.push(", response_status = ");
             query_builder.push_bind(response_status);
         }
-        
+
         if let Some(error_message) = error_message {
             query_builder.push(", error_message = ");
             query_builder.push_bind(error_message);
         }
-        
+
         query_builder.push(", attempts = attempts + 1, updated_at = ");
         query_builder.push_bind(Utc::now());
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(delivery_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<IntegrationWebhookDeliveryRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
 }
@@ -668,17 +666,18 @@ impl IntegrationIdempotencyRecordQueries {
         request_id: &str,
     ) -> Result<Option<IntegrationIdempotencyRecord>, AppError> {
         let row = sqlx::query_as::<_, IntegrationIdempotencyRecordRow>(
-            "SELECT * FROM \"IntegrationIdempotencyRecord\" WHERE integration_id = $1 AND request_id = $2"
+            "SELECT * FROM \"IntegrationIdempotencyRecord\" WHERE integration_id = $1 AND \
+             request_id = $2",
         )
         .bind(integration_id)
         .bind(request_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         integration_id: &str,
@@ -686,7 +685,7 @@ impl IntegrationIdempotencyRecordQueries {
     ) -> Result<IntegrationIdempotencyRecord, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, IntegrationIdempotencyRecordRow>(
             r#"
             INSERT INTO "IntegrationIdempotencyRecord" (id, integration_id, request_id, processed_at)
@@ -701,7 +700,7 @@ impl IntegrationIdempotencyRecordQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
 }

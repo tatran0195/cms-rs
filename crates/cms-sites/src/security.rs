@@ -1,5 +1,7 @@
-use axum::http::{HeaderMap, HeaderName, HeaderValue};
-use axum::response::Response;
+use axum::{
+    http::{HeaderMap, HeaderName, HeaderValue},
+    response::Response,
+};
 
 /// Security headers helper for HTML meta tags
 #[derive(Debug, Clone, Default)]
@@ -61,7 +63,11 @@ impl Default for SiteSecurityConfig {
             enable_x_xss_protection: true,
             enable_csp: true,
             // More permissive CSP for published sites (allows inline styles/scripts from markdown)
-            csp: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' https:; connect-src 'self' https:; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';".to_string(),
+            csp: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; \
+                  style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src \
+                  'self' https:; connect-src 'self' https:; frame-src 'none'; object-src 'none'; \
+                  base-uri 'self'; form-action 'self';"
+                .to_string(),
             enable_referrer_policy: true,
             referrer_policy: "strict-origin-when-cross-origin".to_string(),
             enable_permissions_policy: true,
@@ -76,11 +82,9 @@ pub fn get_security_headers(config: &SiteSecurityConfig) -> HeaderMap {
 
     // Prevent clickjacking
     if config.enable_x_frame_options {
-        headers.insert(
-            HeaderName::from_static("x-frame-options"),
-            HeaderValue::from_str(&config.x_frame_options)
-                .expect("Invalid X-Frame-Options header value"),
-        );
+        if let Ok(val) = HeaderValue::from_str(&config.x_frame_options) {
+            headers.insert(HeaderName::from_static("x-frame-options"), val);
+        }
     }
 
     // Prevent MIME type sniffing
@@ -101,37 +105,30 @@ pub fn get_security_headers(config: &SiteSecurityConfig) -> HeaderMap {
 
     // Content Security Policy
     if config.enable_csp {
-        headers.insert(
-            HeaderName::from_static("content-security-policy"),
-            HeaderValue::from_str(&config.csp).expect("Invalid CSP header value"),
-        );
+        if let Ok(val) = HeaderValue::from_str(&config.csp) {
+            headers.insert(HeaderName::from_static("content-security-policy"), val);
+        }
     }
 
     // Referrer policy
     if config.enable_referrer_policy {
-        headers.insert(
-            HeaderName::from_static("referrer-policy"),
-            HeaderValue::from_str(&config.referrer_policy)
-                .expect("Invalid Referrer-Policy header value"),
-        );
+        if let Ok(val) = HeaderValue::from_str(&config.referrer_policy) {
+            headers.insert(HeaderName::from_static("referrer-policy"), val);
+        }
     }
 
     // Permissions Policy
     if config.enable_permissions_policy {
-        headers.insert(
-            HeaderName::from_static("permissions-policy"),
-            HeaderValue::from_str(&config.permissions_policy)
-                .expect("Invalid Permissions-Policy header value"),
-        );
+        if let Ok(val) = HeaderValue::from_str(&config.permissions_policy) {
+            headers.insert(HeaderName::from_static("permissions-policy"), val);
+        }
     }
 
     // HSTS (only for HTTPS)
     if config.enable_hsts {
-        headers.insert(
-            HeaderName::from_static("strict-transport-security"),
-            HeaderValue::from_str(&format!("max-age={}", config.hsts_max_age))
-                .expect("Invalid HSTS header value"),
-        );
+        if let Ok(val) = HeaderValue::from_str(&format!("max-age={}", config.hsts_max_age)) {
+            headers.insert(HeaderName::from_static("strict-transport-security"), val);
+        }
     }
 
     // Additional security headers

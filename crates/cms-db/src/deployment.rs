@@ -1,10 +1,12 @@
 //! Deployment database queries
 
 use chrono::{DateTime, Utc};
-use cms_entity::deployment::{Deployment, DeploymentResponse, DeploymentStatus};
-use cms_entity::domain::{Domain, DomainResponse};
+use cms_entity::{
+    deployment::{Deployment, DeploymentResponse, DeploymentStatus},
+    domain::{Domain, DomainResponse},
+};
 use cms_error::AppError;
-use sqlx::{FromRow, PgPool, QueryBuilder, Postgres, Row};
+use sqlx::{FromRow, PgPool, Postgres, QueryBuilder, Row};
 use uuid::Uuid;
 
 /// Database representation of a deployment row
@@ -105,18 +107,19 @@ pub struct DeploymentQueries;
 
 impl DeploymentQueries {
     /// Get a deployment by ID
-    pub async fn get_by_id(pool: &PgPool, deployment_id: &str) -> Result<Option<Deployment>, AppError> {
-        let row = sqlx::query_as::<_, DeploymentRow>(
-            "SELECT * FROM \"Deployment\" WHERE id = $1"
-        )
-        .bind(deployment_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+    pub async fn get_by_id(
+        pool: &PgPool,
+        deployment_id: &str,
+    ) -> Result<Option<Deployment>, AppError> {
+        let row = sqlx::query_as::<_, DeploymentRow>("SELECT * FROM \"Deployment\" WHERE id = $1")
+            .bind(deployment_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get deployments by project
     pub async fn get_by_project(
         pool: &PgPool,
@@ -124,45 +127,43 @@ impl DeploymentQueries {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<Deployment>, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT * FROM \"Deployment\" WHERE project_id = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT * FROM \"Deployment\" WHERE project_id = ");
         query_builder.push_bind(project_id);
-        
+
         query_builder.push(" ORDER BY created_at DESC");
-        
+
         if let Some(limit) = limit {
             query_builder.push(" LIMIT ");
             query_builder.push_bind(limit);
         }
-        
+
         if let Some(offset) = offset {
             query_builder.push(" OFFSET ");
             query_builder.push_bind(offset);
         }
-        
+
         let rows = query_builder
             .build_query_as::<DeploymentRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     /// Count deployments by project
     pub async fn count_by_project(pool: &PgPool, project_id: &str) -> Result<i64, AppError> {
-        let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM \"Deployment\" WHERE project_id = $1"
-        )
-        .bind(project_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM \"Deployment\" WHERE project_id = $1")
+                .bind(project_id)
+                .fetch_one(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(count)
     }
-    
+
     /// Create a new deployment
     pub async fn create(
         pool: &PgPool,
@@ -172,13 +173,13 @@ impl DeploymentQueries {
     ) -> Result<Deployment, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, DeploymentRow>(
             r#"
             INSERT INTO "Deployment" (id, project_id, branch_id, status, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(project_id)
@@ -189,40 +190,39 @@ impl DeploymentQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update a deployment
     pub async fn update(
         pool: &PgPool,
         deployment_id: &str,
         branch_id: Option<&str>,
     ) -> Result<Deployment, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"Deployment\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE \"Deployment\" SET ");
+
         if let Some(branch_id) = branch_id {
             query_builder.push("branch_id = ");
             query_builder.push_bind(branch_id);
         }
-        
+
         query_builder.push(", updated_at = ");
         query_builder.push_bind(Utc::now());
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(deployment_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<DeploymentRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update deployment status
     pub async fn update_status(
         pool: &PgPool,
@@ -230,7 +230,7 @@ impl DeploymentQueries {
         status: DeploymentStatus,
     ) -> Result<Deployment, AppError> {
         let row = sqlx::query_as::<_, DeploymentRow>(
-            "UPDATE \"Deployment\" SET status = $1, updated_at = $2 WHERE id = $3 RETURNING *"
+            "UPDATE \"Deployment\" SET status = $1, updated_at = $2 WHERE id = $3 RETURNING *",
         )
         .bind(status)
         .bind(Utc::now())
@@ -238,10 +238,10 @@ impl DeploymentQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update deployment with error
     pub async fn update_error(
         pool: &PgPool,
@@ -249,7 +249,8 @@ impl DeploymentQueries {
         error_message: &str,
     ) -> Result<Deployment, AppError> {
         let row = sqlx::query_as::<_, DeploymentRow>(
-            "UPDATE \"Deployment\" SET error_message = $1, status = $2, updated_at = $3 WHERE id = $4 RETURNING *"
+            "UPDATE \"Deployment\" SET error_message = $1, status = $2, updated_at = $3 WHERE id \
+             = $4 RETURNING *",
         )
         .bind(error_message)
         .bind(DeploymentStatus::Failed)
@@ -258,14 +259,18 @@ impl DeploymentQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update deployment as deployed
-    pub async fn update_deployed_at(pool: &PgPool, deployment_id: &str) -> Result<Deployment, AppError> {
+    pub async fn update_deployed_at(
+        pool: &PgPool,
+        deployment_id: &str,
+    ) -> Result<Deployment, AppError> {
         let row = sqlx::query_as::<_, DeploymentRow>(
-            "UPDATE \"Deployment\" SET deployed_at = $1, status = $2, updated_at = $3 WHERE id = $4 RETURNING *"
+            "UPDATE \"Deployment\" SET deployed_at = $1, status = $2, updated_at = $3 WHERE id = \
+             $4 RETURNING *",
         )
         .bind(Utc::now())
         .bind(DeploymentStatus::Active)
@@ -274,10 +279,10 @@ impl DeploymentQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update deployment build logs
     pub async fn update_build_logs(
         pool: &PgPool,
@@ -285,7 +290,7 @@ impl DeploymentQueries {
         logs: &str,
     ) -> Result<Deployment, AppError> {
         let row = sqlx::query_as::<_, DeploymentRow>(
-            "UPDATE \"Deployment\" SET build_logs = $1, updated_at = $2 WHERE id = $3 RETURNING *"
+            "UPDATE \"Deployment\" SET build_logs = $1, updated_at = $2 WHERE id = $3 RETURNING *",
         )
         .bind(logs)
         .bind(Utc::now())
@@ -293,10 +298,10 @@ impl DeploymentQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Delete a deployment
     pub async fn delete(pool: &PgPool, deployment_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"Deployment\" WHERE id = $1")
@@ -304,7 +309,7 @@ impl DeploymentQueries {
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }
@@ -315,59 +320,60 @@ pub struct DomainQueries;
 impl DomainQueries {
     /// Get a domain by ID
     pub async fn get_by_id(pool: &PgPool, domain_id: &str) -> Result<Option<Domain>, AppError> {
-        let row = sqlx::query_as::<_, DomainRow>(
-            "SELECT * FROM \"Domain\" WHERE id = $1"
-        )
-        .bind(domain_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row = sqlx::query_as::<_, DomainRow>("SELECT * FROM \"Domain\" WHERE id = $1")
+            .bind(domain_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get a domain by hostname
-    pub async fn get_by_hostname(pool: &PgPool, hostname: &str) -> Result<Option<Domain>, AppError> {
-        let row = sqlx::query_as::<_, DomainRow>(
-            "SELECT * FROM \"Domain\" WHERE hostname = $1"
-        )
-        .bind(hostname)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+    pub async fn get_by_hostname(
+        pool: &PgPool,
+        hostname: &str,
+    ) -> Result<Option<Domain>, AppError> {
+        let row = sqlx::query_as::<_, DomainRow>("SELECT * FROM \"Domain\" WHERE hostname = $1")
+            .bind(hostname)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get domains by deployment
-    pub async fn get_by_deployment(pool: &PgPool, deployment_id: &str) -> Result<Vec<Domain>, AppError> {
-        let rows = sqlx::query_as::<_, DomainRow>(
-            "SELECT * FROM \"Domain\" WHERE deployment_id = $1"
-        )
-        .bind(deployment_id)
-        .fetch_all(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+    pub async fn get_by_deployment(
+        pool: &PgPool,
+        deployment_id: &str,
+    ) -> Result<Vec<Domain>, AppError> {
+        let rows =
+            sqlx::query_as::<_, DomainRow>("SELECT * FROM \"Domain\" WHERE deployment_id = $1")
+                .bind(deployment_id)
+                .fetch_all(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     /// Get primary domain for a deployment
     pub async fn get_primary_by_deployment(
         pool: &PgPool,
         deployment_id: &str,
     ) -> Result<Option<Domain>, AppError> {
         let row = sqlx::query_as::<_, DomainRow>(
-            "SELECT * FROM \"Domain\" WHERE deployment_id = $1 AND is_primary = true LIMIT 1"
+            "SELECT * FROM \"Domain\" WHERE deployment_id = $1 AND is_primary = true LIMIT 1",
         )
         .bind(deployment_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Create a new domain
     pub async fn create(
         pool: &PgPool,
@@ -383,16 +389,16 @@ impl DomainQueries {
                 .await
                 .map_err(|e| AppError::Database(e.into()))?;
         }
-        
+
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, DomainRow>(
             r#"
             INSERT INTO "Domain" (id, deployment_id, hostname, is_primary, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(deployment_id)
@@ -409,44 +415,42 @@ impl DomainQueries {
                 AppError::Database(e.into())
             }
         })?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update a domain
     pub async fn update(
         pool: &PgPool,
         domain_id: &str,
         is_primary: Option<bool>,
     ) -> Result<Domain, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"Domain\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new("UPDATE \"Domain\" SET ");
+
         if let Some(is_primary) = is_primary {
             query_builder.push("is_primary = ");
             query_builder.push_bind(is_primary);
         }
-        
+
         query_builder.push(", updated_at = ");
         query_builder.push_bind(Utc::now());
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(domain_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<DomainRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Verify a domain
     pub async fn verify(pool: &PgPool, domain_id: &str) -> Result<Domain, AppError> {
         let row = sqlx::query_as::<_, DomainRow>(
-            "UPDATE \"Domain\" SET verified_at = $1, updated_at = $2 WHERE id = $3 RETURNING *"
+            "UPDATE \"Domain\" SET verified_at = $1, updated_at = $2 WHERE id = $3 RETURNING *",
         )
         .bind(Utc::now())
         .bind(Utc::now())
@@ -454,10 +458,10 @@ impl DomainQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Delete a domain
     pub async fn delete(pool: &PgPool, domain_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"Domain\" WHERE id = $1")
@@ -465,7 +469,7 @@ impl DomainQueries {
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }

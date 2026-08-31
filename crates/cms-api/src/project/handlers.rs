@@ -2,17 +2,25 @@
 //!
 //! This module contains the actual implementation of project handlers.
 
+use std::sync::Arc;
+
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use utoipa::ToSchema;
 use cms_biz::project::ProjectService;
-use cms_entity::project::{CreateProjectRequest, UpdateProjectRequest, ProjectWithOrgResponse, ProjectResponse, ListProjectsQuery, ListProjectsResponse, ProjectSettings, UpdateProjectSettingsRequest};
-use cms_entity::common::{Id, PaginatedResponse};
+use cms_entity::{
+    common::{Id, PaginatedResponse},
+    project::{
+        CreateProjectRequest, ListProjectsQuery, ListProjectsResponse, ProjectResponse,
+        ProjectSettings, ProjectWithOrgResponse, UpdateProjectRequest,
+        UpdateProjectSettingsRequest,
+    },
+};
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+use utoipa::ToSchema;
+
 use crate::auth::AuthExtractor;
 
 /// List all projects for the authenticated user
@@ -46,8 +54,9 @@ pub async fn list_projects_handler(
         &auth.user.id,
         query.page.unwrap_or(1),
         query.limit.unwrap_or(20),
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(result))
 }
 
@@ -77,13 +86,9 @@ pub async fn create_project_handler(
     Json(request): Json<CreateProjectRequest>,
 ) -> Result<Json<ProjectWithOrgResponse>, AppError> {
     let org_id = request.organization_id.clone().unwrap_or_default();
-    let project = ProjectService::create_project(
-        &state.biz_context,
-        &auth.user.id,
-        &org_id,
-        request,
-    ).await?;
-    
+    let project =
+        ProjectService::create_project(&state.biz_context, &auth.user.id, &org_id, request).await?;
+
     Ok(Json(project))
 }
 
@@ -93,12 +98,9 @@ pub async fn get_project_handler(
     auth: AuthExtractor,
     Path(project_id): Path<Id>,
 ) -> Result<Json<ProjectWithOrgResponse>, AppError> {
-    let project = ProjectService::get_project(
-        &state.biz_context,
-        &auth.user.id,
-        &project_id,
-    ).await?;
-    
+    let project =
+        ProjectService::get_project(&state.biz_context, &auth.user.id, &project_id).await?;
+
     Ok(Json(project))
 }
 
@@ -109,13 +111,10 @@ pub async fn update_project_handler(
     Path(project_id): Path<Id>,
     Json(request): Json<UpdateProjectRequest>,
 ) -> Result<Json<ProjectResponse>, AppError> {
-    let project = ProjectService::update_project(
-        &state.biz_context,
-        &auth.user.id,
-        &project_id,
-        request,
-    ).await?;
-    
+    let project =
+        ProjectService::update_project(&state.biz_context, &auth.user.id, &project_id, request)
+            .await?;
+
     Ok(Json(project))
 }
 
@@ -125,12 +124,8 @@ pub async fn delete_project_handler(
     auth: AuthExtractor,
     Path(project_id): Path<Id>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    ProjectService::delete_project(
-        &state.biz_context,
-        &auth.user.id,
-        &project_id,
-    ).await?;
-    
+    ProjectService::delete_project(&state.biz_context, &auth.user.id, &project_id).await?;
+
     Ok(Json(serde_json::json!({"success": true, "id": project_id})))
 }
 
@@ -140,12 +135,10 @@ pub async fn get_project_settings_handler(
     auth: AuthExtractor,
     Path(project_id): Path<Id>,
 ) -> Result<Json<ProjectSettings>, AppError> {
-    let settings = ProjectService::get_project_settings(
-        &state.biz_context,
-        &auth.user.id,
-        &project_id,
-    ).await?;
-    
+    let settings =
+        ProjectService::get_project_settings(&state.biz_context, &auth.user.id, &project_id)
+            .await?;
+
     Ok(Json(settings))
 }
 
@@ -161,8 +154,9 @@ pub async fn update_project_settings_handler(
         &auth.user.id,
         &project_id,
         request,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(Json(settings))
 }
 
@@ -172,11 +166,8 @@ pub async fn list_project_addons_handler(
     auth: AuthExtractor,
     Path(project_id): Path<Id>,
 ) -> Result<Json<Vec<cms_entity::project::ProjectAddonResponse>>, AppError> {
-    let addons = ProjectService::list_project_addons(
-        &state.biz_context,
-        &auth.user.id,
-        &project_id,
-    ).await?;
-    
+    let addons =
+        ProjectService::list_project_addons(&state.biz_context, &auth.user.id, &project_id).await?;
+
     Ok(Json(addons))
 }

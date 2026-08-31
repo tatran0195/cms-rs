@@ -2,7 +2,8 @@
 //!
 //! This module contains the actual implementation of authentication handlers.
 
-use crate::auth::AuthExtractor;
+use std::sync::Arc;
+
 use axum::{
     extract::{Path, State},
     http::{HeaderMap, StatusCode},
@@ -15,7 +16,8 @@ use cms_entity::auth::{
 };
 use cms_error::AppError;
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
+
+use crate::auth::AuthExtractor;
 
 /// Login to CMS
 ///

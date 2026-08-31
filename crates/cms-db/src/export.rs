@@ -1,9 +1,11 @@
 //! Export database queries
 
 use chrono::{DateTime, Utc};
-use cms_entity::export::{ExportSnapshot, ExportJob, ExportArtifact, ExportSchedule, ExportStatus, ExportFormat};
+use cms_entity::export::{
+    ExportArtifact, ExportFormat, ExportJob, ExportSchedule, ExportSnapshot, ExportStatus,
+};
 use cms_error::AppError;
-use sqlx::{FromRow, PgPool, QueryBuilder, Postgres};
+use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
 use uuid::Uuid;
 
 // ============================================
@@ -35,62 +37,63 @@ impl From<ExportSnapshotRow> for ExportSnapshot {
 pub struct ExportSnapshotQueries;
 
 impl ExportSnapshotQueries {
-    pub async fn get_by_id(pool: &PgPool, snapshot_id: &str) -> Result<Option<ExportSnapshot>, AppError> {
+    pub async fn get_by_id(
+        pool: &PgPool,
+        snapshot_id: &str,
+    ) -> Result<Option<ExportSnapshot>, AppError> {
         let row = sqlx::query_as::<_, ExportSnapshotRow>(
-            "SELECT * FROM \"ExportSnapshot\" WHERE id = $1"
+            "SELECT * FROM \"ExportSnapshot\" WHERE id = $1",
         )
         .bind(snapshot_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn get_by_project(
         pool: &PgPool,
         project_id: &str,
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<ExportSnapshot>, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT * FROM \"ExportSnapshot\" WHERE project_id = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT * FROM \"ExportSnapshot\" WHERE project_id = ");
         query_builder.push_bind(project_id);
-        
+
         query_builder.push(" ORDER BY created_at DESC");
-        
+
         if let Some(limit) = limit {
             query_builder.push(" LIMIT ");
             query_builder.push_bind(limit);
         }
-        
+
         if let Some(offset) = offset {
             query_builder.push(" OFFSET ");
             query_builder.push_bind(offset);
         }
-        
+
         let rows = query_builder
             .build_query_as::<ExportSnapshotRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     pub async fn count_by_project(pool: &PgPool, project_id: &str) -> Result<i64, AppError> {
-        let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM \"ExportSnapshot\" WHERE project_id = $1"
-        )
-        .bind(project_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM \"ExportSnapshot\" WHERE project_id = $1")
+                .bind(project_id)
+                .fetch_one(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(count)
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         project_id: &str,
@@ -99,13 +102,13 @@ impl ExportSnapshotQueries {
     ) -> Result<ExportSnapshot, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, ExportSnapshotRow>(
             r#"
             INSERT INTO "ExportSnapshot" (id, project_id, branch_id, language_id, created_at)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(project_id)
@@ -115,17 +118,17 @@ impl ExportSnapshotQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn delete(pool: &PgPool, snapshot_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"ExportSnapshot\" WHERE id = $1")
             .bind(snapshot_id)
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }
@@ -170,61 +173,57 @@ pub struct ExportJobQueries;
 
 impl ExportJobQueries {
     pub async fn get_by_id(pool: &PgPool, job_id: &str) -> Result<Option<ExportJob>, AppError> {
-        let row = sqlx::query_as::<_, ExportJobRow>(
-            "SELECT * FROM \"ExportJob\" WHERE id = $1"
-        )
-        .bind(job_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row = sqlx::query_as::<_, ExportJobRow>("SELECT * FROM \"ExportJob\" WHERE id = $1")
+            .bind(job_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn get_by_snapshot(
         pool: &PgPool,
         snapshot_id: &str,
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<ExportJob>, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT * FROM \"ExportJob\" WHERE snapshot_id = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT * FROM \"ExportJob\" WHERE snapshot_id = ");
         query_builder.push_bind(snapshot_id);
-        
+
         query_builder.push(" ORDER BY created_at DESC");
-        
+
         if let Some(limit) = limit {
             query_builder.push(" LIMIT ");
             query_builder.push_bind(limit);
         }
-        
+
         if let Some(offset) = offset {
             query_builder.push(" OFFSET ");
             query_builder.push_bind(offset);
         }
-        
+
         let rows = query_builder
             .build_query_as::<ExportJobRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     pub async fn count_by_snapshot(pool: &PgPool, snapshot_id: &str) -> Result<i64, AppError> {
-        let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM \"ExportJob\" WHERE snapshot_id = $1"
-        )
-        .bind(snapshot_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM \"ExportJob\" WHERE snapshot_id = $1")
+                .bind(snapshot_id)
+                .fetch_one(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(count)
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         snapshot_id: &str,
@@ -233,13 +232,13 @@ impl ExportJobQueries {
     ) -> Result<ExportJob, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, ExportJobRow>(
             r#"
             INSERT INTO "ExportJob" (id, snapshot_id, format, status, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-            "#
+            "#,
         )
         .bind(&id)
         .bind(snapshot_id)
@@ -250,17 +249,17 @@ impl ExportJobQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn update_status(
         pool: &PgPool,
         job_id: &str,
         status: ExportStatus,
     ) -> Result<ExportJob, AppError> {
         let row = sqlx::query_as::<_, ExportJobRow>(
-            "UPDATE \"ExportJob\" SET status = $1, updated_at = $2 WHERE id = $3 RETURNING *"
+            "UPDATE \"ExportJob\" SET status = $1, updated_at = $2 WHERE id = $3 RETURNING *",
         )
         .bind(status)
         .bind(Utc::now())
@@ -268,17 +267,17 @@ impl ExportJobQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn update_output_path(
         pool: &PgPool,
         job_id: &str,
         output_path: &str,
     ) -> Result<ExportJob, AppError> {
         let row = sqlx::query_as::<_, ExportJobRow>(
-            "UPDATE \"ExportJob\" SET output_path = $1, updated_at = $2 WHERE id = $3 RETURNING *"
+            "UPDATE \"ExportJob\" SET output_path = $1, updated_at = $2 WHERE id = $3 RETURNING *",
         )
         .bind(output_path)
         .bind(Utc::now())
@@ -286,17 +285,18 @@ impl ExportJobQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn update_error(
         pool: &PgPool,
         job_id: &str,
         error_message: &str,
     ) -> Result<ExportJob, AppError> {
         let row = sqlx::query_as::<_, ExportJobRow>(
-            "UPDATE \"ExportJob\" SET error_message = $1, status = $2, updated_at = $3 WHERE id = $4 RETURNING *"
+            "UPDATE \"ExportJob\" SET error_message = $1, status = $2, updated_at = $3 WHERE id = \
+             $4 RETURNING *",
         )
         .bind(error_message)
         .bind(ExportStatus::Failed)
@@ -305,17 +305,17 @@ impl ExportJobQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn delete(pool: &PgPool, job_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"ExportJob\" WHERE id = $1")
             .bind(job_id)
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }
@@ -353,30 +353,33 @@ impl From<ExportArtifactRow> for ExportArtifact {
 pub struct ExportArtifactQueries;
 
 impl ExportArtifactQueries {
-    pub async fn get_by_id(pool: &PgPool, artifact_id: &str) -> Result<Option<ExportArtifact>, AppError> {
+    pub async fn get_by_id(
+        pool: &PgPool,
+        artifact_id: &str,
+    ) -> Result<Option<ExportArtifact>, AppError> {
         let row = sqlx::query_as::<_, ExportArtifactRow>(
-            "SELECT * FROM \"ExportArtifact\" WHERE id = $1"
+            "SELECT * FROM \"ExportArtifact\" WHERE id = $1",
         )
         .bind(artifact_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     pub async fn get_by_job(pool: &PgPool, job_id: &str) -> Result<Vec<ExportArtifact>, AppError> {
         let rows = sqlx::query_as::<_, ExportArtifactRow>(
-            "SELECT * FROM \"ExportArtifact\" WHERE job_id = $1"
+            "SELECT * FROM \"ExportArtifact\" WHERE job_id = $1",
         )
         .bind(job_id)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         job_id: &str,
@@ -387,7 +390,7 @@ impl ExportArtifactQueries {
     ) -> Result<ExportArtifact, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, ExportArtifactRow>(
             r#"
             INSERT INTO "ExportArtifact" (id, job_id, file_name, file_size, storage_path, download_url, created_at)
@@ -405,17 +408,17 @@ impl ExportArtifactQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn delete(pool: &PgPool, artifact_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"ExportArtifact\" WHERE id = $1")
             .bind(artifact_id)
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }
@@ -463,30 +466,36 @@ impl From<ExportScheduleRow> for ExportSchedule {
 pub struct ExportScheduleQueries;
 
 impl ExportScheduleQueries {
-    pub async fn get_by_id(pool: &PgPool, schedule_id: &str) -> Result<Option<ExportSchedule>, AppError> {
+    pub async fn get_by_id(
+        pool: &PgPool,
+        schedule_id: &str,
+    ) -> Result<Option<ExportSchedule>, AppError> {
         let row = sqlx::query_as::<_, ExportScheduleRow>(
-            "SELECT * FROM \"ExportSchedule\" WHERE id = $1"
+            "SELECT * FROM \"ExportSchedule\" WHERE id = $1",
         )
         .bind(schedule_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
-    pub async fn get_by_project(pool: &PgPool, project_id: &str) -> Result<Vec<ExportSchedule>, AppError> {
+
+    pub async fn get_by_project(
+        pool: &PgPool,
+        project_id: &str,
+    ) -> Result<Vec<ExportSchedule>, AppError> {
         let rows = sqlx::query_as::<_, ExportScheduleRow>(
-            "SELECT * FROM \"ExportSchedule\" WHERE project_id = $1"
+            "SELECT * FROM \"ExportSchedule\" WHERE project_id = $1",
         )
         .bind(project_id)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     pub async fn create(
         pool: &PgPool,
         project_id: &str,
@@ -499,7 +508,7 @@ impl ExportScheduleQueries {
     ) -> Result<ExportSchedule, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let row = sqlx::query_as::<_, ExportScheduleRow>(
             r#"
             INSERT INTO "ExportSchedule" (id, project_id, format, frequency, day_of_week, day_of_month, time_of_day, is_active, created_at, updated_at)
@@ -520,20 +529,19 @@ impl ExportScheduleQueries {
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn update(
         pool: &PgPool,
         schedule_id: &str,
         is_active: Option<bool>,
         time_of_day: Option<&str>,
     ) -> Result<ExportSchedule, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"ExportSchedule\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE \"ExportSchedule\" SET ");
+
         let mut has_updates = false;
         if let Some(is_active) = is_active {
             query_builder.push("is_active = ");
@@ -548,32 +556,32 @@ impl ExportScheduleQueries {
             query_builder.push_bind(time_of_day);
             has_updates = true;
         }
-        
+
         if has_updates {
             query_builder.push(", updated_at = ");
             query_builder.push_bind(Utc::now());
         }
-        
+
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(schedule_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<ExportScheduleRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     pub async fn delete(pool: &PgPool, schedule_id: &str) -> Result<bool, AppError> {
         let result = sqlx::query("DELETE FROM \"ExportSchedule\" WHERE id = $1")
             .bind(schedule_id)
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
 }

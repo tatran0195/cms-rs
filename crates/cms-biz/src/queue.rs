@@ -2,10 +2,12 @@
 //!
 //! This module contains business logic for job queue operations.
 
-use crate::{BizContext, AppError};
-use cms_queue::{JobQueue, JobEnvelope, JobType, JobStatus, JobId};
 use std::sync::Arc;
+
+use cms_queue::{JobEnvelope, JobId, JobQueue, JobStatus, JobType};
 use uuid::Uuid;
+
+use crate::{AppError, BizContext};
 
 /// Queue service
 pub struct QueueService;
@@ -19,32 +21,39 @@ impl QueueService {
         delay: Option<std::time::Duration>,
     ) -> Result<JobId, AppError> {
         if let Some(delay) = delay {
-            queue.enqueue_delayed(JobEnvelope {
-                id: JobId(Uuid::new_v4().to_string()),
-                job_type,
-                payload,
-                status: JobStatus::Pending,
-                created_at: chrono::Utc::now(),
-                started_at: None,
-                completed_at: None,
-                error_message: None,
-                retry_count: 0,
-            }, delay).await
+            queue
+                .enqueue_delayed(
+                    JobEnvelope {
+                        id: JobId(Uuid::new_v4().to_string()),
+                        job_type,
+                        payload,
+                        status: JobStatus::Pending,
+                        created_at: chrono::Utc::now(),
+                        started_at: None,
+                        completed_at: None,
+                        error_message: None,
+                        retry_count: 0,
+                    },
+                    delay,
+                )
+                .await
         } else {
-            queue.enqueue(JobEnvelope {
-                id: JobId(Uuid::new_v4().to_string()),
-                job_type,
-                payload,
-                status: JobStatus::Pending,
-                created_at: chrono::Utc::now(),
-                started_at: None,
-                completed_at: None,
-                error_message: None,
-                retry_count: 0,
-            }).await
+            queue
+                .enqueue(JobEnvelope {
+                    id: JobId(Uuid::new_v4().to_string()),
+                    job_type,
+                    payload,
+                    status: JobStatus::Pending,
+                    created_at: chrono::Utc::now(),
+                    started_at: None,
+                    completed_at: None,
+                    error_message: None,
+                    retry_count: 0,
+                })
+                .await
         }
     }
-    
+
     /// Get job status
     pub async fn get_job_status(
         queue: Arc<dyn JobQueue>,
@@ -52,7 +61,7 @@ impl QueueService {
     ) -> Result<Option<JobEnvelope>, AppError> {
         queue.get_job(job_id).await
     }
-    
+
     /// List jobs
     pub async fn list_jobs(
         queue: Arc<dyn JobQueue>,
@@ -63,20 +72,14 @@ impl QueueService {
     ) -> Result<Vec<JobEnvelope>, AppError> {
         queue.list_jobs(status, job_type, limit, offset).await
     }
-    
+
     /// Retry a failed job
-    pub async fn retry_job(
-        queue: Arc<dyn JobQueue>,
-        job_id: JobId,
-    ) -> Result<(), AppError> {
+    pub async fn retry_job(queue: Arc<dyn JobQueue>, job_id: JobId) -> Result<(), AppError> {
         queue.retry_job(job_id).await
     }
-    
+
     /// Delete a job
-    pub async fn delete_job(
-        queue: Arc<dyn JobQueue>,
-        job_id: JobId,
-    ) -> Result<bool, AppError> {
+    pub async fn delete_job(queue: Arc<dyn JobQueue>, job_id: JobId) -> Result<bool, AppError> {
         queue.delete_job(job_id).await
     }
 }
@@ -91,7 +94,7 @@ pub async fn process_reaper_job(
     // 1. Find jobs that have been pending for too long
     // 2. Find jobs that have failed too many times
     // 3. Clean them up
-    
+
     // For now, this is a no-op
     Ok(())
 }

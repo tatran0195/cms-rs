@@ -33,11 +33,11 @@ pub mod search;
 pub mod theme;
 pub mod usage;
 pub mod validation;
-pub use openapi::docs as openapi_docs;
+use std::sync::Arc;
 
 use axum::Router;
 use cms_error::AppError;
-use std::sync::Arc;
+pub use openapi::docs as openapi_docs;
 
 /// AppState type - this will be provided by the binary crate
 pub type AppState = cms_middleware::AppState;

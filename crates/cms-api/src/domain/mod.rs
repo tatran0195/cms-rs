@@ -2,16 +2,18 @@
 //!
 //! This module contains handlers for domain routes.
 
+use std::sync::Arc;
+
 use axum::{
-    routing::{get, post, put, delete},
+    routing::{delete, get, post, put},
     Router,
 };
 use cms_middleware::app_state::AppState;
-use std::sync::Arc;
 
 pub mod handlers;
 
 use handlers::*;
+
 use crate::extractors::UserId;
 
 /// Create the domain router
@@ -24,6 +26,9 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/:id", delete(delete_domain_handler))
         .route("/:id/verify", post(verify_domain_handler))
         .route("/check/:hostname", get(check_domain_availability_handler))
-        .route("/deployments/:deployment_id/set-primary", post(set_primary_domain_handler))
+        .route(
+            "/deployments/:deployment_id/set-primary",
+            post(set_primary_domain_handler),
+        )
         .with_state(state)
 }

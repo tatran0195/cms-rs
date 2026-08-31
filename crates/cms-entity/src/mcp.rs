@@ -141,7 +141,10 @@ pub enum McpToolResultEnum {
 impl McpToolResultEnum {
     pub fn into_response(self, tool_name: &str) -> McpToolCallResponse {
         match self {
-            McpToolResultEnum::Content { content, content_type: _ } => McpToolCallResponse {
+            McpToolResultEnum::Content {
+                content,
+                content_type: _,
+            } => McpToolCallResponse {
                 tool_name: tool_name.to_string(),
                 result: serde_json::json!({ "content": content }),
                 is_error: false,
@@ -211,5 +214,3 @@ pub type McpResponse = McpToolCallResponse;
 
 /// MCP tool result used in biz layer
 pub type McpToolResult = McpToolResultEnum;
-
-

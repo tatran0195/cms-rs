@@ -64,7 +64,8 @@ impl Default for SecurityHeadersConfig {
             enable_csp: true,
             // API-appropriate CSP: allows JSON, blocks inline scripts by default
             // This is more restrictive than needed for pure API, but safe
-            csp: "default-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self';".to_string(),
+            csp: "default-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self';"
+                .to_string(),
             enable_referrer_policy: true,
             referrer_policy: ReferrerPolicy::StrictOriginWhenCrossOrigin,
             enable_permissions_policy: true,
@@ -79,28 +80,26 @@ impl SecurityHeadersConfig {
         if self.enable_hsts && self.hsts_max_age == 0 {
             return Err("HSTS max age cannot be 0 when HSTS is enabled".into());
         }
-        
+
         // Validate CSP can be parsed as a header value
-        if self.enable_csp {
-            if HeaderValue::from_str(&self.csp).is_err() {
-                return Err("Invalid CSP header value".into());
-            }
+        if self.enable_csp && HeaderValue::from_str(&self.csp).is_err() {
+            return Err("Invalid CSP header value".into());
         }
-        
+
         // Validate Referrer-Policy
-        if self.enable_referrer_policy {
-            if HeaderValue::from_str(self.referrer_policy.as_str()).is_err() {
-                return Err("Invalid Referrer-Policy header value".into());
-            }
+        if self.enable_referrer_policy
+            && HeaderValue::from_str(self.referrer_policy.as_str()).is_err()
+        {
+            return Err("Invalid Referrer-Policy header value".into());
         }
-        
+
         // Validate Permissions-Policy
-        if self.enable_permissions_policy {
-            if HeaderValue::from_str(&self.permissions_policy).is_err() {
-                return Err("Invalid Permissions-Policy header value".into());
-            }
+        if self.enable_permissions_policy
+            && HeaderValue::from_str(&self.permissions_policy).is_err()
+        {
+            return Err("Invalid Permissions-Policy header value".into());
         }
-        
+
         Ok(())
     }
 }
@@ -178,9 +177,9 @@ pub fn create_security_headers_layer(
 /// Predefined security header configurations
 pub mod presets {
     use super::*;
-    
+
     /// Security headers for API endpoints
-    /// 
+    ///
     /// - Allows JSON responses
     /// - Blocks framing (can be relaxed if needed)
     /// - Strict CSP for API
@@ -195,16 +194,17 @@ pub mod presets {
             enable_x_xss_protection: true,
             enable_csp: true,
             // API CSP: very restrictive, only self
-            csp: "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';".to_string(),
+            csp: "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+                .to_string(),
             enable_referrer_policy: true,
             referrer_policy: ReferrerPolicy::StrictOriginWhenCrossOrigin,
             enable_permissions_policy: true,
             permissions_policy: "geolocation=(), microphone=(), camera=(), payment=()".to_string(),
         }
     }
-    
+
     /// Security headers for published documentation sites
-    /// 
+    ///
     /// - More permissive CSP for markdown content
     /// - Allows framing for embedded content
     pub fn published_site() -> SecurityHeadersConfig {
@@ -218,14 +218,18 @@ pub mod presets {
             enable_x_xss_protection: true,
             enable_csp: true,
             // More permissive CSP for published sites
-            csp: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https:; connect-src 'self' https:; frame-src https:; object-src 'none'; base-uri 'self'; form-action 'self';".to_string(),
+            csp: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' \
+                  'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https:; \
+                  connect-src 'self' https:; frame-src https:; object-src 'none'; base-uri \
+                  'self'; form-action 'self';"
+                .to_string(),
             enable_referrer_policy: true,
             referrer_policy: ReferrerPolicy::StrictOriginWhenCrossOrigin,
             enable_permissions_policy: true,
             permissions_policy: "geolocation=(), microphone=(), camera=()".to_string(),
         }
     }
-    
+
     /// Minimal security headers for development
     pub fn development() -> SecurityHeadersConfig {
         SecurityHeadersConfig {
@@ -247,7 +251,7 @@ pub mod presets {
 }
 
 /// Security headers middleware (legacy, kept for compatibility)
-/// 
+///
 /// Note: This is kept for backward compatibility. New code should use
 /// `create_security_headers_layer` directly with Tower.
 #[derive(Debug, Clone)]
@@ -260,11 +264,14 @@ impl SecurityHeadersMiddleware {
         config.validate()?;
         Ok(Self { config })
     }
-    
+
     /// Apply security headers to a response
-    pub fn apply_security_headers(&self, mut response: axum::response::Response) -> axum::response::Response {
+    pub fn apply_security_headers(
+        &self,
+        mut response: axum::response::Response,
+    ) -> axum::response::Response {
         use axum::http::HeaderValue;
-        
+
         // HSTS
         if self.config.enable_hsts {
             let mut hsts_value = format!("max-age={}", self.config.hsts_max_age);
@@ -272,10 +279,12 @@ impl SecurityHeadersMiddleware {
                 hsts_value.push_str("; includeSubDomains");
             }
             if let Ok(header_value) = HeaderValue::from_str(&hsts_value) {
-                response.headers_mut().insert("strict-transport-security", header_value);
+                response
+                    .headers_mut()
+                    .insert("strict-transport-security", header_value);
             }
         }
-        
+
         // X-Content-Type-Options
         if self.config.enable_x_content_type_options {
             response.headers_mut().insert(
@@ -283,7 +292,7 @@ impl SecurityHeadersMiddleware {
                 HeaderValue::from_static("nosniff"),
             );
         }
-        
+
         // X-Frame-Options
         if self.config.enable_x_frame_options {
             let value = match &self.config.x_frame_options {
@@ -292,10 +301,12 @@ impl SecurityHeadersMiddleware {
                 XFrameOptions::AllowFrom(uri) => &format!("ALLOW-FROM {}", uri),
             };
             if let Ok(header_value) = HeaderValue::from_str(value) {
-                response.headers_mut().insert("x-frame-options", header_value);
+                response
+                    .headers_mut()
+                    .insert("x-frame-options", header_value);
             }
         }
-        
+
         // X-XSS-Protection
         if self.config.enable_x_xss_protection {
             response.headers_mut().insert(
@@ -303,28 +314,34 @@ impl SecurityHeadersMiddleware {
                 HeaderValue::from_static("1; mode=block"),
             );
         }
-        
+
         // Content-Security-Policy
         if self.config.enable_csp {
             if let Ok(header_value) = HeaderValue::from_str(&self.config.csp) {
-                response.headers_mut().insert("content-security-policy", header_value);
+                response
+                    .headers_mut()
+                    .insert("content-security-policy", header_value);
             }
         }
-        
+
         // Referrer-Policy
         if self.config.enable_referrer_policy {
             if let Ok(header_value) = HeaderValue::from_str(self.config.referrer_policy.as_str()) {
-                response.headers_mut().insert("referrer-policy", header_value);
+                response
+                    .headers_mut()
+                    .insert("referrer-policy", header_value);
             }
         }
-        
+
         // Permissions-Policy
         if self.config.enable_permissions_policy {
             if let Ok(header_value) = HeaderValue::from_str(&self.config.permissions_policy) {
-                response.headers_mut().insert("permissions-policy", header_value);
+                response
+                    .headers_mut()
+                    .insert("permissions-policy", header_value);
             }
         }
-        
+
         response
     }
 }
@@ -335,13 +352,13 @@ pub type SecurityHeadersLayer = SecurityHeadersMiddleware;
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_default_config_validation() {
         let config = SecurityHeadersConfig::default();
         assert!(config.validate().is_ok());
     }
-    
+
     #[test]
     fn test_api_preset() {
         let config = presets::api();
@@ -350,7 +367,7 @@ mod tests {
         assert!(config.enable_csp);
         assert!(config.csp.contains("default-src 'self'"));
     }
-    
+
     #[test]
     fn test_development_preset() {
         let config = presets::development();

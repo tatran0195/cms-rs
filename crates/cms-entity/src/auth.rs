@@ -143,7 +143,11 @@ pub struct ApiKey {
 /// API Key create request
 #[derive(Debug, Clone, Deserialize, Serialize, Validate)]
 pub struct CreateApiKeyRequest {
-    #[validate(length(min = 1, max = 100, message = "Name must be between 1 and 100 characters"))]
+    #[validate(length(
+        min = 1,
+        max = 100,
+        message = "Name must be between 1 and 100 characters"
+    ))]
     pub name: String,
 }
 
@@ -262,9 +266,10 @@ pub struct JwtReplay {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use chrono::Utc;
-    
+
+    use super::*;
+
     #[test]
     fn test_user_response_conversion() {
         let user = User {
@@ -276,7 +281,7 @@ mod tests {
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
-        
+
         let response: UserResponse = user.into();
         assert_eq!(response.id, "user-1");
         assert_eq!(response.email, "test@example.com");

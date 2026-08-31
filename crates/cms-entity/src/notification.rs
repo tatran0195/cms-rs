@@ -30,7 +30,6 @@ pub enum NotificationStatus {
     ARCHIVED,
 }
 
-
 /// Notification entity
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Notification {

@@ -1,10 +1,12 @@
 //! Branch database queries
 
 use chrono::{DateTime, Utc};
-use cms_entity::branch::{Branch, BranchResponse};
-use cms_entity::common::Id;
+use cms_entity::{
+    branch::{Branch, BranchResponse},
+    common::Id,
+};
 use cms_error::AppError;
-use sqlx::{FromRow, PgPool, QueryBuilder, Postgres, Row};
+use sqlx::{FromRow, PgPool, Postgres, QueryBuilder, Row};
 use uuid::Uuid;
 
 /// Database representation of a branch row
@@ -59,17 +61,15 @@ pub struct BranchQueries;
 impl BranchQueries {
     /// Get a branch by ID
     pub async fn get_by_id(pool: &PgPool, branch_id: &str) -> Result<Option<Branch>, AppError> {
-        let row = sqlx::query_as::<_, BranchRow>(
-            "SELECT * FROM \"Branch\" WHERE id = $1"
-        )
-        .bind(branch_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let row = sqlx::query_as::<_, BranchRow>("SELECT * FROM \"Branch\" WHERE id = $1")
+            .bind(branch_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get branches by project
     pub async fn get_by_project(
         pool: &PgPool,
@@ -78,11 +78,10 @@ impl BranchQueries {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<Branch>, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT * FROM \"Branch\" WHERE project_id = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT * FROM \"Branch\" WHERE project_id = ");
         query_builder.push_bind(project_id);
-        
+
         if let Some(search) = search {
             query_builder.push(" AND (name ILIKE ");
             query_builder.push_bind(format!("%{}%", search));
@@ -90,41 +89,41 @@ impl BranchQueries {
             query_builder.push_bind(format!("%{}%", search));
             query_builder.push(")");
         }
-        
+
         query_builder.push(" ORDER BY is_default DESC, created_at DESC");
-        
+
         if let Some(limit) = limit {
             query_builder.push(" LIMIT ");
             query_builder.push_bind(limit);
         }
-        
+
         if let Some(offset) = offset {
             query_builder.push(" OFFSET ");
             query_builder.push_bind(offset);
         }
-        
+
         let rows = query_builder
             .build_query_as::<BranchRow>()
             .fetch_all(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     /// Get the default branch for a project
     pub async fn get_default(pool: &PgPool, project_id: &str) -> Result<Option<Branch>, AppError> {
         let row = sqlx::query_as::<_, BranchRow>(
-            "SELECT * FROM \"Branch\" WHERE project_id = $1 AND is_default = true LIMIT 1"
+            "SELECT * FROM \"Branch\" WHERE project_id = $1 AND is_default = true LIMIT 1",
         )
         .bind(project_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get a branch by project and name
     pub async fn get_by_project_and_name(
         pool: &PgPool,
@@ -132,17 +131,17 @@ impl BranchQueries {
         name: &str,
     ) -> Result<Option<Branch>, AppError> {
         let row = sqlx::query_as::<_, BranchRow>(
-            "SELECT * FROM \"Branch\" WHERE project_id = $1 AND name = $2"
+            "SELECT * FROM \"Branch\" WHERE project_id = $1 AND name = $2",
         )
         .bind(project_id)
         .bind(name)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Create a new branch
     pub async fn create(
         pool: &PgPool,
@@ -154,7 +153,7 @@ impl BranchQueries {
     ) -> Result<Branch, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         // If this is the default branch, make sure no other branch is default
         if is_default {
             sqlx::query("UPDATE \"Branch\" SET is_default = false WHERE project_id = $1")
@@ -163,7 +162,7 @@ impl BranchQueries {
                 .await
                 .map_err(|e| AppError::Database(e.into()))?;
         }
-        
+
         let row = sqlx::query_as::<_, BranchRow>(
             r#"
             INSERT INTO "Branch" (id, project_id, name, description, is_default, is_public, created_at, updated_at)
@@ -188,10 +187,10 @@ impl BranchQueries {
                 AppError::Database(e.into())
             }
         })?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Update a branch
     pub async fn update(
         pool: &PgPool,
@@ -201,10 +200,8 @@ impl BranchQueries {
         is_default: Option<bool>,
         is_public: Option<bool>,
     ) -> Result<Branch, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE \"Branch\" SET "
-        );
-        
+        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new("UPDATE \"Branch\" SET ");
+
         let mut has_updates = false;
         if let Some(name) = name {
             query_builder.push("name = ");
@@ -235,60 +232,60 @@ impl BranchQueries {
             query_builder.push_bind(is_public);
             has_updates = true;
         }
-        
+
         if has_updates {
             query_builder.push(", updated_at = ");
             query_builder.push_bind(Utc::now());
         }
-        
+
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(branch_id);
         query_builder.push(" RETURNING *");
-        
+
         let row = query_builder
             .build_query_as::<BranchRow>()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(row.into())
     }
-    
+
     /// Delete a branch
     pub async fn delete(pool: &PgPool, branch_id: &str) -> Result<bool, AppError> {
         // Check if branch has pages before deleting
-        let page_count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM \"Page\" WHERE branch_id = $1"
-        )
-        .bind(branch_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| AppError::Database(e.into()))?;
-        
+        let page_count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM \"Page\" WHERE branch_id = $1")
+                .bind(branch_id)
+                .fetch_one(pool)
+                .await
+                .map_err(|e| AppError::Database(e.into()))?;
+
         if page_count > 0 {
-            return Err(AppError::Conflict("Cannot delete branch with pages".to_string()));
+            return Err(AppError::Conflict(
+                "Cannot delete branch with pages".to_string(),
+            ));
         }
-        
+
         let result = sqlx::query("DELETE FROM \"Branch\" WHERE id = $1")
             .bind(branch_id)
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?;
-        
+
         Ok(result.rows_affected() > 0)
     }
-    
+
     /// Count branches by project
     pub async fn count_by_project(
         pool: &PgPool,
         project_id: &str,
         search: Option<&str>,
     ) -> Result<i64, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT COUNT(*) as count FROM \"Branch\" WHERE project_id = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT COUNT(*) as count FROM \"Branch\" WHERE project_id = ");
         query_builder.push_bind(project_id);
-        
+
         if let Some(search) = search {
             query_builder.push(" AND (name ILIKE ");
             query_builder.push_bind(format!("%{}%", search));
@@ -296,17 +293,17 @@ impl BranchQueries {
             query_builder.push_bind(format!("%{}%", search));
             query_builder.push(")");
         }
-        
+
         let count: i64 = query_builder
             .build()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?
             .get::<i64, _>("count");
-        
+
         Ok(count)
     }
-    
+
     /// Check if a branch name is available in a project
     pub async fn is_name_available(
         pool: &PgPool,
@@ -314,25 +311,24 @@ impl BranchQueries {
         name: &str,
         exclude_branch_id: Option<&str>,
     ) -> Result<bool, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT COUNT(*) as count FROM \"Branch\" WHERE project_id = "
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT COUNT(*) as count FROM \"Branch\" WHERE project_id = ");
         query_builder.push_bind(project_id);
         query_builder.push(" AND name = ");
         query_builder.push_bind(name);
-        
+
         if let Some(exclude_id) = exclude_branch_id {
             query_builder.push(" AND id != ");
             query_builder.push_bind(exclude_id);
         }
-        
+
         let count: i64 = query_builder
             .build()
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Database(e.into()))?
             .get::<i64, _>("count");
-        
+
         Ok(count == 0)
     }
 
@@ -364,16 +360,18 @@ impl BranchQueries {
         let now = Utc::now();
 
         // First, unset any existing default
-        sqlx::query("UPDATE \"Branch\" SET is_default = false, updated_at = $1 WHERE project_id = $2")
-            .bind(now)
-            .bind(project_id)
-            .execute(pool)
-            .await
-            .map_err(|e| AppError::Database(e.into()))?;
+        sqlx::query(
+            "UPDATE \"Branch\" SET is_default = false, updated_at = $1 WHERE project_id = $2",
+        )
+        .bind(now)
+        .bind(project_id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
 
         // Then set the new default
         let row = sqlx::query_as::<_, BranchRow>(
-            "UPDATE \"Branch\" SET is_default = true, updated_at = $1 WHERE id = $2 RETURNING *"
+            "UPDATE \"Branch\" SET is_default = true, updated_at = $1 WHERE id = $2 RETURNING *",
         )
         .bind(now)
         .bind(branch_id)

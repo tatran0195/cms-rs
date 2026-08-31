@@ -2,16 +2,15 @@
 //!
 //! This module contains handlers for admin-only routes.
 
-use axum::{
-    routing::get,
-    Router,
-};
-use cms_middleware::app_state::AppState;
 use std::sync::Arc;
+
+use axum::{routing::get, Router};
+use cms_middleware::app_state::AppState;
 
 pub mod handlers;
 
 use handlers::*;
+
 use crate::extractors::UserId;
 
 /// Create the admin router
