@@ -87,7 +87,7 @@ pub async fn get_org_handler(
     // Check access
     state
         .biz_context
-        .access_control
+        .authz
         .require_org_member(&auth.user.id, &org_id)
         .await?;
 

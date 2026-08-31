@@ -49,7 +49,7 @@ pub async fn list_all_organizations_handler(
 ) -> Result<Json<PaginatedResponse<OrganizationResponse>>, AppError> {
     state
         .biz_context
-        .access_control
+        .authz
         .require_system_admin(&auth.user.id)
         .await?;
 
@@ -96,7 +96,7 @@ pub async fn get_organization_stats_handler(
 ) -> Result<Json<serde_json::Value>, AppError> {
     state
         .biz_context
-        .access_control
+        .authz
         .require_system_admin(&auth.user.id)
         .await?;
 
@@ -132,7 +132,7 @@ pub async fn get_system_stats_handler(
 ) -> Result<Json<serde_json::Value>, AppError> {
     state
         .biz_context
-        .access_control
+        .authz
         .require_system_admin(&auth.user.id)
         .await?;
 
@@ -166,7 +166,7 @@ pub async fn get_system_health_handler(
 ) -> Result<Json<serde_json::Value>, AppError> {
     state
         .biz_context
-        .access_control
+        .authz
         .require_system_admin(&auth.user.id)
         .await?;
 

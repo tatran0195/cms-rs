@@ -34,10 +34,10 @@ impl AppState {
         let job_queue: Arc<dyn JobQueue> = Arc::new(cms_queue::MemoryJobQueue::new(4));
         let search_engine =
             cms_search::create_search_engine_with_pool(&config.search, pool.clone()).await?;
-        let access_control = Arc::new(cms_access_control::ProductionAccessControl::new(
+        let authz = Arc::new(cms_authz::ProductionAuthz::new(
             pool.clone(),
         ));
-        let biz_context = BizContext::new(pool, access_control);
+        let biz_context = BizContext::new(pool, authz);
 
         Ok(Self {
             config: Arc::new(config.clone()),

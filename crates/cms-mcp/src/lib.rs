@@ -94,7 +94,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_capabilities() {
         let pool = cms_db::PgPool::connect_lazy("postgres://user:pass@localhost/db").unwrap();
-        let ctx = BizContext::new(pool, Arc::new(cms_access_control::NoopAccessControl));
+        let ctx = BizContext::new(pool, Arc::new(cms_authz::NoopAuthz));
 
         let capabilities = McpService::get_capabilities(&ctx, None, None, None)
             .await

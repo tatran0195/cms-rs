@@ -320,21 +320,21 @@ pub async fn require_org_role(
         cms_entity::common::MemberRole::Owner => {
             state
                 .biz_context
-                .access_control
+                .authz
                 .require_org_owner(user_id, org_id)
                 .await
         }
         cms_entity::common::MemberRole::Admin => {
             state
                 .biz_context
-                .access_control
+                .authz
                 .require_org_admin(user_id, org_id)
                 .await
         }
         _ => {
             state
                 .biz_context
-                .access_control
+                .authz
                 .require_org_member(user_id, org_id)
                 .await
         }
@@ -350,7 +350,7 @@ pub async fn require_project_role(
 ) -> Result<(), AppError> {
     state
         .biz_context
-        .access_control
+        .authz
         .require_project_role(user_id, project_id, required_role)
         .await
 }
@@ -363,7 +363,7 @@ pub async fn require_org_owner(
 ) -> Result<(), AppError> {
     state
         .biz_context
-        .access_control
+        .authz
         .require_org_owner(user_id, org_id)
         .await
 }
@@ -376,7 +376,7 @@ pub async fn require_project_owner(
 ) -> Result<(), AppError> {
     state
         .biz_context
-        .access_control
+        .authz
         .require_project_role(user_id, project_id, cms_entity::common::MemberRole::Owner)
         .await
 }
