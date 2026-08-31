@@ -1,6 +1,6 @@
-//! CMS Access Control
+//! CMS Authz (Authorization)
 //!
-//! This crate provides trait-based access control,
+//! This crate provides trait-based authorization,
 //! with CMS's actual enumerable rules instead of Casbin.
 //!
 //! CMS's authorization rules are:
@@ -18,12 +18,12 @@ use cms_db::PgPool;
 use cms_entity::common::MemberRole;
 use cms_error::AppError;
 
-/// Access control trait
+/// Authorization trait
 ///
-/// This trait defines the interface for access control checks.
-/// Implementations can be swapped via Arc<dyn AccessControl> in AppState.
+/// This trait defines the interface for authorization checks.
+/// Implementations can be swapped via Arc<dyn Authz> in AppState.
 #[async_trait]
-pub trait AccessControl: Send + Sync {
+pub trait Authz: Send + Sync {
     /// Require that the user is a member of the organization
     async fn require_org_member(&self, user_id: &str, org_id: &str) -> Result<(), AppError>;
 
@@ -80,13 +80,13 @@ pub trait AccessControl: Send + Sync {
     async fn require_system_admin(&self, user_id: &str) -> Result<(), AppError>;
 }
 
-/// Production implementation of AccessControl
-pub struct ProductionAccessControl {
+/// Production implementation of Authz
+pub struct ProductionAuthz {
     pool: PgPool,
 }
 
-impl ProductionAccessControl {
-    /// Create a new ProductionAccessControl
+impl ProductionAuthz {
+    /// Create a new ProductionAuthz
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -139,7 +139,7 @@ impl ProductionAccessControl {
 }
 
 #[async_trait]
-impl AccessControl for ProductionAccessControl {
+impl Authz for ProductionAuthz {
     async fn require_org_member(&self, user_id: &str, org_id: &str) -> Result<(), AppError> {
         let role = self.get_org_role(user_id, org_id).await?;
 
@@ -247,11 +247,11 @@ impl AccessControl for ProductionAccessControl {
     }
 }
 
-/// No-op access control for testing
-pub struct NoopAccessControl;
+/// No-op authorization for testing
+pub struct NoopAuthz;
 
 #[async_trait]
-impl AccessControl for NoopAccessControl {
+impl Authz for NoopAuthz {
     async fn require_org_member(&self, _user_id: &str, _org_id: &str) -> Result<(), AppError> {
         Ok(())
     }
@@ -295,11 +295,11 @@ impl AccessControl for NoopAccessControl {
     }
 }
 
-/// Create an access control implementation based on configuration
-pub fn create_access_control(pool: PgPool) -> Result<Arc<dyn AccessControl>, AppError> {
+/// Create an authorization implementation based on configuration
+pub fn create_authz(pool: PgPool) -> Result<Arc<dyn Authz>, AppError> {
     // For now, we always use the production implementation
     // In the future, this could be configured
-    Ok(Arc::new(ProductionAccessControl::new(pool)))
+    Ok(Arc::new(ProductionAuthz::new(pool)))
 }
 
 #[cfg(test)]
@@ -316,19 +316,21 @@ mod tests {
     }
 
     #[test]
-    fn test_noop_access_control() {
-        let ac = NoopAccessControl;
+    fn test_noop_authz() {
+        let authz = NoopAuthz;
 
         // All checks should pass
         tokio::runtime::Runtime::new().unwrap().block_on(async {
-            ac.require_org_member("user-1", "org-1").await.unwrap();
-            ac.require_project_role("user-1", "proj-1", MemberRole::Admin)
+            authz.require_org_member("user-1", "org-1").await.unwrap();
+            authz
+                .require_project_role("user-1", "proj-1", MemberRole::Admin)
                 .await
                 .unwrap();
-            ac.require_audience_grant("reader-1", "proj-1")
+            authz
+                .require_audience_grant("reader-1", "proj-1")
                 .await
                 .unwrap();
-            ac.require_org_owner("user-1", "org-1").await.unwrap();
+            authz.require_org_owner("user-1", "org-1").await.unwrap();
         });
     }
 }
