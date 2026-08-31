@@ -946,17 +946,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c9ea0ac24bc397ab3c98583a3c9ba74fa56b09a4449bbe172b9b1ddb016027a"
 
 [[package]]
-name = "cms-access-control"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "cms-db",
- "cms-entity",
- "cms-error",
- "tokio",
-]
-
-[[package]]
 name = "cms-analytics"
 version = "0.1.0"
 dependencies = [
@@ -981,8 +970,8 @@ dependencies = [
  "axum-extra",
  "base64 0.23.1",
  "chrono",
- "cms-access-control",
  "cms-auth",
+ "cms-authz",
  "cms-biz",
  "cms-config",
  "cms-db",
@@ -1036,6 +1025,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cms-authz"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "cms-db",
+ "cms-entity",
+ "cms-error",
+ "tokio",
+]
+
+[[package]]
 name = "cms-biz"
 version = "0.1.0"
 dependencies = [
@@ -1044,8 +1044,8 @@ dependencies = [
  "async-trait",
  "bytes",
  "chrono",
- "cms-access-control",
  "cms-auth",
+ "cms-authz",
  "cms-config",
  "cms-db",
  "cms-entity",
@@ -1125,7 +1125,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "chrono",
- "cms-access-control",
+ "cms-authz",
  "cms-biz",
  "cms-db",
  "cms-entity",
@@ -1141,7 +1141,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "axum",
- "cms-access-control",
+ "cms-authz",
  "cms-biz",
  "cms-config",
  "cms-db",
