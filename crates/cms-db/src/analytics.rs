@@ -1,7 +1,9 @@
 //! Analytics database queries
 
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
-use cms_entity::analytics::AnalyticsEvent;
+use cms_entity::analytics::{AnalyticsDashboardResponse, AnalyticsEvent, TimeSeriesAnalytics};
 use cms_error::AppError;
 use sqlx::{FromRow, PgPool, Postgres, QueryBuilder, Row};
 use uuid::Uuid;
@@ -21,10 +23,10 @@ impl AnalyticsQueries {
         end_date: Option<DateTime<Utc>>,
     ) -> Result<i64, AppError> {
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT COUNT(*) as count FROM \"AnalyticsEvent\" WHERE project_id = $1 AND \
-             event_type = 'page_view'",
+            "SELECT COUNT(*) as count FROM \"AnalyticsEvent\" WHERE project_id = ",
         );
         query_builder.push_bind(project_id);
+        query_builder.push(" AND event_type = 'page_view'");
 
         if let Some(start) = start_date {
             query_builder.push(" AND created_at >= ");
@@ -54,10 +56,10 @@ impl AnalyticsQueries {
         end_date: Option<DateTime<Utc>>,
     ) -> Result<i64, AppError> {
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT COUNT(*) as count FROM \"AnalyticsEvent\" WHERE project_id = $1 AND \
-             event_type = 'search'",
+            "SELECT COUNT(*) as count FROM \"AnalyticsEvent\" WHERE project_id = ",
         );
         query_builder.push_bind(project_id);
+        query_builder.push(" AND event_type = 'search'");
 
         if let Some(start) = start_date {
             query_builder.push(" AND created_at >= ");
@@ -87,7 +89,7 @@ impl AnalyticsQueries {
         end_date: Option<DateTime<Utc>>,
     ) -> Result<i64, AppError> {
         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT COUNT(DISTINCT user_id) as count FROM \"AnalyticsEvent\" WHERE project_id = $1",
+            "SELECT COUNT(DISTINCT user_id) as count FROM \"AnalyticsEvent\" WHERE project_id = ",
         );
         query_builder.push_bind(project_id);
 
@@ -119,9 +121,236 @@ impl AnalyticsQueries {
         start_date: Option<DateTime<Utc>>,
         end_date: Option<DateTime<Utc>>,
     ) -> Result<Vec<(String, i64)>, AppError> {
-        // This would query a separate page_views table or parse metadata
-        // For now, return a placeholder
-        Ok(Vec::new())
+        let mut qb = QueryBuilder::<Postgres>::new(
+            "SELECT COALESCE(metadata->>'page_id', metadata->>'path', 'unknown') AS page_key, COUNT(*) AS view_count \
+             FROM \"AnalyticsEvent\" \
+             WHERE project_id = ",
+        );
+        qb.push_bind(project_id);
+        qb.push(" AND event_type = 'page_view'");
+
+        if let Some(start) = start_date {
+            qb.push(" AND created_at >= ");
+            qb.push_bind(start);
+        }
+        if let Some(end) = end_date {
+            qb.push(" AND created_at <= ");
+            qb.push_bind(end);
+        }
+
+        qb.push(" GROUP BY page_key ORDER BY view_count DESC LIMIT ");
+        qb.push_bind(limit);
+
+        let rows = qb
+            .build()
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
+        let results = rows
+            .into_iter()
+            .map(|r| (r.get::<String, _>("page_key"), r.get::<i64, _>("view_count")))
+            .collect();
+
+        Ok(results)
+    }
+
+    /// Get organization-level analytics summary
+    pub async fn get_summary(
+        pool: &PgPool,
+        org_id: &str,
+        start_date: DateTime<Utc>,
+        end_date: DateTime<Utc>,
+    ) -> Result<serde_json::Value, AppError> {
+        let total_events: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM \"AnalyticsEvent\" WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $3",
+        )
+        .bind(org_id)
+        .bind(start_date)
+        .bind(end_date)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        let unique_users: i64 = sqlx::query_scalar(
+            "SELECT COUNT(DISTINCT user_id) FROM \"AnalyticsEvent\" WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $3 AND user_id IS NOT NULL",
+        )
+        .bind(org_id)
+        .bind(start_date)
+        .bind(end_date)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        let page_views: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM \"AnalyticsEvent\" WHERE organization_id = $1 AND event_type = 'page_view' AND created_at >= $2 AND created_at <= $3",
+        )
+        .bind(org_id)
+        .bind(start_date)
+        .bind(end_date)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        let searches: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM \"AnalyticsEvent\" WHERE organization_id = $1 AND event_type = 'search' AND created_at >= $2 AND created_at <= $3",
+        )
+        .bind(org_id)
+        .bind(start_date)
+        .bind(end_date)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        Ok(serde_json::json!({
+            "total_events": total_events,
+            "unique_users": unique_users,
+            "page_views": page_views,
+            "searches": searches,
+        }))
+    }
+
+    /// Get project analytics dashboard
+    pub async fn get_dashboard(
+        pool: &PgPool,
+        project_id: &str,
+    ) -> Result<AnalyticsDashboardResponse, AppError> {
+        let total_events: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM \"AnalyticsEvent\" WHERE project_id = $1",
+        )
+        .bind(project_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        let event_type_rows = sqlx::query(
+            "SELECT event_type, COUNT(*) as count FROM \"AnalyticsEvent\" WHERE project_id = $1 GROUP BY event_type",
+        )
+        .bind(project_id)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        let mut events_by_type = HashMap::new();
+        for row in event_type_rows {
+            let event_type: String = row.get("event_type");
+            let count: i64 = row.get("count");
+            events_by_type.insert(event_type, count);
+        }
+
+        let time_series_rows = sqlx::query(
+            "SELECT TO_CHAR(created_at, 'YYYY-MM-DD') AS dt, COUNT(*) AS cnt \
+             FROM \"AnalyticsEvent\" \
+             WHERE project_id = $1 AND created_at >= NOW() - INTERVAL '30 days' \
+             GROUP BY dt ORDER BY dt ASC",
+        )
+        .bind(project_id)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        let time_series = time_series_rows
+            .into_iter()
+            .map(|r| TimeSeriesAnalytics {
+                date: r.get("dt"),
+                count: r.get("cnt"),
+            })
+            .collect();
+
+        Ok(AnalyticsDashboardResponse {
+            total_events,
+            events_by_type,
+            time_series,
+        })
+    }
+
+    /// Get view count and unique visitor count for a page
+    pub async fn get_page_views(
+        pool: &PgPool,
+        page_id: &str,
+    ) -> Result<serde_json::Value, AppError> {
+        let views: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM \"AnalyticsEvent\" \
+             WHERE event_type = 'page_view' AND (metadata->>'page_id' = $1 OR metadata->>'id' = $1)",
+        )
+        .bind(page_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        let unique_visitors: i64 = sqlx::query_scalar(
+            "SELECT COUNT(DISTINCT COALESCE(user_id, ip_address)) FROM \"AnalyticsEvent\" \
+             WHERE event_type = 'page_view' AND (metadata->>'page_id' = $1 OR metadata->>'id' = $1)",
+        )
+        .bind(page_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        Ok(serde_json::json!({
+            "views": views,
+            "unique_visitors": unique_visitors,
+        }))
+    }
+
+    /// Get aggregate statistics for an organization
+    pub async fn get_organization_stats(
+        pool: &PgPool,
+        org_id: &str,
+    ) -> Result<serde_json::Value, AppError> {
+        let projects: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM \"Project\" WHERE organization_id = $1",
+        )
+        .bind(org_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        let members: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM \"Member\" WHERE organization_id = $1",
+        )
+        .bind(org_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        let events: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM \"AnalyticsEvent\" WHERE organization_id = $1",
+        )
+        .bind(org_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        Ok(serde_json::json!({
+            "projects": projects,
+            "members": members,
+            "events": events,
+        }))
+    }
+
+    /// Get system-wide statistics
+    pub async fn get_system_stats(pool: &PgPool) -> Result<serde_json::Value, AppError> {
+        let users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM \"User\"")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
+        let organizations: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM \"Organization\"")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
+        let projects: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM \"Project\"")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
+        Ok(serde_json::json!({
+            "users": users,
+            "organizations": organizations,
+            "projects": projects,
+        }))
     }
 }
 

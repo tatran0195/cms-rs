@@ -312,7 +312,25 @@ impl DeploymentQueries {
 
         Ok(result.rows_affected() > 0)
     }
+
+    /// Get all active deployments for a project
+    pub async fn get_active_by_project(
+        pool: &PgPool,
+        project_id: &str,
+    ) -> Result<Vec<Deployment>, AppError> {
+        let rows = sqlx::query_as::<_, DeploymentRow>(
+            "SELECT * FROM \"Deployment\" WHERE project_id = $1 AND status = $2 ORDER BY deployed_at DESC",
+        )
+        .bind(project_id)
+        .bind(DeploymentStatus::Active)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        Ok(rows.into_iter().map(|r| r.into()).collect())
+    }
 }
+
 
 /// Domain queries
 pub struct DomainQueries;

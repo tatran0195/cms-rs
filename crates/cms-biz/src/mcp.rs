@@ -3,7 +3,9 @@
 //! This module contains business logic for the Model Context Protocol (MCP) server.
 //! MCP allows AI agents to query CMS's documentation programmatically.
 
-use cms_db::{mcp::McpAuditEventQueries, page::PageQueries, project::ProjectQueries};
+use cms_db::{
+    branch::BranchQueries, mcp::McpAuditEventQueries, page::PageQueries, project::ProjectQueries,
+};
 use cms_entity::{
     common::MemberRole,
     mcp::{McpCapabilities, McpPrompt, McpRequest, McpResource, McpResponse, McpTool},
@@ -42,7 +44,7 @@ impl McpService {
                             "project_id": { "type": "string" },
                             "limit": { "type": "integer", "default": 10 }
                         },
-                        "required": ["query"]
+                        "required": ["query", "project_id"]
                     }),
                 },
                 McpTool {
@@ -95,7 +97,7 @@ impl McpService {
         request: McpRequest,
     ) -> Result<McpResponse, AppError> {
         if let Some(uid) = user_id {
-            McpAuditEventQueries::create(
+            let _ = McpAuditEventQueries::create(
                 &ctx.pool,
                 org_id,
                 None,
@@ -105,11 +107,11 @@ impl McpService {
                 None,
                 None,
             )
-            .await?;
+            .await;
         }
 
         match request.tool_name.as_str() {
-            "search" => Self::execute_search(ctx, &request.tool_name, &request.arguments).await,
+            "search" => Self::execute_search(ctx, &request.tool_name, user_id, &request.arguments).await,
             "get_page" => {
                 Self::execute_get_page(ctx, &request.tool_name, user_id, &request.arguments).await
             }
@@ -132,23 +134,71 @@ impl McpService {
     async fn execute_search(
         ctx: &BizContext,
         tool_name: &str,
+        user_id: Option<&str>,
         arguments: &serde_json::Value,
     ) -> Result<McpResponse, AppError> {
         let query = arguments
             .get("query")
             .and_then(|v| v.as_str())
             .ok_or_else(|| AppError::InvalidInput("Missing query parameter".to_string()))?;
-        let project_id = arguments.get("project_id").and_then(|v| v.as_str());
 
-        if let Some(pid) = project_id {
-            let _project = ProjectQueries::get_by_id(&ctx.pool, pid)
-                .await?
-                .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
+        let project_id = arguments
+            .get("project_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| AppError::InvalidInput("Missing project_id parameter".to_string()))?;
+
+        let limit = arguments.get("limit").and_then(|v| v.as_i64()).unwrap_or(10);
+
+        let _project = ProjectQueries::get_by_id(&ctx.pool, project_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
+
+        if let Some(uid) = user_id {
+            ctx.access_control
+                .require_project_role(uid, project_id, MemberRole::Viewer)
+                .await?;
+        }
+
+        // Find branch
+        let default_branch = BranchQueries::get_default(&ctx.pool, project_id).await?;
+        let branch_id = default_branch.map(|b| b.id).unwrap_or_default();
+
+        let pages = if !branch_id.is_empty() {
+            PageQueries::get_by_project_and_branch(
+                &ctx.pool,
+                project_id,
+                &branch_id,
+                None,
+                Some(true),
+                Some(query),
+                Some(limit),
+                None,
+            )
+            .await?
+        } else {
+            vec![]
+        };
+
+        let mut content = format!("# Search Results for \"{}\"\n\n", query);
+        if pages.is_empty() {
+            content.push_str("No matching documentation pages found.\n");
+        } else {
+            for page in pages {
+                content.push_str(&format!("## [{}]({})\n", page.title, page.path));
+                if let Some(desc) = page.description {
+                    content.push_str(&format!("{}\n\n", desc));
+                } else {
+                    content.push('\n');
+                }
+            }
         }
 
         Ok(McpResponse {
             tool_name: tool_name.to_string(),
-            result: serde_json::json!({ "content": format!("Search results for: {}", query), "content_type": "text/markdown" }),
+            result: serde_json::json!({
+                "content": content,
+                "content_type": "text/markdown"
+            }),
             is_error: false,
             error_message: None,
         })
@@ -179,9 +229,27 @@ impl McpService {
                 .await?;
         }
 
+        let default_branch = BranchQueries::get_default(&ctx.pool, project_id).await?;
+        let branch_id = default_branch.map(|b| b.id).unwrap_or_default();
+
+        let page = PageQueries::get_by_path(&ctx.pool, project_id, &branch_id, path)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Page not found at path: {}", path)))?;
+
+        let content = format!(
+            "# {}\n\n*Path: {}*\n\n{}\n\n---\n*Last Updated: {}*",
+            page.title,
+            page.path,
+            page.content,
+            page.updated_at
+        );
+
         Ok(McpResponse {
             tool_name: tool_name.to_string(),
-            result: serde_json::json!({ "content": format!("Page content for: {}", path), "content_type": "text/markdown" }),
+            result: serde_json::json!({
+                "content": content,
+                "content_type": "text/markdown"
+            }),
             is_error: false,
             error_message: None,
         })
@@ -200,7 +268,7 @@ impl McpService {
             .ok_or_else(|| AppError::BadRequest("project_id argument is required".to_string()))?;
 
         let branch_id = args.get("branch_id").and_then(|v| v.as_str());
-        let limit = args.get("limit").and_then(|v| v.as_i64()).unwrap_or(20);
+        let limit = args.get("limit").and_then(|v| v.as_i64()).unwrap_or(50);
 
         let _project = ProjectQueries::get_by_id(&ctx.pool, project_id)
             .await?
@@ -236,13 +304,20 @@ impl McpService {
         };
 
         let mut content = String::from("# Pages\n\n");
-        for (title, path) in pages {
-            content.push_str(&format!("- [{}]({})\n", title, path));
+        if pages.is_empty() {
+            content.push_str("No pages found in this project.\n");
+        } else {
+            for (title, path) in pages {
+                content.push_str(&format!("- [{}]({})\n", title, path));
+            }
         }
 
         Ok(McpResponse {
             tool_name: tool_name.to_string(),
-            result: serde_json::json!({ "content": content, "content_type": "text/markdown" }),
+            result: serde_json::json!({
+                "content": content,
+                "content_type": "text/markdown"
+            }),
             is_error: false,
             error_message: None,
         })
@@ -355,21 +430,64 @@ impl McpService {
 
     /// List resources
     pub async fn list_resources(
-        _ctx: &BizContext,
-        _user_id: &str,
+        ctx: &BizContext,
+        user_id: &str,
     ) -> Result<serde_json::Value, AppError> {
-        Ok(serde_json::json!([]))
+        let projects = ProjectQueries::list_by_user(&ctx.pool, user_id).await.unwrap_or_default();
+        let mut resources = Vec::new();
+
+        for project in projects {
+            let pages = PageQueries::get_by_project(&ctx.pool, &project.id).await.unwrap_or_default();
+            for page in pages {
+                resources.push(serde_json::json!({
+                    "uri": format!("cms://projects/{}/pages{}", project.id, page.path),
+                    "name": page.title,
+                    "mimeType": "text/markdown",
+                    "description": format!("Page '{}' in project '{}'", page.title, project.name)
+                }));
+            }
+        }
+
+        Ok(serde_json::json!(resources))
     }
 
     /// Read resource
     pub async fn read_resource(
-        _ctx: &BizContext,
-        _user_id: &str,
+        ctx: &BizContext,
+        user_id: &str,
         uri: &str,
     ) -> Result<serde_json::Value, AppError> {
+        // Expected URI format: cms://projects/{project_id}/pages/{path}
+        let stripped = uri.strip_prefix("cms://projects/").ok_or_else(|| {
+            AppError::InvalidInput("Invalid resource URI scheme. Expected cms://projects/{project_id}/pages/{path}".to_string())
+        })?;
+
+        let parts: Vec<&str> = stripped.splitn(2, "/pages").collect();
+        if parts.len() != 2 {
+            return Err(AppError::InvalidInput("Invalid resource URI format".to_string()));
+        }
+
+        let project_id = parts[0];
+        let page_path = parts[1];
+
+        ctx.access_control
+            .require_project_role(user_id, project_id, MemberRole::Viewer)
+            .await?;
+
+        let default_branch = BranchQueries::get_default(&ctx.pool, project_id).await?;
+        let branch_id = default_branch.map(|b| b.id).unwrap_or_default();
+
+        let page = PageQueries::get_by_path(&ctx.pool, project_id, &branch_id, page_path)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Page not found at URI: {}", uri)))?;
+
         Ok(serde_json::json!({
             "uri": uri,
-            "contents": []
+            "contents": [{
+                "uri": uri,
+                "mimeType": "text/markdown",
+                "text": page.content
+            }]
         }))
     }
 }

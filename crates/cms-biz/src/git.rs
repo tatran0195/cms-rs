@@ -5,20 +5,22 @@
 
 use chrono::Utc;
 use cms_db::{
+    branch::BranchQueries,
     git::{
         GitAuditEventQueries, GitConflictQueries, GitConnectionQueries, GitFileStateQueries,
         GitPreviewQueries, GitPullRequestQueries, GitSyncOperationQueries,
         GitWebhookDeliveryQueries,
     },
+    page::PageQueries,
     project::ProjectQueries,
 };
 use cms_entity::{
     common::{Id, MemberRole, PaginatedResponse},
     git::{
         CreateGitConnectionRequest, GitAuditEvent, GitConflict, GitConnection,
-        GitConnectionResponse, GitFileState, GitPreview, GitPullRequest, GitSyncOperation,
-        GitSyncOperationResponse, GitSyncOperationStatus, GitSyncOperationType, GitWebhookDelivery,
-        UpdateGitConnectionRequest,
+        GitConnectionResponse, GitFileState, GitPreview, GitProvider, GitPullRequest,
+        GitSyncOperation, GitSyncOperationResponse, GitSyncOperationStatus, GitSyncOperationType,
+        GitWebhookDelivery, UpdateGitConnectionRequest,
     },
 };
 use uuid::Uuid;
@@ -152,9 +154,6 @@ impl GitService {
             GitSyncOperationStatus::Pending,
         )
         .await?;
-
-        // Queue the sync job for processing
-        // This would enqueue a job to the worker
 
         Ok(operation.into())
     }
@@ -355,8 +354,71 @@ impl GitService {
         ctx.access_control
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
-        Ok(serde_json::json!({ "status": "synced", "last_sync": chrono::Utc::now() }))
+
+        let connection = GitConnectionQueries::get_by_project(&ctx.pool, project_id).await?;
+        if let Some(conn) = connection {
+            let operations = GitSyncOperationQueries::get_by_connection(&ctx.pool, &conn.id, Some(1), None).await?;
+            if let Some(latest) = operations.into_iter().next() {
+                return Ok(serde_json::json!({
+                    "status": format!("{:?}", latest.status).to_lowercase(),
+                    "last_sync": latest.completed_at.or(Some(latest.updated_at)),
+                    "commit_hash": latest.commit_hash,
+                }));
+            }
+        }
+
+        Ok(serde_json::json!({
+            "status": "idle",
+            "last_sync": null,
+            "commit_hash": null,
+        }))
     }
+}
+
+// ---------------------------------------------------------------------------
+// Worker: Git Sync Implementation
+// ---------------------------------------------------------------------------
+
+/// Extract a title from Markdown content or fallback to the filename
+fn extract_title_from_markdown(content: &str, fallback_slug: &str) -> String {
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if let Some(heading) = trimmed.strip_prefix("# ") {
+            let title = heading.trim();
+            if !title.is_empty() {
+                return title.to_string();
+            }
+        }
+    }
+
+    // Capitalize slug words as fallback
+    fallback_slug
+        .replace(['-', '_'], " ")
+        .split_whitespace()
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Derive slug and page path from a Git file path
+fn derive_slug_and_path(git_file_path: &str) -> (String, String) {
+    let clean = git_file_path
+        .trim_start_matches('/')
+        .trim_end_matches(".md")
+        .trim_end_matches(".markdown")
+        .trim_end_matches(".mdx");
+
+    let segments: Vec<&str> = clean.split('/').filter(|s| !s.is_empty()).collect();
+    let slug = segments.last().copied().unwrap_or("index").to_string();
+    let path = format!("/{}", clean);
+
+    (slug, path)
 }
 
 /// Process Git job (for worker)
@@ -369,53 +431,292 @@ pub async fn process_git_job(
         .and_then(|v| v.as_str())
         .ok_or_else(|| AppError::InvalidInput("Missing operation_id".to_string()))?;
 
-    let mut operation = GitSyncOperationQueries::get_by_id(pool, operation_id)
+    let operation = GitSyncOperationQueries::get_by_id(pool, operation_id)
         .await?
         .ok_or_else(|| AppError::NotFound("Sync operation not found".to_string()))?;
 
-    // Update operation status to processing
-    operation = GitSyncOperationQueries::update_status(
-        pool,
-        operation_id,
-        GitSyncOperationStatus::Processing,
-    )
-    .await?;
+    // Mark as started
+    GitSyncOperationQueries::update_started(pool, operation_id).await?;
 
     let connection = GitConnectionQueries::get_by_id(pool, &operation.connection_id)
         .await?
         .ok_or_else(|| AppError::NotFound("Git connection not found".to_string()))?;
 
-    // Perform the sync based on operation type
-    match operation.operation_type {
-        GitSyncOperationType::FULL
-        | GitSyncOperationType::INCREMENTAL
-        | GitSyncOperationType::Full
-        | GitSyncOperationType::Incremental => {
-            // This would:
-            // 1. Clone or fetch from the repository
-            // 2. Parse the files
-            // 3. Create/update pages in CMS
-            // 4. Track file states
-            // 5. Handle conflicts
+    let sync_result = do_git_sync(pool, &connection).await;
 
-            // For now, we'll just mark it as completed
-            GitSyncOperationQueries::update_status(
-                pool,
+    match sync_result {
+        Ok(commit_hash) => {
+            GitSyncOperationQueries::update_completed(pool, operation_id).await?;
+            tracing::info!(
+                "Git sync operation {} completed successfully (commit: {:?})",
                 operation_id,
-                GitSyncOperationStatus::Completed,
-            )
-            .await?;
+                commit_hash
+            );
+            Ok(())
         }
-        GitSyncOperationType::MANUAL | GitSyncOperationType::Manual => {
-            // Manual sync - would process specific files
-            GitSyncOperationQueries::update_status(
-                pool,
-                operation_id,
-                GitSyncOperationStatus::Completed,
-            )
-            .await?;
+        Err(e) => {
+            tracing::error!("Git sync operation {} failed: {}", operation_id, e);
+            GitSyncOperationQueries::update_error(pool, operation_id, &e.to_string()).await?;
+            Err(e)
+        }
+    }
+}
+
+/// Perform actual Git repository synchronization via HTTP APIs
+async fn do_git_sync(
+    pool: &cms_db::PgPool,
+    connection: &GitConnection,
+) -> Result<Option<String>, AppError> {
+    // 1. Find default branch for project
+    let branch = BranchQueries::get_default(pool, &connection.project_id).await?;
+
+    let branch = match branch {
+        Some(b) => b,
+        None => {
+            let branches = BranchQueries::get_by_project(pool, &connection.project_id, None, Some(1), None).await?;
+            branches.into_iter().next().ok_or_else(|| {
+                AppError::NotFound("No branches found in project to sync pages into".to_string())
+            })?
+        }
+    };
+
+    let client = reqwest::Client::builder()
+        .user_agent("CMS-Worker/1.0")
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| AppError::Internal(e.into()))?;
+
+    match connection.provider {
+        GitProvider::Github => {
+            sync_github_repo(pool, &client, connection, &branch.id).await
+        }
+        GitProvider::Gitlab => {
+            sync_gitlab_repo(pool, &client, connection, &branch.id).await
+        }
+        GitProvider::Bitbucket | GitProvider::AzureDevops => {
+            tracing::warn!(
+                "Git sync for provider {:?} is not yet configured for direct REST API",
+                connection.provider
+            );
+            Ok(None)
+        }
+    }
+}
+
+/// Sync from GitHub using GitHub Git Trees API
+async fn sync_github_repo(
+    pool: &cms_db::PgPool,
+    client: &reqwest::Client,
+    connection: &GitConnection,
+    branch_id: &str,
+) -> Result<Option<String>, AppError> {
+    let repo = connection.repository.trim_start_matches("https://github.com/").trim_end_matches(".git");
+    let tree_url = format!(
+        "https://api.github.com/repos/{}/git/trees/{}?recursive=1",
+        repo, connection.branch
+    );
+
+    let mut req = client.get(&tree_url);
+    if !connection.access_token.is_empty() {
+        req = req.bearer_auth(&connection.access_token);
+    }
+
+    let res = req.send().await.map_err(|e| {
+        AppError::GitOperationFailed(format!("GitHub API request failed: {}", e))
+    })?;
+
+    if !res.status().is_success() {
+        let status = res.status();
+        let body = res.text().await.unwrap_or_default();
+        return Err(AppError::GitOperationFailed(format!(
+            "GitHub API returned status {}: {}",
+            status, body
+        )));
+    }
+
+    let tree_response: serde_json::Value = res.json().await.map_err(|e| {
+        AppError::GitOperationFailed(format!("Failed to parse GitHub tree response: {}", e))
+    })?;
+
+    let commit_sha = tree_response.get("sha").and_then(|v| v.as_str()).map(ToString::to_string);
+    let tree_entries = tree_response.get("tree").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+
+    for entry in tree_entries {
+        let entry_type = entry.get("type").and_then(|v| v.as_str()).unwrap_or("");
+        let file_path = entry.get("path").and_then(|v| v.as_str()).unwrap_or("");
+
+        if entry_type != "blob" {
+            continue;
+        }
+
+        let is_markdown = file_path.ends_with(".md")
+            || file_path.ends_with(".markdown")
+            || file_path.ends_with(".mdx");
+
+        if !is_markdown || file_path.starts_with('.') || file_path.starts_with(".github/") {
+            continue;
+        }
+
+        // Fetch raw file content
+        let raw_url = format!(
+            "https://raw.githubusercontent.com/{}/{}/{}",
+            repo, connection.branch, file_path
+        );
+
+        let mut raw_req = client.get(&raw_url);
+        if !connection.access_token.is_empty() {
+            raw_req = raw_req.bearer_auth(&connection.access_token);
+        }
+
+        if let Ok(raw_res) = raw_req.send().await {
+            if raw_res.status().is_success() {
+                if let Ok(content) = raw_res.text().await {
+                    let (slug, page_path) = derive_slug_and_path(file_path);
+                    let title = extract_title_from_markdown(&content, &slug);
+
+                    // Check if page exists
+                    let existing_page = PageQueries::get_by_path(pool, &connection.project_id, branch_id, &page_path).await?;
+                    if let Some(page) = existing_page {
+                        let _ = PageQueries::update(
+                            pool,
+                            &page.id,
+                            None,
+                            None,
+                            Some(&title),
+                            None,
+                            Some(&content),
+                            None,
+                            Some(true),
+                        ).await;
+                    } else {
+                        let _ = PageQueries::create(
+                            pool,
+                            &connection.project_id,
+                            branch_id,
+                            None,
+                            &slug,
+                            &title,
+                            None,
+                            Some(&content),
+                            0,
+                            true,
+                        ).await;
+                    }
+
+                    // Record or update GitFileState
+                    let existing_state = GitFileStateQueries::get_by_path(pool, &connection.project_id, &page_path).await?;
+                    if let Some(state) = existing_state {
+                        let _ = GitFileStateQueries::update(pool, &state.id, commit_sha.as_deref()).await;
+                    } else {
+                        let _ = GitFileStateQueries::create(pool, &connection.project_id, &page_path, file_path).await;
+                    }
+                }
+            }
         }
     }
 
-    Ok(())
+    Ok(commit_sha)
+}
+
+/// Sync from GitLab using GitLab Repository Tree API
+async fn sync_gitlab_repo(
+    pool: &cms_db::PgPool,
+    client: &reqwest::Client,
+    connection: &GitConnection,
+    branch_id: &str,
+) -> Result<Option<String>, AppError> {
+    let repo_encoded = urlencoding::encode(&connection.repository);
+    let tree_url = format!(
+        "https://gitlab.com/api/v4/projects/{}/repository/tree?ref={}&recursive=true",
+        repo_encoded, connection.branch
+    );
+
+    let mut req = client.get(&tree_url);
+    if !connection.access_token.is_empty() {
+        req = req.header("PRIVATE-TOKEN", &connection.access_token);
+    }
+
+    let res = req.send().await.map_err(|e| {
+        AppError::GitOperationFailed(format!("GitLab API request failed: {}", e))
+    })?;
+
+    if !res.status().is_success() {
+        let status = res.status();
+        let body = res.text().await.unwrap_or_default();
+        return Err(AppError::GitOperationFailed(format!(
+            "GitLab API returned status {}: {}",
+            status, body
+        )));
+    }
+
+    let tree_entries: Vec<serde_json::Value> = res.json().await.map_err(|e| {
+        AppError::GitOperationFailed(format!("Failed to parse GitLab tree response: {}", e))
+    })?;
+
+    for entry in tree_entries {
+        let entry_type = entry.get("type").and_then(|v| v.as_str()).unwrap_or("");
+        let file_path = entry.get("path").and_then(|v| v.as_str()).unwrap_or("");
+
+        if entry_type != "blob" {
+            continue;
+        }
+
+        let is_markdown = file_path.ends_with(".md")
+            || file_path.ends_with(".markdown")
+            || file_path.ends_with(".mdx");
+
+        if !is_markdown || file_path.starts_with('.') {
+            continue;
+        }
+
+        let path_encoded = urlencoding::encode(file_path);
+        let raw_url = format!(
+            "https://gitlab.com/api/v4/projects/{}/repository/files/{}/raw?ref={}",
+            repo_encoded, path_encoded, connection.branch
+        );
+
+        let mut raw_req = client.get(&raw_url);
+        if !connection.access_token.is_empty() {
+            raw_req = raw_req.header("PRIVATE-TOKEN", &connection.access_token);
+        }
+
+        if let Ok(raw_res) = raw_req.send().await {
+            if raw_res.status().is_success() {
+                if let Ok(content) = raw_res.text().await {
+                    let (slug, page_path) = derive_slug_and_path(file_path);
+                    let title = extract_title_from_markdown(&content, &slug);
+
+                    let existing_page = PageQueries::get_by_path(pool, &connection.project_id, branch_id, &page_path).await?;
+                    if let Some(page) = existing_page {
+                        let _ = PageQueries::update(
+                            pool,
+                            &page.id,
+                            None,
+                            None,
+                            Some(&title),
+                            None,
+                            Some(&content),
+                            None,
+                            Some(true),
+                        ).await;
+                    } else {
+                        let _ = PageQueries::create(
+                            pool,
+                            &connection.project_id,
+                            branch_id,
+                            None,
+                            &slug,
+                            &title,
+                            None,
+                            Some(&content),
+                            0,
+                            true,
+                        ).await;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(None)
 }

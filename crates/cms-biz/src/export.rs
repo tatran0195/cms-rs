@@ -4,6 +4,7 @@
 
 use std::sync::Arc;
 
+use anyhow::anyhow;
 use bytes::Bytes;
 use chrono::Utc;
 use cms_db::{
@@ -36,7 +37,7 @@ impl ExportService {
         request: CreateExportRequest,
     ) -> Result<ExportSnapshot, AppError> {
         // Verify project exists
-        let project = ProjectQueries::get_by_id(&ctx.pool, &request.project_id)
+        let _project = ProjectQueries::get_by_id(&ctx.pool, &request.project_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
@@ -128,9 +129,6 @@ impl ExportService {
         let job =
             ExportJobQueries::create(&ctx.pool, snapshot_id, format, ExportStatus::Pending).await?;
 
-        // Queue the export job for processing
-        // This would enqueue a job to the worker
-
         Ok(job)
     }
 
@@ -156,34 +154,39 @@ impl ExportService {
         Ok(job)
     }
 
-    /// List export jobs for a snapshot
+    /// List export jobs for a project
     pub async fn list_export_jobs(
         ctx: &BizContext,
         user_id: &str,
-        snapshot_id: &str,
+        project_id: &str,
         page: u64,
         page_size: u64,
     ) -> Result<PaginatedResponse<ExportJob>, AppError> {
-        let snapshot = ExportSnapshotQueries::get_by_id(&ctx.pool, snapshot_id)
+        let _project = ProjectQueries::get_by_id(&ctx.pool, project_id)
             .await?
-            .ok_or_else(|| AppError::NotFound("Export snapshot not found".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         // Check if user has access to the project
         ctx.access_control
-            .require_project_role(user_id, &snapshot.project_id, MemberRole::Viewer)
+            .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 
-        let jobs = ExportJobQueries::get_by_snapshot(
+        let jobs = ExportJobQueries::get_by_project(
             &ctx.pool,
-            snapshot_id,
+            project_id,
             Some(page as i64),
             Some(page_size as i64),
         )
         .await?;
 
-        let total = ExportJobQueries::count_by_snapshot(&ctx.pool, snapshot_id).await?;
+        let total = ExportJobQueries::count_by_project(&ctx.pool, project_id).await?;
 
-        Ok(PaginatedResponse::new(jobs, total as u64, page, page_size))
+        Ok(PaginatedResponse::new(
+            jobs,
+            total as u64,
+            page,
+            page_size,
+        ))
     }
 
     /// Get export artifacts for a job
@@ -240,6 +243,24 @@ impl ExportService {
             true,
         )
         .await?;
+
+        Ok(schedule)
+    }
+
+    /// Get an export schedule
+    pub async fn get_export_schedule(
+        ctx: &BizContext,
+        user_id: &str,
+        schedule_id: &str,
+    ) -> Result<ExportSchedule, AppError> {
+        let schedule = ExportScheduleQueries::get_by_id(&ctx.pool, schedule_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Export schedule not found".to_string()))?;
+
+        // Check if user has access to the project
+        ctx.access_control
+            .require_project_role(user_id, &schedule.project_id, MemberRole::Viewer)
+            .await?;
 
         Ok(schedule)
     }
@@ -325,12 +346,12 @@ pub async fn process_export_job(
         .and_then(|v| v.as_str())
         .ok_or_else(|| AppError::InvalidInput("Missing job_id".to_string()))?;
 
-    let mut job = ExportJobQueries::get_by_id(pool, job_id)
+    let job = ExportJobQueries::get_by_id(pool, job_id)
         .await?
         .ok_or_else(|| AppError::NotFound("Export job not found".to_string()))?;
 
     // Update job status to processing
-    job = ExportJobQueries::update_status(pool, job_id, ExportStatus::Processing).await?;
+    ExportJobQueries::update_status(pool, job_id, ExportStatus::Processing).await?;
 
     let snapshot = ExportSnapshotQueries::get_by_id(pool, &job.snapshot_id)
         .await?
@@ -369,51 +390,61 @@ pub async fn process_export_job(
     };
 
     // Generate export content based on format
-    let content = match job.format {
+    let content_result = match job.format {
         ExportFormat::HTML | ExportFormat::Html => {
             generate_html_export(&pages, &snapshot.project_id).await
         }
         ExportFormat::PDF | ExportFormat::Pdf => {
             generate_pdf_export(&pages, &snapshot.project_id).await
         }
-        ExportFormat::MARKDOWN | ExportFormat::Markdown => generate_markdown_export(&pages).await,
+        ExportFormat::MARKDOWN | ExportFormat::Markdown => {
+            Ok(generate_markdown_export(&pages).await)
+        }
         ExportFormat::EPUB | ExportFormat::Epub => {
             generate_epub_export(&pages, &snapshot.project_id).await
         }
     };
 
+    let content = match content_result {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::error!("Export generation failed for job {}: {}", job_id, e);
+            ExportJobQueries::update_status(pool, job_id, ExportStatus::Failed).await?;
+            return Err(e);
+        }
+    };
+
     // Store the export artifact
+    let extension = match &job.format {
+        ExportFormat::HTML | ExportFormat::Html => "html",
+        ExportFormat::PDF | ExportFormat::Pdf => "pdf",
+        ExportFormat::MARKDOWN | ExportFormat::Markdown => "md",
+        ExportFormat::EPUB | ExportFormat::Epub => "epub",
+    };
+
     let storage_key = format!(
         "exports/{}/{}/{}.{}",
         snapshot.project_id,
         job.id,
         Utc::now().timestamp(),
-        match &job.format {
-            ExportFormat::HTML | ExportFormat::Html => "html",
-            ExportFormat::PDF | ExportFormat::Pdf => "pdf",
-            ExportFormat::MARKDOWN | ExportFormat::Markdown => "md",
-            ExportFormat::EPUB | ExportFormat::Epub => "epub",
-        }
+        extension
     );
 
+    let content_type = match &job.format {
+        ExportFormat::HTML | ExportFormat::Html => "text/html; charset=utf-8",
+        ExportFormat::PDF | ExportFormat::Pdf => "application/pdf",
+        ExportFormat::MARKDOWN | ExportFormat::Markdown => "text/markdown; charset=utf-8",
+        ExportFormat::EPUB | ExportFormat::Epub => "application/epub+zip",
+    };
+
     let content_len = content.len() as i64;
-    storage
-        .put(&storage_key, content, "application/octet-stream")
-        .await?;
+    storage.put(&storage_key, content, content_type).await?;
 
     // Create artifact record
-    let artifact = ExportArtifactQueries::create(
+    let _artifact = ExportArtifactQueries::create(
         pool,
         job_id,
-        &format!(
-            "export.{}",
-            match &job.format {
-                ExportFormat::HTML | ExportFormat::Html => "html",
-                ExportFormat::PDF | ExportFormat::Pdf => "pdf",
-                ExportFormat::MARKDOWN | ExportFormat::Markdown => "md",
-                ExportFormat::EPUB | ExportFormat::Epub => "epub",
-            }
-        ),
+        &format!("export.{}", extension),
         content_len,
         &storage_key,
         None, // download_url
@@ -424,66 +455,348 @@ pub async fn process_export_job(
     ExportJobQueries::update_status(pool, job_id, ExportStatus::Completed).await?;
     ExportJobQueries::update_output_path(pool, job_id, &storage_key).await?;
 
+    tracing::info!("Export job {} completed successfully -> {}", job_id, storage_key);
+
     Ok(())
+}
+
+/// Helper: Render markdown to sanitized HTML
+fn render_markdown(markdown: &str) -> String {
+    use pulldown_cmark::{html, Options, Parser};
+
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    options.insert(Options::ENABLE_TABLES);
+    options.insert(Options::ENABLE_FOOTNOTES);
+    options.insert(Options::ENABLE_TASKLISTS);
+
+    let parser = Parser::new_ext(markdown, options);
+    let mut html_body = String::new();
+    html::push_html(&mut html_body, parser);
+
+    ammonia::clean(&html_body)
 }
 
 /// Generate HTML export
 async fn generate_html_export(
     pages: &[cms_entity::page::PageListItem],
-    _project_id: &str,
-) -> Bytes {
-    // Simplified HTML generation
-    // In practice, this would use a proper HTML templating system
-    use bytes::Bytes;
+    project_id: &str,
+) -> Result<Bytes, AppError> {
+    let mut doc = format!(
+        r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentation Export - {}</title>
+  <style>
+    body {{ max-width: 900px; margin: 0 auto; padding: 2rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }}
+    nav {{ background: #f8f9fa; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 1px solid #e9ecef; }}
+    nav h2 {{ margin-top: 0; font-size: 1.25rem; }}
+    nav ul {{ margin: 0; padding-left: 1.5rem; }}
+    article {{ margin-bottom: 4rem; padding-bottom: 2rem; border-bottom: 1px solid #dee2e6; }}
+    pre {{ background: #f8f9fa; padding: 1rem; border-radius: 4px; overflow-x: auto; border: 1px solid #e9ecef; font-family: monospace; font-size: 0.9em; }}
+    code {{ background: #e9ecef; padding: 0.2em 0.4em; border-radius: 3px; font-family: monospace; font-size: 0.9em; }}
+    pre code {{ background: none; padding: 0; }}
+    table {{ border-collapse: collapse; width: 100%; margin: 1rem 0; }}
+    th, td {{ border: 1px solid #dee2e6; padding: 0.5rem 0.75rem; text-align: left; }}
+    th {{ background: #f8f9fa; }}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Project Documentation Export</h1>
+  </header>
+  <nav>
+    <h2>Table of Contents</h2>
+    <ul>
+"#,
+        ammonia::clean(project_id)
+    );
 
-    let mut html = String::from("<html><head><title>Export</title></head><body>");
-
-    for page in pages {
-        html.push_str(&format!("<h1>{}</h1>", page.title));
-        html.push_str(&format!(
-            "<div>{}</div>",
-            page.content.as_deref().unwrap_or("")
+    for (i, page) in pages.iter().enumerate() {
+        let anchor = format!("page-{}", i);
+        doc.push_str(&format!(
+            "      <li><a href=\"#{}\">{}</a></li>\n",
+            anchor,
+            ammonia::clean(&page.title)
         ));
     }
 
-    html.push_str("</body></html>");
+    doc.push_str("    </ul>\n  </nav>\n  <main>\n");
 
-    Bytes::from(html)
+    for (i, page) in pages.iter().enumerate() {
+        let anchor = format!("page-{}", i);
+        let raw_md = page.content.as_deref().unwrap_or("");
+        let clean_html = render_markdown(raw_md);
+
+        doc.push_str(&format!(
+            r#"    <article id="{}">
+      <h2>{}</h2>
+      <div>
+{}
+      </div>
+    </article>
+"#,
+            anchor,
+            ammonia::clean(&page.title),
+            clean_html
+        ));
+    }
+
+    doc.push_str("  </main>\n</body>\n</html>");
+
+    Ok(Bytes::from(doc))
 }
 
 /// Generate Markdown export
 async fn generate_markdown_export(pages: &[cms_entity::page::PageListItem]) -> Bytes {
-    use bytes::Bytes;
-
-    let mut md = String::new();
+    let mut md = String::from("# Documentation Export\n\n");
 
     for page in pages {
-        md.push_str(&format!("# {}\n\n", page.title));
-        md.push_str(&format!("{}\n\n", page.content.as_deref().unwrap_or("")));
+        md.push_str(&format!("## {}\n\n", page.title));
+        if let Some(content) = &page.content {
+            md.push_str(content);
+            md.push_str("\n\n");
+        }
         md.push_str("---\n\n");
     }
 
     Bytes::from(md)
 }
 
-/// Generate PDF export (placeholder)
+/// Generate PDF export using printpdf
 async fn generate_pdf_export(
-    _pages: &[cms_entity::page::PageListItem],
-    _project_id: &str,
-) -> Bytes {
-    // In practice, this would use a PDF generation library
-    // For now, return an empty PDF
-    use bytes::Bytes;
-    Bytes::from("%PDF-1.4\n")
+    pages: &[cms_entity::page::PageListItem],
+    project_id: &str,
+) -> Result<Bytes, AppError> {
+    use printpdf::*;
+
+    let (doc, page1, layer1) =
+        PdfDocument::new(format!("Documentation - {}", project_id), Mm(210.0), Mm(297.0), "Layer 1");
+
+    let font_title = doc
+        .add_builtin_font(BuiltinFont::HelveticaBold)
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to add bold font: {:?}", e)))?;
+
+    let font_body = doc
+        .add_builtin_font(BuiltinFont::Helvetica)
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to add regular font: {:?}", e)))?;
+
+    let current_layer = doc.get_page(page1).get_layer(layer1);
+
+    // Title on cover page
+    current_layer.use_text(
+        format!("Project Documentation - {}", project_id),
+        22.0,
+        Mm(20.0),
+        Mm(260.0),
+        &font_title,
+    );
+
+    current_layer.use_text(
+        format!("Generated on {}", Utc::now().format("%Y-%m-%d %H:%M UTC")),
+        12.0,
+        Mm(20.0),
+        Mm(245.0),
+        &font_body,
+    );
+
+    let mut current_y = 220.0;
+
+    // Table of contents on first page
+    current_layer.use_text("Table of Contents:", 14.0, Mm(20.0), Mm(current_y), &font_title);
+    current_y -= 10.0;
+
+    for (i, page) in pages.iter().take(15).enumerate() {
+        let entry = format!("{}. {}", i + 1, page.title);
+        current_layer.use_text(&entry, 10.0, Mm(25.0), Mm(current_y), &font_body);
+        current_y -= 7.0;
+    }
+
+    // Add content pages
+    for page in pages {
+        let (page_idx, layer_idx) = doc.add_page(Mm(210.0), Mm(297.0), "Content Layer");
+        let content_layer = doc.get_page(page_idx).get_layer(layer_idx);
+
+        // Page title
+        content_layer.use_text(&page.title, 18.0, Mm(20.0), Mm(270.0), &font_title);
+
+        let mut y = 250.0;
+        if let Some(content) = &page.content {
+            for line in content.lines().take(35) {
+                if y < 30.0 {
+                    break;
+                }
+                // Strip markdown formatting symbols for basic PDF text
+                let clean_line = line
+                    .trim_start_matches('#')
+                    .trim_start_matches('-')
+                    .trim_start_matches('*')
+                    .trim();
+
+                if clean_line.is_empty() {
+                    y -= 4.0;
+                    continue;
+                }
+
+                // Truncate long lines to fit page
+                let truncated: String = clean_line.chars().take(85).collect();
+                content_layer.use_text(&truncated, 10.0, Mm(20.0), Mm(y), &font_body);
+                y -= 6.0;
+            }
+        }
+    }
+
+    let pdf_bytes = doc
+        .save_to_bytes()
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to render PDF: {:?}", e)))?;
+
+    Ok(Bytes::from(pdf_bytes))
 }
 
-/// Generate EPUB export (placeholder)
+/// Generate EPUB export using epub-builder
 async fn generate_epub_export(
-    _pages: &[cms_entity::page::PageListItem],
-    _project_id: &str,
-) -> Bytes {
-    // In practice, this would use an EPUB generation library
-    // For now, return an empty EPUB
-    use bytes::Bytes;
-    Bytes::from("PK\x03\x04")
+    pages: &[cms_entity::page::PageListItem],
+    project_id: &str,
+) -> Result<Bytes, AppError> {
+    use epub_builder::{EpubBuilder, EpubContent, ZipLibrary};
+
+    let zip_lib = ZipLibrary::new()
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to create ZipLibrary: {:?}", e)))?;
+
+    let mut builder = EpubBuilder::new(zip_lib)
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to create EpubBuilder: {:?}", e)))?;
+
+    builder
+        .metadata("author", "CMS Documentation Platform")
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to set author: {:?}", e)))?;
+
+    builder
+        .metadata("title", format!("Documentation - {}", project_id))
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to set title: {:?}", e)))?;
+
+    for (i, page) in pages.iter().enumerate() {
+        let raw_md = page.content.as_deref().unwrap_or("");
+        let clean_html = render_markdown(raw_md);
+
+        let xhtml = format!(
+            r#"<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+  <title>{}</title>
+</head>
+<body>
+  <h1>{}</h1>
+  <div>
+{}
+  </div>
+</body>
+</html>"#,
+            ammonia::clean(&page.title),
+            ammonia::clean(&page.title),
+            clean_html
+        );
+
+        let filename = format!("chapter_{}_{}.xhtml", i + 1, page.slug);
+        let content = EpubContent::new(&filename, xhtml.as_bytes()).title(&page.title);
+
+        builder
+            .add_content(content)
+            .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to add EPUB chapter: {:?}", e)))?;
+    }
+
+    let mut output = Vec::new();
+    builder
+        .generate(&mut output)
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to generate EPUB: {:?}", e)))?;
+
+    Ok(Bytes::from(output))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+    use cms_entity::page::PageListItem;
+
+    fn mock_pages() -> Vec<PageListItem> {
+        vec![
+            PageListItem {
+                id: "p1".to_string(),
+                project_id: "proj-1".to_string(),
+                branch_id: "main".to_string(),
+                parent_id: None,
+                path: "/getting-started".to_string(),
+                slug: "getting-started".to_string(),
+                title: "Getting Started".to_string(),
+                description: Some("Introductory guide".to_string()),
+                content: Some("# Getting Started\n\nWelcome to **CMS**!\n\n- Feature 1\n- Feature 2".to_string()),
+                position: 0,
+                is_published: true,
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+            },
+            PageListItem {
+                id: "p2".to_string(),
+                project_id: "proj-1".to_string(),
+                branch_id: "main".to_string(),
+                parent_id: None,
+                path: "/api-reference".to_string(),
+                slug: "api-reference".to_string(),
+                title: "API Reference".to_string(),
+                description: Some("API docs".to_string()),
+                content: Some("## Endpoints\n\nUse `GET /api/v1/pages` to list pages.".to_string()),
+                position: 1,
+                is_published: true,
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+            },
+        ]
+    }
+
+    #[tokio::test]
+    async fn test_generate_html_export() {
+        let pages = mock_pages();
+        let bytes = generate_html_export(&pages, "proj-1").await.unwrap();
+        let html_str = String::from_utf8(bytes.to_vec()).unwrap();
+
+        assert!(html_str.contains("Table of Contents"));
+        assert!(html_str.contains("Getting Started"));
+        assert!(html_str.contains("API Reference"));
+        assert!(html_str.contains("Welcome to <strong>CMS</strong>!"));
+    }
+
+    #[tokio::test]
+    async fn test_generate_markdown_export() {
+        let pages = mock_pages();
+        let bytes = generate_markdown_export(&pages).await;
+        let md_str = String::from_utf8(bytes.to_vec()).unwrap();
+
+        assert!(md_str.contains("# Documentation Export"));
+        assert!(md_str.contains("## Getting Started"));
+        assert!(md_str.contains("## API Reference"));
+    }
+
+    #[tokio::test]
+    async fn test_generate_pdf_export() {
+        let pages = mock_pages();
+        let bytes = generate_pdf_export(&pages, "proj-1").await.unwrap();
+
+        assert!(bytes.len() > 100);
+        // Valid PDF magic header
+        assert_eq!(&bytes[..4], b"%PDF");
+    }
+
+    #[tokio::test]
+    async fn test_generate_epub_export() {
+        let pages = mock_pages();
+        let bytes = generate_epub_export(&pages, "proj-1").await.unwrap();
+
+        assert!(bytes.len() > 100);
+        // Valid ZIP/EPUB magic header
+        assert_eq!(&bytes[..2], b"PK");
+    }
+}
+

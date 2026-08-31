@@ -495,7 +495,24 @@ impl UsageEntitlementQueries {
 
         Ok(row.into())
     }
+
+    /// Create or update usage entitlement by name
+    pub async fn create_or_update(
+        pool: &PgPool,
+        usage_meter_id: &str,
+        name: &str,
+        description: Option<&str>,
+        is_enabled: bool,
+    ) -> Result<UsageEntitlement, AppError> {
+        let existing = Self::get_by_code(pool, name).await?;
+        if let Some(ent) = existing {
+            Self::update(pool, &ent.id, Some(name), description, Some(is_enabled)).await
+        } else {
+            Self::create(pool, usage_meter_id, name, description, is_enabled).await
+        }
+    }
 }
+
 
 // ============================================
 // OrganizationUsagePlan
@@ -593,7 +610,32 @@ impl OrganizationUsagePlanQueries {
 
         Ok(row.into())
     }
+
+    pub async fn update_plan(
+        pool: &PgPool,
+        organization_id: &str,
+        usage_plan_id: &str,
+    ) -> Result<OrganizationUsagePlan, AppError> {
+        let now = Utc::now();
+        let row = sqlx::query_as::<_, OrganizationUsagePlanRow>(
+            r#"
+            UPDATE "OrganizationUsagePlan"
+            SET usage_plan_id = $1, updated_at = $2
+            WHERE organization_id = $3
+            RETURNING *
+            "#,
+        )
+        .bind(usage_plan_id)
+        .bind(now)
+        .bind(organization_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        Ok(row.into())
+    }
 }
+
 
 // ============================================
 // AnalyticsEvent

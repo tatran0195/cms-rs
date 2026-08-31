@@ -224,6 +224,49 @@ impl ExportJobQueries {
         Ok(count)
     }
 
+    pub async fn get_by_project(
+        pool: &PgPool,
+        project_id: &str,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> Result<Vec<ExportJob>, AppError> {
+        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+            "SELECT j.* FROM \"ExportJob\" j JOIN \"ExportSnapshot\" s ON j.snapshot_id = s.id WHERE s.project_id = ",
+        );
+        query_builder.push_bind(project_id);
+        query_builder.push(" ORDER BY j.created_at DESC");
+
+        if let Some(limit) = limit {
+            query_builder.push(" LIMIT ");
+            query_builder.push_bind(limit);
+        }
+
+        if let Some(offset) = offset {
+            query_builder.push(" OFFSET ");
+            query_builder.push_bind(offset);
+        }
+
+        let rows = query_builder
+            .build_query_as::<ExportJobRow>()
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
+        Ok(rows.into_iter().map(|r| r.into()).collect())
+    }
+
+    pub async fn count_by_project(pool: &PgPool, project_id: &str) -> Result<i64, AppError> {
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM \"ExportJob\" j JOIN \"ExportSnapshot\" s ON j.snapshot_id = s.id WHERE s.project_id = $1",
+        )
+        .bind(project_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        Ok(count)
+    }
+
     pub async fn create(
         pool: &PgPool,
         snapshot_id: &str,

@@ -2,10 +2,13 @@
 //!
 //! This module contains business logic for analytics tracking.
 
-use cms_db::analytics::AnalyticsEventQueries;
-use cms_entity::analytics::{
-    AnalyticsEvent, AnalyticsEventResponse, AnalyticsQueryRequest, AnalyticsQueryResponse,
-    AnalyticsResultItem,
+use cms_db::analytics::{AnalyticsEventQueries, AnalyticsQueries};
+use cms_entity::{
+    analytics::{
+        AnalyticsDashboardResponse, AnalyticsEvent, AnalyticsEventResponse, AnalyticsQueryRequest,
+        AnalyticsQueryResponse, AnalyticsResultItem,
+    },
+    common::MemberRole,
 };
 
 use crate::{AppError, BizContext};
@@ -90,12 +93,7 @@ impl AnalyticsService {
             .require_org_admin(user_id, org_id)
             .await?;
 
-        Ok(serde_json::json!({
-            "total_events": 0,
-            "unique_users": 0,
-            "page_views": 0,
-            "searches": 0,
-        }))
+        AnalyticsQueries::get_summary(&ctx.pool, org_id, start_date, end_date).await
     }
 
     /// Track an analytics event
@@ -148,37 +146,37 @@ impl AnalyticsService {
 
     /// Get dashboard for a project
     pub async fn get_dashboard(
-        _ctx: &BizContext,
-        _user_id: &str,
-        _project_id: &str,
-    ) -> Result<cms_entity::analytics::AnalyticsDashboardResponse, AppError> {
-        Ok(cms_entity::analytics::AnalyticsDashboardResponse {
-            total_events: 0,
-            events_by_type: std::collections::HashMap::new(),
-            time_series: vec![],
-        })
+        ctx: &BizContext,
+        user_id: &str,
+        project_id: &str,
+    ) -> Result<AnalyticsDashboardResponse, AppError> {
+        ctx.access_control
+            .require_project_role(user_id, project_id, MemberRole::Viewer)
+            .await?;
+
+        AnalyticsQueries::get_dashboard(&ctx.pool, project_id).await
     }
 
     /// Get page views
     pub async fn get_page_views(
-        _ctx: &BizContext,
+        ctx: &BizContext,
         _user_id: &str,
-        _page_id: &str,
+        page_id: &str,
     ) -> Result<serde_json::Value, AppError> {
-        Ok(serde_json::json!({ "views": 0, "unique_visitors": 0 }))
+        AnalyticsQueries::get_page_views(&ctx.pool, page_id).await
     }
 
     /// Get organization stats
     pub async fn get_organization_stats(
-        _ctx: &BizContext,
-        _org_id: &str,
+        ctx: &BizContext,
+        org_id: &str,
     ) -> Result<serde_json::Value, AppError> {
-        Ok(serde_json::json!({ "projects": 0, "members": 0, "events": 0 }))
+        AnalyticsQueries::get_organization_stats(&ctx.pool, org_id).await
     }
 
     /// Get system stats
-    pub async fn get_system_stats(_ctx: &BizContext) -> Result<serde_json::Value, AppError> {
-        Ok(serde_json::json!({ "users": 0, "organizations": 0, "projects": 0 }))
+    pub async fn get_system_stats(ctx: &BizContext) -> Result<serde_json::Value, AppError> {
+        AnalyticsQueries::get_system_stats(&ctx.pool).await
     }
 }
 

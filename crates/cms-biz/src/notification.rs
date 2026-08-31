@@ -151,7 +151,14 @@ impl NotificationService {
         notification_ids: &[String],
     ) -> Result<(), AppError> {
         for id in notification_ids {
-            let _ = Self::mark_as_read(ctx, user_id, id).await;
+            if let Err(e) = Self::mark_as_read(ctx, user_id, id).await {
+                tracing::warn!(
+                    "Failed to mark notification {} as read for user {}: {}",
+                    id,
+                    user_id,
+                    e
+                );
+            }
         }
         Ok(())
     }

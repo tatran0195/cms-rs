@@ -206,6 +206,24 @@ impl ProjectQueries {
         Ok(count)
     }
 
+    /// List projects accessible by a user
+    pub async fn list_by_user(pool: &PgPool, user_id: &str) -> Result<Vec<Project>, AppError> {
+        let rows = sqlx::query_as::<_, ProjectRow>(
+            r#"
+            SELECT DISTINCT p.* FROM "Project" p
+            LEFT JOIN "Member" m ON p.organization_id = m.organization_id AND m.user_id = $1
+            WHERE p.is_public = true OR m.id IS NOT NULL
+            ORDER BY p.created_at DESC
+            "#
+        )
+        .bind(user_id)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        Ok(rows.into_iter().map(|r| r.into()).collect())
+    }
+
     /// Create a new project
     pub async fn create(
         pool: &PgPool,

@@ -89,7 +89,7 @@ pub async fn reindex_handler(
     auth: AuthExtractor,
     Json(request): Json<ReindexRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    SearchService::reindex(&state.biz_context, &auth.user.id, request).await?;
+    SearchService::reindex(&state.biz_context, state.search_engine.clone(), &auth.user.id, request).await?;
 
     Ok(Json(
         serde_json::json!({"success": true, "message": "Reindexing started"}),

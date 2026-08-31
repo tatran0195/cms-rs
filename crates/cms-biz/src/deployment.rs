@@ -2,6 +2,8 @@
 //!
 //! This module contains business logic for deployments and custom domains.
 
+use std::sync::Arc;
+
 use chrono::Utc;
 use cms_db::{
     branch::BranchQueries,
@@ -17,6 +19,7 @@ use cms_entity::{
     },
     domain::{CreateDomainRequest, Domain, DomainResponse, UpdateDomainRequest},
 };
+use cms_storage::Storage;
 use uuid::Uuid;
 
 use crate::{AppError, BizContext};
@@ -175,8 +178,20 @@ impl DeploymentService {
         user_id: &str,
         deployment_id: &str,
     ) -> Result<DeploymentResponse, AppError> {
-        let deployment = Self::get_deployment(ctx, user_id, deployment_id).await?;
-        Ok(deployment)
+        let deployment = DeploymentQueries::get_by_id(&ctx.pool, deployment_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
+
+        ctx.access_control
+            .require_project_role(user_id, &deployment.project_id, MemberRole::Admin)
+            .await?;
+
+        // Reset deployment to pending so it can be re-processed
+        let updated =
+            DeploymentQueries::update_status(&ctx.pool, deployment_id, DeploymentStatus::Pending)
+                .await?;
+
+        Ok(updated.into())
     }
 
     /// Cancel a deployment
@@ -185,8 +200,32 @@ impl DeploymentService {
         user_id: &str,
         deployment_id: &str,
     ) -> Result<DeploymentResponse, AppError> {
-        let deployment = Self::get_deployment(ctx, user_id, deployment_id).await?;
-        Ok(deployment)
+        let deployment = DeploymentQueries::get_by_id(&ctx.pool, deployment_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
+
+        ctx.access_control
+            .require_project_role(user_id, &deployment.project_id, MemberRole::Admin)
+            .await?;
+
+        // Only cancel if currently pending or building
+        let can_cancel = matches!(
+            deployment.status,
+            DeploymentStatus::Pending | DeploymentStatus::Building
+        );
+
+        if !can_cancel {
+            return Err(AppError::InvalidInput(format!(
+                "Cannot cancel deployment in {:?} state",
+                deployment.status
+            )));
+        }
+
+        let updated =
+            DeploymentQueries::update_status(&ctx.pool, deployment_id, DeploymentStatus::Failed)
+                .await?;
+
+        Ok(updated.into())
     }
 
     /// Create a custom domain
@@ -349,9 +388,61 @@ impl DeploymentService {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Worker functions
+// ---------------------------------------------------------------------------
+
+/// Render markdown to sanitized HTML using pulldown-cmark + ammonia.
+fn render_markdown_to_html(markdown: &str, title: &str) -> String {
+    use pulldown_cmark::{html, Options, Parser};
+
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    options.insert(Options::ENABLE_TABLES);
+    options.insert(Options::ENABLE_FOOTNOTES);
+    options.insert(Options::ENABLE_TASKLISTS);
+
+    let parser = Parser::new_ext(markdown, options);
+    let mut html_body = String::new();
+    html::push_html(&mut html_body, parser);
+
+    // Sanitize with ammonia (allowlist-based)
+    let clean_body = ammonia::clean(&html_body);
+
+    // Wrap in a minimal HTML document
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title}</title>
+  <style>
+    body {{ max-width: 800px; margin: 0 auto; padding: 2rem; font-family: system-ui, sans-serif; line-height: 1.6; }}
+    pre {{ background: #f4f4f4; padding: 1rem; overflow-x: auto; border-radius: 4px; }}
+    code {{ font-family: monospace; }}
+    img {{ max-width: 100%; height: auto; }}
+  </style>
+</head>
+<body>
+{clean_body}
+</body>
+</html>"#,
+        title = ammonia::clean(title),
+        clean_body = clean_body,
+    )
+}
+
 /// Process deployment job (for worker)
+///
+/// This function:
+/// 1. Fetches all pages in the deployment's branch
+/// 2. Renders each page from Markdown to HTML
+/// 3. Uploads the HTML to the storage backend under `sites/{project_id}/{deployment_id}/`
+/// 4. Marks the deployment as Active on success, or Failed on error
 pub async fn process_deployment_job(
     pool: &cms_db::PgPool,
+    storage: Arc<dyn Storage>,
     payload: &serde_json::Value,
 ) -> Result<(), AppError> {
     let deployment_id = payload
@@ -359,17 +450,40 @@ pub async fn process_deployment_job(
         .and_then(|v| v.as_str())
         .ok_or_else(|| AppError::InvalidInput("Missing deployment_id".to_string()))?;
 
-    let mut deployment = DeploymentQueries::get_by_id(pool, deployment_id)
+    let deployment = DeploymentQueries::get_by_id(pool, deployment_id)
         .await?
         .ok_or_else(|| AppError::NotFound("Deployment not found".to_string()))?;
 
     // Update deployment status to building
-    deployment =
-        DeploymentQueries::update_status(pool, deployment_id, DeploymentStatus::Building).await?;
+    DeploymentQueries::update_status(pool, deployment_id, DeploymentStatus::Building).await?;
 
+    // Inner function so we can capture errors and mark as Failed
+    let result = do_deployment(pool, &storage, &deployment, deployment_id).await;
+
+    match result {
+        Ok(()) => {
+            DeploymentQueries::update_status(pool, deployment_id, DeploymentStatus::Active).await?;
+            DeploymentQueries::update_deployed_at(pool, deployment_id).await?;
+            tracing::info!("Deployment {} completed successfully", deployment_id);
+        }
+        Err(ref e) => {
+            tracing::error!("Deployment {} failed: {}", deployment_id, e);
+            DeploymentQueries::update_status(pool, deployment_id, DeploymentStatus::Failed).await?;
+        }
+    }
+
+    result
+}
+
+async fn do_deployment(
+    pool: &cms_db::PgPool,
+    storage: &Arc<dyn Storage>,
+    deployment: &cms_entity::deployment::Deployment,
+    deployment_id: &str,
+) -> Result<(), AppError> {
     // Get the branch to deploy
     let branch_id_ref = deployment.branch_id.as_deref().unwrap_or("");
-    let branch = BranchQueries::get_by_id(pool, branch_id_ref)
+    let _branch = BranchQueries::get_by_id(pool, branch_id_ref)
         .await?
         .ok_or_else(|| AppError::NotFound("Branch not found".to_string()))?;
 
@@ -386,25 +500,101 @@ pub async fn process_deployment_job(
     )
     .await?;
 
-    // In a real implementation, this would:
-    // 1. Generate static HTML for each page
-    // 2. Upload to storage or a CDN
-    // 3. Configure the custom domain
-    // 4. Set up SSL certificates
+    tracing::info!(
+        "Deploying {} pages for deployment {}",
+        pages.len(),
+        deployment_id
+    );
 
-    // For now, we'll just mark it as active
-    DeploymentQueries::update_status(pool, deployment_id, DeploymentStatus::Active).await?;
-    DeploymentQueries::update_deployed_at(pool, deployment_id).await?;
+    for page in &pages {
+        let markdown = page.content.as_deref().unwrap_or("");
+        let html = render_markdown_to_html(markdown, &page.title);
+
+        // Store as sites/{project_id}/{deployment_id}/{page_path}.html
+        let page_path = page.path.trim_start_matches('/');
+        let storage_key = format!(
+            "sites/{}/{}/{}.html",
+            deployment.project_id, deployment_id, page_path
+        );
+
+        storage
+            .put(&storage_key, bytes::Bytes::from(html), "text/html; charset=utf-8")
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to store page {} at {}: {}", page.id, storage_key, e);
+                e
+            })?;
+
+        tracing::debug!(
+            "Stored page {} -> {}",
+            page.path,
+            storage_key
+        );
+    }
 
     Ok(())
 }
 
 /// Process publish job (for worker)
+///
+/// Publish is triggered when a single page is saved/published.
+/// It re-renders that page and uploads it to all active deployments for the project.
 pub async fn process_publish_job(
     pool: &cms_db::PgPool,
+    storage: Arc<dyn Storage>,
     payload: &serde_json::Value,
 ) -> Result<(), AppError> {
-    // Publish job is similar to deployment but for individual pages
-    // For now, we'll just process it as a deployment
-    process_deployment_job(pool, payload).await
+    let page_id = payload
+        .get("page_id")
+        .and_then(|v| v.as_str());
+
+    let project_id = payload
+        .get("project_id")
+        .and_then(|v| v.as_str());
+
+    // If we have a specific page_id, re-render just that page across active deployments
+    if let (Some(pid), Some(proj_id)) = (page_id, project_id) {
+        let page = PageQueries::get_by_id(pool, pid)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Page not found".to_string()))?;
+
+        // Find active deployments for this project
+        let deployments = DeploymentQueries::get_active_by_project(pool, proj_id).await
+            .unwrap_or_default();
+
+        for deployment in &deployments {
+            let markdown = page.content.as_str();
+            let html = render_markdown_to_html(markdown, &page.title);
+
+            let page_path = page.path.trim_start_matches('/');
+            let storage_key = format!(
+                "sites/{}/{}/{}.html",
+                proj_id, deployment.id, page_path
+            );
+
+            if let Err(e) = storage
+                .put(&storage_key, bytes::Bytes::from(html), "text/html; charset=utf-8")
+                .await
+            {
+                tracing::error!(
+                    "Failed to publish page {} to deployment {}: {}",
+                    pid,
+                    deployment.id,
+                    e
+                );
+                // Continue to other deployments even if one fails
+            }
+        }
+
+        tracing::info!(
+            "Published page {} to {} deployment(s)",
+            pid,
+            deployments.len()
+        );
+
+        Ok(())
+    } else {
+        // Fall back to full deployment if payload doesn't have page_id
+        process_deployment_job(pool, storage, payload).await
+    }
 }

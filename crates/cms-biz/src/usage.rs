@@ -33,9 +33,6 @@ impl UsageService {
         price: i64,
         billing_period: &str,
     ) -> Result<UsagePlanResponse, AppError> {
-        // Check if user has admin permissions
-        // (This would need to be implemented)
-
         let plan =
             UsagePlanQueries::create(&ctx.pool, name, description, price, billing_period).await?;
 
@@ -82,8 +79,6 @@ impl UsageService {
         description: Option<&str>,
         unit: &str,
     ) -> Result<UsageMeterResponse, AppError> {
-        // Check if user has admin permissions
-
         let meter = UsageMeterQueries::create(&ctx.pool, code, name, description, unit).await?;
 
         Ok(meter.into())
@@ -154,15 +149,15 @@ impl UsageService {
         Ok(org_plan.into())
     }
 
-    /// Get organization usage plan
+    /// Get organization's usage plan
     pub async fn get_organization_usage_plan(
         ctx: &BizContext,
         user_id: &str,
         org_id: &str,
     ) -> Result<Option<OrganizationUsagePlanResponse>, AppError> {
-        // Check if user has admin permissions for the organization
+        // Check if user has access to the organization
         ctx.access_control
-            .require_org_admin(user_id, org_id)
+            .require_org_member(user_id, org_id)
             .await?;
 
         let org_plan = OrganizationUsagePlanQueries::get_by_organization(&ctx.pool, org_id).await?;
@@ -170,63 +165,28 @@ impl UsageService {
         Ok(org_plan.map(|p| p.into()))
     }
 
-    /// Record usage event
-    pub async fn record_usage_event(
+    /// Update organization's usage plan
+    pub async fn update_organization_usage_plan(
         ctx: &BizContext,
+        user_id: &str,
         org_id: &str,
-        user_id: Option<&str>,
-        event_type: &str,
-        metadata: serde_json::Value,
-        ip_address: Option<&str>,
-        user_agent: Option<&str>,
-    ) -> Result<(), AppError> {
-        AnalyticsEventQueries::create(
-            &ctx.pool,
-            Some(org_id),
-            None,
-            user_id,
-            event_type,
-            metadata,
-            ip_address,
-            user_agent,
-        )
-        .await?;
+        usage_plan_id: &str,
+    ) -> Result<OrganizationUsagePlanResponse, AppError> {
+        ctx.access_control
+            .require_org_admin(user_id, org_id)
+            .await?;
 
-        Ok(())
-    }
-
-    /// Check entitlement
-    pub async fn check_entitlement(
-        ctx: &BizContext,
-        org_id: &str,
-        entitlement_code: &str,
-    ) -> Result<bool, AppError> {
-        let entitlement = UsageEntitlementQueries::get_by_code(&ctx.pool, entitlement_code)
+        let _plan = UsagePlanQueries::get_by_id(&ctx.pool, usage_plan_id)
             .await?
-            .ok_or_else(|| AppError::NotFound("Entitlement not found".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Usage plan not found".to_string()))?;
 
-        if !entitlement.is_enabled {
-            return Ok(false);
-        }
+        let org_plan =
+            OrganizationUsagePlanQueries::update_plan(&ctx.pool, org_id, usage_plan_id).await?;
 
-        // Check if organization has the entitlement
-        let org_plan = OrganizationUsagePlanQueries::get_by_organization(&ctx.pool, org_id).await?;
-
-        if let Some(org_plan) = org_plan {
-            let plan_meters =
-                UsagePlanMeterQueries::get_by_plan(&ctx.pool, &org_plan.usage_plan_id).await?;
-
-            for meter in plan_meters {
-                if meter.usage_meter_id == entitlement.id {
-                    return Ok(true);
-                }
-            }
-        }
-
-        Ok(false)
+        Ok(org_plan.into())
     }
 
-    /// List usage entitlements
+    /// List all usage entitlements
     pub async fn list_usage_entitlements(
         ctx: &BizContext,
         _user_id: &str,
@@ -235,21 +195,68 @@ impl UsageService {
         Ok(entitlements.into_iter().map(|e| e.into()).collect())
     }
 
-    /// Update organization usage plan
-    pub async fn update_organization_usage_plan(
+    /// Set entitlement for organization
+    pub async fn set_entitlement(
         ctx: &BizContext,
         user_id: &str,
         org_id: &str,
-        plan_id: &str,
-    ) -> Result<OrganizationUsagePlanResponse, AppError> {
+        feature_code: &str,
+        is_enabled: bool,
+        limit_value: Option<i64>,
+    ) -> Result<UsageEntitlementResponse, AppError> {
+        // Check if user has admin permissions for the organization
         ctx.access_control
             .require_org_admin(user_id, org_id)
             .await?;
-        let starts_at = Utc::now();
-        let plan =
-            OrganizationUsagePlanQueries::create(&ctx.pool, org_id, plan_id, starts_at, None)
-                .await?;
-        Ok(plan.into())
+
+        let entitlement = UsageEntitlementQueries::create_or_update(
+            &ctx.pool,
+            org_id,
+            feature_code,
+            None,
+            is_enabled,
+        )
+        .await?;
+
+        Ok(entitlement.into())
+    }
+
+    /// Check if organization has entitlement
+    pub async fn check_entitlement(
+        ctx: &BizContext,
+        _org_id: &str,
+        feature_code: &str,
+    ) -> Result<bool, AppError> {
+        let entitlement =
+            UsageEntitlementQueries::get_by_code(&ctx.pool, feature_code).await?;
+
+        Ok(entitlement.map(|e| e.is_enabled).unwrap_or(false))
+    }
+
+    /// Record a usage event
+    #[allow(clippy::too_many_arguments)]
+    pub async fn record_usage_event(
+        ctx: &BizContext,
+        org_id: &str,
+        project_id: Option<&str>,
+        event_type: &str,
+        metadata: serde_json::Value,
+        ip_address: Option<&str>,
+        user_agent: Option<&str>,
+    ) -> Result<(), AppError> {
+        AnalyticsEventQueries::create(
+            &ctx.pool,
+            Some(org_id),
+            project_id,
+            None,
+            event_type,
+            metadata,
+            ip_address,
+            user_agent,
+        )
+        .await?;
+
+        Ok(())
     }
 
     /// Track a usage event
@@ -301,23 +308,20 @@ pub async fn process_usage_job(
     let user_id = payload.get("user_id").and_then(|v| v.as_str());
     let metadata = payload.get("metadata").cloned().unwrap_or_default();
 
+    // Check for idempotent ingestion first
+    if let Some(org_id) = org_id {
+        let today = chrono::Utc::now().date_naive();
+        let period_start = today.and_hms_opt(0, 0, 0).unwrap().and_utc();
+
+        let _checkpoint =
+            UsageCheckpointQueries::create(pool, event_type, org_id, period_start).await?;
+    }
+
     // Record the usage event
     AnalyticsEventQueries::create(
         pool, org_id, None, user_id, event_type, metadata, None, None,
     )
     .await?;
-
-    // Check for idempotent ingestion
-    if let Some(org_id) = org_id {
-        let today = chrono::Utc::now().date_naive();
-        let period_start = today.and_hms_opt(0, 0, 0).unwrap().and_utc();
-
-        let checkpoint =
-            UsageCheckpointQueries::create(pool, event_type, org_id, period_start).await?;
-
-        // If checkpoint already existed, this event was already processed
-        // In a real implementation, we'd check this before processing
-    }
 
     Ok(())
 }

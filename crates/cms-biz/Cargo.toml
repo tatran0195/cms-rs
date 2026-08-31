@@ -25,6 +25,22 @@ serde_json = { workspace = true }
 chrono = { workspace = true }
 uuid = { workspace = true }
 
+# Markdown rendering (for deployment HTML generation)
+pulldown-cmark = { workspace = true }
+ammonia = { workspace = true }
+
+# HTTP client for Git provider API calls (GitHub/GitLab REST)
+reqwest = { workspace = true }
+urlencoding = { workspace = true }
+
+# Export generation
+printpdf = { workspace = true }
+epub-builder = { workspace = true }
+
+# Logging & error handling
+tracing = { workspace = true }
+anyhow = { workspace = true }
+
 [dev-dependencies]
 tokio = { workspace = true, features = ["full", "test-util"] }
 mockall = { workspace = true }

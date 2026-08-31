@@ -5,10 +5,14 @@
 
 use std::sync::Arc;
 
-use cms_db::{page::PageQueries, project::ProjectQueries};
+use cms_db::{page::PageQueries, project::ProjectQueries, search_index::SearchIndexRunQueries};
 use cms_entity::{
-    common::Id,
-    search::{IndexPageRequest, SearchOptions, SearchRequest, SearchResponse, SearchResultItem},
+    common::{Id, MemberRole, PaginatedResponse},
+    search::{
+        IndexPageRequest, ListSearchIndexRunsQuery, RagAnswer, ReindexRequest, SearchIndexRun,
+        SearchIndexRunResponse, SearchIndexRunStatus, SearchOptions, SearchRequest,
+        SearchResponse, SearchResultItem,
+    },
 };
 
 use crate::{AppError, BizContext};
@@ -106,7 +110,7 @@ impl SearchService {
         search_engine: Arc<dyn cms_search::SearchEngine>,
         project_id: &str,
         question: &str,
-    ) -> Result<cms_entity::search::RagAnswer, AppError> {
+    ) -> Result<RagAnswer, AppError> {
         // Verify project exists
         let _project = ProjectQueries::get_by_id(&ctx.pool, project_id)
             .await?
@@ -118,44 +122,158 @@ impl SearchService {
 
     /// List search index runs
     pub async fn list_index_runs(
-        _ctx: &BizContext,
-        _user_id: &str,
-        _query: cms_entity::search::ListSearchIndexRunsQuery,
-    ) -> Result<
-        cms_entity::common::PaginatedResponse<cms_entity::search::SearchIndexRunResponse>,
-        AppError,
-    > {
-        Ok(cms_entity::common::PaginatedResponse::new(vec![], 0, 1, 20))
+        ctx: &BizContext,
+        user_id: &str,
+        query: ListSearchIndexRunsQuery,
+    ) -> Result<PaginatedResponse<SearchIndexRunResponse>, AppError> {
+        let project_id = query
+            .project_id
+            .as_deref()
+            .ok_or_else(|| AppError::InvalidInput("project_id query param is required".to_string()))?;
+
+        ctx.access_control
+            .require_project_role(user_id, project_id, MemberRole::Viewer)
+            .await?;
+
+        let runs = SearchIndexRunQueries::get_by_project(
+            &ctx.pool,
+            project_id,
+            query.limit,
+            query.offset,
+        )
+        .await?;
+
+        let total = SearchIndexRunQueries::count_by_project(&ctx.pool, project_id).await?;
+
+        let limit = query.limit.unwrap_or(20) as u64;
+        let offset = query.offset.unwrap_or(0) as u64;
+        let page = offset.checked_div(limit).map_or(1, |d| d + 1);
+
+        Ok(PaginatedResponse::new(
+            runs.into_iter().map(|r| r.into()).collect(),
+            total as u64,
+            page,
+            limit,
+        ))
     }
 
     /// Get a specific search index run
     pub async fn get_index_run(
-        _ctx: &BizContext,
-        _user_id: &str,
+        ctx: &BizContext,
+        user_id: &str,
         run_id: &str,
-    ) -> Result<cms_entity::search::SearchIndexRunResponse, AppError> {
-        Err(AppError::NotFound(format!(
-            "Search index run not found: {}",
-            run_id
-        )))
+    ) -> Result<SearchIndexRunResponse, AppError> {
+        let run = SearchIndexRunQueries::get_by_id(&ctx.pool, run_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Search index run not found: {}", run_id)))?;
+
+        ctx.access_control
+            .require_project_role(user_id, &run.project_id, MemberRole::Viewer)
+            .await?;
+
+        Ok(run.into())
     }
 
-    /// Get search status
+    /// Get search status for a project
     pub async fn get_search_status(
-        _ctx: &BizContext,
-        _user_id: &str,
-        _project_id: &str,
+        ctx: &BizContext,
+        user_id: &str,
+        project_id: &str,
     ) -> Result<serde_json::Value, AppError> {
-        Ok(serde_json::json!({ "status": "ok" }))
+        ctx.access_control
+            .require_project_role(user_id, project_id, MemberRole::Viewer)
+            .await?;
+
+        let latest_run = SearchIndexRunQueries::get_latest_by_project(&ctx.pool, project_id).await?;
+        let total_runs = SearchIndexRunQueries::count_by_project(&ctx.pool, project_id).await?;
+
+        Ok(serde_json::json!({
+            "status": "ready",
+            "project_id": project_id,
+            "total_index_runs": total_runs,
+            "latest_run": latest_run.map(|r| serde_json::json!({
+                "id": r.id,
+                "status": format!("{:?}", r.status).to_lowercase(),
+                "pages_indexed": r.pages_indexed,
+                "completed_at": r.completed_at,
+            })),
+        }))
     }
 
-    /// Reindex
+    /// Reindex all pages for a project into the search engine
     pub async fn reindex(
-        _ctx: &BizContext,
-        _user_id: &str,
-        _request: cms_entity::search::ReindexRequest,
-    ) -> Result<(), AppError> {
-        Ok(())
+        ctx: &BizContext,
+        search_engine: Arc<dyn cms_search::SearchEngine>,
+        user_id: &str,
+        request: ReindexRequest,
+    ) -> Result<SearchIndexRunResponse, AppError> {
+        ctx.access_control
+            .require_project_role(user_id, &request.project_id, MemberRole::Admin)
+            .await?;
+
+        let branch_id = request.branch_id.as_deref().unwrap_or("");
+
+        // Create a new SearchIndexRun
+        let run = SearchIndexRunQueries::create(
+            &ctx.pool,
+            &request.project_id,
+            request.branch_id.as_deref(),
+            request.language_id.as_deref(),
+            SearchIndexRunStatus::Processing,
+        )
+        .await?;
+
+        // Retrieve pages to index
+        let pages = if !branch_id.is_empty() {
+            PageQueries::get_by_project_and_branch(
+                &ctx.pool,
+                &request.project_id,
+                branch_id,
+                None,
+                Some(true), // only published pages
+                None,
+                None,
+                None,
+            )
+            .await?
+        } else {
+            // Retrieve default branch
+            let default_branch = cms_db::branch::BranchQueries::get_default(&ctx.pool, &request.project_id).await?;
+            if let Some(b) = default_branch {
+                PageQueries::get_by_project_and_branch(
+                    &ctx.pool,
+                    &request.project_id,
+                    &b.id,
+                    None,
+                    Some(true),
+                    None,
+                    None,
+                    None,
+                )
+                .await?
+            } else {
+                vec![]
+            }
+        };
+
+        let mut indexed_count = 0;
+        for page_item in pages {
+            if let Some(page) = PageQueries::get_by_id(&ctx.pool, &page_item.id).await? {
+                if search_engine.index_page(&page).await.is_ok() {
+                    indexed_count += 1;
+                }
+            }
+        }
+
+        let completed = SearchIndexRunQueries::mark_completed(&ctx.pool, &run.id, indexed_count).await?;
+
+        tracing::info!(
+            "Reindex completed for project {}: {} page(s) indexed",
+            request.project_id,
+            indexed_count
+        );
+
+        Ok(completed.into())
     }
 }
 
@@ -165,7 +283,6 @@ pub async fn process_search_job(
     search_engine: Arc<dyn cms_search::SearchEngine>,
     payload: &serde_json::Value,
 ) -> Result<(), AppError> {
-    // Parse the job payload
     let job_type = payload.get("type").and_then(|v| v.as_str());
     let _project_id = payload
         .get("project_id")
