@@ -174,7 +174,7 @@ pub async fn download_export_handler(
 /// Returns all export schedules for a specific project.
 #[utoipa::path(
     get,
-    path = "/export/schedules/{project_id}",
+    path = "/export/projects/{project_id}/schedules",
     tag = "export",
     security(
         ("bearerAuth" = []),
@@ -207,7 +207,7 @@ pub async fn list_export_schedules_handler(
 /// Creates a new recurring export schedule for a project.
 #[utoipa::path(
     post,
-    path = "/export/schedules/{project_id}",
+    path = "/export/projects/{project_id}/schedules",
     tag = "export",
     security(
         ("bearerAuth" = []),

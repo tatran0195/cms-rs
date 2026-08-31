@@ -22,8 +22,8 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/audit-events", get(list_mcp_audit_events_handler))
         .route("/server-info", get(get_mcp_server_info_handler))
         .route("/tools", get(list_mcp_tools_handler))
-        .route("/tools/:tool_name", post(call_mcp_tool_handler))
+        .route("/tools/{tool_name}", post(call_mcp_tool_handler))
         .route("/resources", get(list_mcp_resources_handler))
-        .route("/resources/:uri", get(read_mcp_resource_handler))
+        .route("/resources/{uri}", get(read_mcp_resource_handler))
         .with_state(state)
 }

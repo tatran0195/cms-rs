@@ -22,7 +22,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/refresh", post(refresh_session_handler))
         .route("/api-keys", get(list_api_keys_handler))
         .route("/api-keys", post(create_api_key_handler))
-        .route("/api-keys/:id", delete(delete_api_key_handler))
+        .route("/api-keys/{id}", delete(delete_api_key_handler))
         .with_state(state)
 }
 

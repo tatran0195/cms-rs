@@ -195,7 +195,7 @@ pub async fn delete_language_handler(
 /// Sets the specified language as the default for a project.
 #[utoipa::path(
     post,
-    path = "/languages/{project_id}/default",
+    path = "/languages/projects/{project_id}/set-default",
     tag = "languages",
     security(
         ("bearerAuth" = []),

@@ -16,23 +16,23 @@ use handlers::*;
 pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route(
-            "/projects/:org_slug/:project_slug",
+            "/projects/{org_slug}/{project_slug}",
             get(get_public_project_handler),
         )
         .route(
-            "/pages/:org_slug/:project_slug/*page_path",
+            "/pages/{org_slug}/{project_slug}/{*page_path}",
             get(get_public_page_handler),
         )
         .route(
-            "/pages/:org_slug/:project_slug",
+            "/pages/{org_slug}/{project_slug}",
             get(list_public_pages_handler),
         )
         .route(
-            "/search/:org_slug/:project_slug",
+            "/search/{org_slug}/{project_slug}",
             get(search_public_content_handler),
         )
         .route(
-            "/sitemap/:org_slug/:project_slug",
+            "/sitemap/{org_slug}/{project_slug}",
             get(get_project_sitemap_handler),
         )
         .with_state(state)

@@ -21,13 +21,13 @@ pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/", get(list_projects_handler))
         .route("/", post(create_project_handler))
-        .route("/:id", get(get_project_handler))
-        .route("/:id", put(update_project_handler))
-        .route("/:id", delete(delete_project_handler))
+        .route("/{id}", get(get_project_handler))
+        .route("/{id}", put(update_project_handler))
+        .route("/{id}", delete(delete_project_handler))
         // Settings routes
-        .route("/:id/settings", get(get_project_settings_handler))
-        .route("/:id/settings", put(update_project_settings_handler))
+        .route("/{id}/settings", get(get_project_settings_handler))
+        .route("/{id}/settings", put(update_project_settings_handler))
         // Addons routes
-        .route("/:id/addons", get(list_project_addons_handler))
+        .route("/{id}/addons", get(list_project_addons_handler))
         .with_state(state)
 }

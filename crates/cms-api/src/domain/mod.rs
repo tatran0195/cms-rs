@@ -21,13 +21,13 @@ pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/", get(list_domains_handler))
         .route("/", post(create_domain_handler))
-        .route("/:id", get(get_domain_handler))
-        .route("/:id", put(update_domain_handler))
-        .route("/:id", delete(delete_domain_handler))
-        .route("/:id/verify", post(verify_domain_handler))
-        .route("/check/:hostname", get(check_domain_availability_handler))
+        .route("/{id}", get(get_domain_handler))
+        .route("/{id}", put(update_domain_handler))
+        .route("/{id}", delete(delete_domain_handler))
+        .route("/{id}/verify", post(verify_domain_handler))
+        .route("/check/{hostname}", get(check_domain_availability_handler))
         .route(
-            "/deployments/:deployment_id/set-primary",
+            "/deployments/{deployment_id}/set-primary",
             post(set_primary_domain_handler),
         )
         .with_state(state)

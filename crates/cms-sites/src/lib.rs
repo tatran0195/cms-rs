@@ -50,18 +50,18 @@ fn create_router(state: Arc<SitesAppState>) -> Router {
     Router::new()
         // Main site handler - resolves host and serves appropriate content
         .route("/", get(root_handler))
-        .route("/*path", get(wildcard_handler))
+        .route("/{*path}", get(wildcard_handler))
         // SEO files
         .route("/robots.txt", get(robots_txt_handler))
         .route("/sitemap.xml", get(sitemap_xml_handler))
         .route("/.well-known/security.txt", get(security_txt_handler))
         .route("/.well-known/pgp-key.txt", get(pgp_key_handler))
         // Static assets for published sites
-        .route("/assets/*path", get(asset_handler))
-        .route("/css/*path", get(css_handler))
-        .route("/js/*path", get(js_handler))
-        .route("/fonts/*path", get(font_handler))
-        .route("/images/*path", get(image_handler))
+        .route("/assets/{*path}", get(asset_handler))
+        .route("/css/{*path}", get(css_handler))
+        .route("/js/{*path}", get(js_handler))
+        .route("/fonts/{*path}", get(font_handler))
+        .route("/images/{*path}", get(image_handler))
         // Favicon
         .route("/favicon.ico", get(favicon_handler))
         .route("/favicon-32x32.png", get(favicon_32_handler))

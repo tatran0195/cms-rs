@@ -23,9 +23,9 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/events", get(list_analytics_events_handler))
         .route("/query", post(query_analytics_handler))
         .route(
-            "/dashboard/:project_id",
+            "/dashboard/{project_id}",
             get(get_analytics_dashboard_handler),
         )
-        .route("/pages/:page_id/views", get(get_page_views_handler))
+        .route("/pages/{page_id}/views", get(get_page_views_handler))
         .with_state(state)
 }

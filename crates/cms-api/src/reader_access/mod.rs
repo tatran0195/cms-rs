@@ -22,20 +22,20 @@ pub fn router(state: Arc<AppState>) -> Router {
         // Audience routes
         .route("/audiences", post(create_audience_handler))
         .route(
-            "/projects/:project_id/audiences",
+            "/projects/{project_id}/audiences",
             get(list_audiences_handler),
         )
-        .route("/audiences/:id", get(get_audience_handler))
-        .route("/audiences/:id", put(update_audience_handler))
-        .route("/audiences/:id", delete(delete_audience_handler))
+        .route("/audiences/{id}", get(get_audience_handler))
+        .route("/audiences/{id}", put(update_audience_handler))
+        .route("/audiences/{id}", delete(delete_audience_handler))
         // Audience grant routes
         .route("/audience-grants", post(create_audience_grant_handler))
         .route(
-            "/audiences/:audience_id/grants",
+            "/audiences/{audience_id}/grants",
             get(list_audience_grants_handler),
         )
         .route(
-            "/audience-grants/:id",
+            "/audience-grants/{id}",
             delete(delete_audience_grant_handler),
         )
         // Invitation routes

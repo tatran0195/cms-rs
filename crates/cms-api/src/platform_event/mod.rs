@@ -21,6 +21,6 @@ pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/", get(list_platform_events_handler))
         .route("/", post(create_platform_event_handler))
-        .route("/:id", get(get_platform_event_handler))
+        .route("/{id}", get(get_platform_event_handler))
         .with_state(state)
 }
