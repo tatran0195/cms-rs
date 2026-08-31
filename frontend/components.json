@@ -13,11 +13,11 @@
   "iconLibrary": "lucide",
   "rtl": true,
   "aliases": {
-    "components": "@nibleaf/design-system/components",
-    "utils": "@nibleaf/design-system/lib/utils",
-    "ui": "@nibleaf/design-system/components/ui",
-    "lib": "@nibleaf/design-system/lib",
-    "hooks": "@nibleaf/design-system/hooks"
+    "components": "@cms/design-system/components",
+    "utils": "@cms/design-system/lib/utils",
+    "ui": "@cms/design-system/components/ui",
+    "lib": "@cms/design-system/lib",
+    "hooks": "@cms/design-system/hooks"
   },
   "menuColor": "default",
   "menuAccent": "subtle",

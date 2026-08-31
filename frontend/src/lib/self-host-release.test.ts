@@ -14,11 +14,11 @@ describe('self-host release integrity', () => {
     expect(sha256(installer)).toBe(SELF_HOST_RELEASE.installerSha256);
     expect(installer).toContain(`RELEASE_VERSION='${SELF_HOST_RELEASE.version}'`);
     expect(installer).toContain(`RELEASE_COMPOSE_SHA256='${SELF_HOST_RELEASE.composeSha256}'`);
-    expect(installer).not.toContain('{{NIBLEAF_');
+    expect(installer).not.toContain('{{CMS_');
   });
 
   it('publishes a pinned bootstrap command that verifies before execution', () => {
-    expect(SELF_HOST_INSTALL_COMMAND).toContain(`${selfHostReleaseBaseUrl}/nibleaf-install.sh`);
+    expect(SELF_HOST_INSTALL_COMMAND).toContain(`${selfHostReleaseBaseUrl}/cms-install.sh`);
     expect(SELF_HOST_INSTALL_COMMAND).toContain(SELF_HOST_RELEASE.installerSha256);
     expect(SELF_HOST_INSTALL_COMMAND).toContain('openssl dgst -sha256');
     expect(SELF_HOST_INSTALL_COMMAND).not.toContain('| sh');

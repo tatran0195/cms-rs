@@ -1,4 +1,4 @@
-import type { GitConflictResolutionBody, GitConnectionBody, GitOperationBody } from '@nibleaf/validators';
+import type { GitConflictResolutionBody, GitConnectionBody, GitOperationBody } from '@cms/validators';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData, mutateData } from './client-helpers';

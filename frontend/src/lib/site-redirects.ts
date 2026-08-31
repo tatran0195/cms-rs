@@ -1,4 +1,4 @@
-import { normalizeRedirectPath, resolveRedirectTarget } from '@nibleaf/validators/redirects';
+import { normalizeRedirectPath, resolveRedirectTarget } from '@cms/validators/redirects';
 import { redirect } from '@tanstack/react-router';
 import { getSiteFn } from '@/functions/site';
 import { isCustomDomainSite } from '@/lib/site-paths';

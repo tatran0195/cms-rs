@@ -1,14 +1,14 @@
 [workspace]
-# Nibleaf Rust Workspace
+# CMS Rust Workspace
 #
-# This workspace contains the Rust backend for Nibleaf, a modern documentation platform.
+# This workspace contains the Rust backend for CMS, a modern documentation platform.
 #
 # Architecture:
-# - nibleaf-*: Library crates (entity, db, biz, api, middleware, etc.)
-# - nibleaf-server: Binary crate (composition root)
+# - cms-*: Library crates (entity, db, biz, api, middleware, etc.)
+# - cms-server: Binary crate (composition root)
 #
 # Layering (AppFlowy-inspired):
-#   API Layer (nibleaf-api) → Biz Layer (nibleaf-biz) → DB Layer (nibleaf-db)
+#   API Layer (cms-api) → Biz Layer (cms-biz) → DB Layer (cms-db)
 #   No circular dependencies allowed
 #
 # Deployment:
@@ -17,44 +17,44 @@
 # - Pluggable backends: local-disk/S3, pgvector/Qdrant, memory/Redis, Postgres/ClickHouse
 
 members = [
-    "crates/nibleaf-config",
-    "crates/nibleaf-error",
-    "crates/nibleaf-entity",
-    "crates/nibleaf-db",
-    "crates/nibleaf-auth",
-    "crates/nibleaf-access-control",
-    "crates/nibleaf-storage",
-    "crates/nibleaf-search",
-    "crates/nibleaf-queue",
-    "crates/nibleaf-analytics",
-    "crates/nibleaf-mcp",
-    "crates/nibleaf-biz",
-    "crates/nibleaf-sites",
-    "crates/nibleaf-api",
-    "crates/nibleaf-worker",
-    "crates/nibleaf-middleware",
+    "crates/cms-config",
+    "crates/cms-error",
+    "crates/cms-entity",
+    "crates/cms-db",
+    "crates/cms-auth",
+    "crates/cms-access-control",
+    "crates/cms-storage",
+    "crates/cms-search",
+    "crates/cms-queue",
+    "crates/cms-analytics",
+    "crates/cms-mcp",
+    "crates/cms-biz",
+    "crates/cms-sites",
+    "crates/cms-api",
+    "crates/cms-worker",
+    "crates/cms-middleware",
     "src",
 ]
 resolver = "2"
 
 [workspace.dependencies]
 # Internal dependencies (path-based)
-nibleaf-config = { path = "crates/nibleaf-config" }
-nibleaf-error = { path = "crates/nibleaf-error" }
-nibleaf-entity = { path = "crates/nibleaf-entity" }
-nibleaf-db = { path = "crates/nibleaf-db" }
-nibleaf-auth = { path = "crates/nibleaf-auth" }
-nibleaf-access-control = { path = "crates/nibleaf-access-control" }
-nibleaf-storage = { path = "crates/nibleaf-storage" }
-nibleaf-search = { path = "crates/nibleaf-search" }
-nibleaf-queue = { path = "crates/nibleaf-queue" }
-nibleaf-analytics = { path = "crates/nibleaf-analytics" }
-nibleaf-mcp = { path = "crates/nibleaf-mcp" }
-nibleaf-biz = { path = "crates/nibleaf-biz" }
-nibleaf-sites = { path = "crates/nibleaf-sites" }
-nibleaf-api = { path = "crates/nibleaf-api" }
-nibleaf-worker = { path = "crates/nibleaf-worker" }
-nibleaf-middleware = { path = "crates/nibleaf-middleware" }
+cms-config = { path = "crates/cms-config" }
+cms-error = { path = "crates/cms-error" }
+cms-entity = { path = "crates/cms-entity" }
+cms-db = { path = "crates/cms-db" }
+cms-auth = { path = "crates/cms-auth" }
+cms-access-control = { path = "crates/cms-access-control" }
+cms-storage = { path = "crates/cms-storage" }
+cms-search = { path = "crates/cms-search" }
+cms-queue = { path = "crates/cms-queue" }
+cms-analytics = { path = "crates/cms-analytics" }
+cms-mcp = { path = "crates/cms-mcp" }
+cms-biz = { path = "crates/cms-biz" }
+cms-sites = { path = "crates/cms-sites" }
+cms-api = { path = "crates/cms-api" }
+cms-worker = { path = "crates/cms-worker" }
+cms-middleware = { path = "crates/cms-middleware" }
 
 # External dependencies (versioned)
 # HTTP & Web

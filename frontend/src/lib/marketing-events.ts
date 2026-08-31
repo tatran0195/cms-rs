@@ -7,7 +7,7 @@ type MarketingEventProperties = {
   free_tool_started: {
     input_mode: 'html';
     page_path: '/tools/rtl-documentation-readiness';
-    product: 'nibleaf';
+    product: 'cms';
     rubric_version: string;
     tool_slug: 'rtl-documentation-readiness';
   };
@@ -15,7 +15,7 @@ type MarketingEventProperties = {
     category_count: number;
     checks_run: number;
     checks_unknown: number;
-    product: 'nibleaf';
+    product: 'cms';
     result_type: 'strong_evidence' | 'work_remaining' | 'material_gaps' | 'insufficient_evidence';
     rubric_version: string;
     tool_slug: 'rtl-documentation-readiness';
@@ -23,7 +23,7 @@ type MarketingEventProperties = {
   free_tool_cta_clicked: {
     destination: 'sample_project_signup' | 'fixture_corpus';
     placement: 'result_bridge';
-    product: 'nibleaf';
+    product: 'cms';
     tool_slug: 'rtl-documentation-readiness';
   };
 };
@@ -34,7 +34,7 @@ function allowlistedProperties<E extends MarketingEventName>(event: E, value: Ma
       .strictObject({
         input_mode: z.literal('html'),
         page_path: z.literal('/tools/rtl-documentation-readiness'),
-        product: z.literal('nibleaf'),
+        product: z.literal('cms'),
         rubric_version: z.string().regex(/^\d+\.\d+\.\d+$/u),
         tool_slug: z.literal('rtl-documentation-readiness'),
       })
@@ -46,7 +46,7 @@ function allowlistedProperties<E extends MarketingEventName>(event: E, value: Ma
         category_count: z.number().int().min(1).max(20),
         checks_run: z.number().int().min(0).max(100),
         checks_unknown: z.number().int().min(0).max(100),
-        product: z.literal('nibleaf'),
+        product: z.literal('cms'),
         result_type: z.enum(['strong_evidence', 'work_remaining', 'material_gaps', 'insufficient_evidence']),
         rubric_version: z.string().regex(/^\d+\.\d+\.\d+$/u),
         tool_slug: z.literal('rtl-documentation-readiness'),
@@ -57,7 +57,7 @@ function allowlistedProperties<E extends MarketingEventName>(event: E, value: Ma
     .strictObject({
       destination: z.enum(['sample_project_signup', 'fixture_corpus']),
       placement: z.literal('result_bridge'),
-      product: z.literal('nibleaf'),
+      product: z.literal('cms'),
       tool_slug: z.literal('rtl-documentation-readiness'),
     })
     .safeParse(value).success;

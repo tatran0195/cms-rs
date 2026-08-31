@@ -331,7 +331,7 @@ function effectiveAttributes(definition: SupportedDefinition, attrs: AttributeTo
 }
 
 function placeholder(range: SourceRange): string {
-  const tag = range.block ? 'nibleaf-mdx-opaque-block' : 'nibleaf-mdx-opaque-inline';
+  const tag = range.block ? 'cms-mdx-opaque-block' : 'cms-mdx-opaque-inline';
   return `<${tag} data-source="${encodeMdxSource(range.source)}" data-name="${escapeHtmlAttribute(range.name)}"></${tag}>`;
 }
 
@@ -409,10 +409,10 @@ function prepareMdxForEditor(source: string): string {
     const wrapper = definition.inline ? 'span' : 'div';
     const marker = definition.calloutVariant
       ? ` data-callout="" data-variant="${escapeHtmlAttribute(
-          definition.canonical === 'Callout'
-            ? String(attributeValue(parseAttributes(token.raw, token.name), 'type') ?? definition.calloutVariant)
-            : definition.calloutVariant,
-        )}"`
+        definition.canonical === 'Callout'
+          ? String(attributeValue(parseAttributes(token.raw, token.name), 'type') ?? definition.calloutVariant)
+          : definition.calloutVariant,
+      )}"`
       : ` data-mdx="${definition.canonical}"`;
     const open = `<${wrapper}${marker}${metadataAttributes(token, close, definition)}>`;
     replacements.push({ start: token.start, end: token.end, value: token.selfClosing ? `${open}</${wrapper}>` : open });
@@ -548,7 +548,7 @@ const MdxOpaqueBlock = Node.create({
   selectable: true,
   draggable: true,
   addAttributes: opaqueAttributes,
-  parseHTML: () => [{ tag: 'nibleaf-mdx-opaque-block' }],
+  parseHTML: () => [{ tag: 'cms-mdx-opaque-block' }],
   renderHTML: ({ node }) => opaqueHtml(node, false),
   addStorage: () => ({
     markdown: {
@@ -559,7 +559,7 @@ const MdxOpaqueBlock = Node.create({
       parse: {
         setup(markdownit) {
           if (installedMarkdownParsers.has(markdownit)) return;
-          markdownit.core.ruler.before('normalize', 'nibleaf_mdx_source_roundtrip', (state) => {
+          markdownit.core.ruler.before('normalize', 'cms_mdx_source_roundtrip', (state) => {
             state.src = prepareMdxForEditor(state.src);
           });
           installedMarkdownParsers.add(markdownit);
@@ -576,7 +576,7 @@ const MdxOpaqueInline = Node.create({
   atom: true,
   selectable: true,
   addAttributes: opaqueAttributes,
-  parseHTML: () => [{ tag: 'nibleaf-mdx-opaque-inline' }],
+  parseHTML: () => [{ tag: 'cms-mdx-opaque-inline' }],
   renderHTML: ({ node }) => opaqueHtml(node, true),
   addStorage: () => ({
     markdown: {

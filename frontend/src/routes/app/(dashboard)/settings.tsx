@@ -1,26 +1,31 @@
-import { cn } from '@nibleaf/design-system/lib/utils';
-import type { MessageKey } from '@nibleaf/i18n';
-import { useT } from '@nibleaf/i18n/react';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { type LucideIcon, Palette, UserRound } from 'lucide-react';
-import { AccountTab } from '@/components/settings/account-tab';
-import { AppearanceTab } from '@/components/settings/appearance-tab';
+import { cn } from "@cms/design-system/lib/utils";
+import type { MessageKey } from "@cms/i18n";
+import { useT } from "@cms/i18n/react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { type LucideIcon, Palette, UserRound } from "lucide-react";
+import { AccountTab } from "@/components/settings/account-tab";
+import { AppearanceTab } from "@/components/settings/appearance-tab";
 
 // Global account settings only — everything site-specific (members, billing,
 // integrations, notifications, git) now lives per-site under each site's Settings.
 const SECTIONS = [
-  { value: 'account', labelKey: 'settings.tab.account', icon: UserRound },
-  { value: 'appearance', labelKey: 'settings.tab.appearance', icon: Palette },
-] as const satisfies ReadonlyArray<{ value: TabValue; labelKey: MessageKey; icon: LucideIcon }>;
+  { value: "account", labelKey: "settings.tab.account", icon: UserRound },
+  { value: "appearance", labelKey: "settings.tab.appearance", icon: Palette },
+] as const satisfies ReadonlyArray<{
+  value: TabValue;
+  labelKey: MessageKey;
+  icon: LucideIcon;
+}>;
 
-type TabValue = 'account' | 'appearance';
+type TabValue = "account" | "appearance";
 
-const isTabValue = (value: unknown): value is TabValue => SECTIONS.some((s) => s.value === value);
+const isTabValue = (value: unknown): value is TabValue =>
+  SECTIONS.some((s) => s.value === value);
 
-export const Route = createFileRoute('/app/(dashboard)/settings')({
+export const Route = createFileRoute("/app/(dashboard)/settings")({
   component: WorkspaceSettingsPage,
   validateSearch: (search: Record<string, unknown>): { tab: TabValue } => ({
-    tab: isTabValue(search.tab) ? search.tab : 'account',
+    tab: isTabValue(search.tab) ? search.tab : "account",
   }),
 });
 
@@ -32,17 +37,26 @@ function WorkspaceSettingsPage() {
   return (
     <div className="flex flex-col gap-7">
       <div>
-        <h1 className="font-semibold text-3xl tracking-tight">{t('settings.title')}</h1>
-        <p className="mt-1 text-muted-foreground text-sm">{t('settings.subtitle')}</p>
+        <h1 className="font-semibold text-3xl tracking-tight">
+          {t("settings.title")}
+        </h1>
+        <p className="mt-1 text-muted-foreground text-sm">
+          {t("settings.subtitle")}
+        </p>
       </div>
 
       <div className="flex min-w-0 flex-col gap-6 sm:flex-row sm:gap-8">
         <label className="sm:hidden">
-          <span className="sr-only">{t('settings.title')}</span>
+          <span className="sr-only">{t("settings.title")}</span>
           <select
-            aria-label={t('settings.title')}
+            aria-label={t("settings.title")}
             className="h-10 w-full cursor-pointer rounded-lg border border-input bg-background px-3 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-            onChange={(event) => navigate({ search: { tab: event.target.value as TabValue }, replace: true })}
+            onChange={(event) =>
+              navigate({
+                search: { tab: event.target.value as TabValue },
+                replace: true,
+              })
+            }
             value={tab}
           >
             {SECTIONS.map((item) => (
@@ -61,10 +75,14 @@ function WorkspaceSettingsPage() {
               <button
                 key={item.value}
                 type="button"
-                onClick={() => navigate({ search: { tab: item.value }, replace: true })}
+                onClick={() =>
+                  navigate({ search: { tab: item.value }, replace: true })
+                }
                 className={cn(
-                  'flex h-9 cursor-pointer items-center gap-2 rounded-lg px-3 text-start font-medium text-[13.5px] transition-colors',
-                  tab === item.value ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  "flex h-9 cursor-pointer items-center gap-2 rounded-lg px-3 text-start font-medium text-[13.5px] transition-colors",
+                  tab === item.value
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 <Icon aria-hidden className="size-4 shrink-0" />
@@ -74,7 +92,9 @@ function WorkspaceSettingsPage() {
           })}
         </nav>
 
-        <div className="min-w-0 w-full flex-1">{tab === 'appearance' ? <AppearanceTab /> : <AccountTab />}</div>
+        <div className="min-w-0 w-full flex-1">
+          {tab === "appearance" ? <AppearanceTab /> : <AccountTab />}
+        </div>
       </div>
     </div>
   );

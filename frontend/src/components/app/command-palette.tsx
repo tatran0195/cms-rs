@@ -1,24 +1,37 @@
-import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
-import { useT } from '@nibleaf/i18n/react';
-import { useNavigate } from '@tanstack/react-router';
-import { BarChart3, BookText, Plus, Settings } from 'lucide-react';
-import { useEffect } from 'react';
-import { useProjects } from '@/hooks/api';
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@cms/design-system/components/ui/command";
+import { useT } from "@cms/i18n/react";
+import { useNavigate } from "@tanstack/react-router";
+import { BarChart3, BookText, Plus, Settings } from "lucide-react";
+import { useEffect } from "react";
+import { useProjects } from "@/hooks/api";
 
-export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function CommandPalette({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const t = useT();
   const navigate = useNavigate();
   const { data: projects } = useProjects();
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'k' && (event.metaKey || event.ctrlKey)) {
+      if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         onOpenChange(!open);
       }
     };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [open, onOpenChange]);
 
   const go = (to: string, params?: Record<string, string>) => {
@@ -28,30 +41,32 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder={t('command.searchPlaceholder')} />
+      <CommandInput placeholder={t("command.searchPlaceholder")} />
       <CommandList>
-        <CommandEmpty>{t('command.noResults')}</CommandEmpty>
-        <CommandGroup heading={t('command.group.projects')}>
+        <CommandEmpty>{t("command.noResults")}</CommandEmpty>
+        <CommandGroup heading={t("command.group.projects")}>
           {(projects ?? []).map((project) => (
             <CommandItem
               key={project.id}
               value={`project ${project.name}`}
-              onSelect={() => go('/app/projects/$projectId', { projectId: project.id })}
+              onSelect={() =>
+                go("/app/projects/$projectId", { projectId: project.id })
+              }
             >
               <BookText className="size-4" />
               {project.name}
             </CommandItem>
           ))}
         </CommandGroup>
-        <CommandGroup heading={t('command.group.goTo')}>
-          <CommandItem value="projects" onSelect={() => go('/app')}>
-            <Plus className="size-4" /> {t('command.allProjects')}
+        <CommandGroup heading={t("command.group.goTo")}>
+          <CommandItem value="projects" onSelect={() => go("/app")}>
+            <Plus className="size-4" /> {t("command.allProjects")}
           </CommandItem>
-          <CommandItem value="analytics" onSelect={() => go('/app/analytics')}>
-            <BarChart3 className="size-4" /> {t('command.analytics')}
+          <CommandItem value="analytics" onSelect={() => go("/app/analytics")}>
+            <BarChart3 className="size-4" /> {t("command.analytics")}
           </CommandItem>
-          <CommandItem value="settings" onSelect={() => go('/app/settings')}>
-            <Settings className="size-4" /> {t('command.accountSettings')}
+          <CommandItem value="settings" onSelect={() => go("/app/settings")}>
+            <Settings className="size-4" /> {t("command.accountSettings")}
           </CommandItem>
         </CommandGroup>
       </CommandList>

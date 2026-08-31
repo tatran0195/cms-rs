@@ -1,5 +1,5 @@
-import { getLocale, REQUEST_LOCALE_HEADER } from '@nibleaf/i18n';
-import { hcWithType } from '@nibleaf/server/rpc';
+import { getLocale, REQUEST_LOCALE_HEADER } from '@cms/i18n';
+import { hcWithType } from '@cms/server/rpc';
 import { env } from '@/env';
 
 // Same-origin: requests go to the dashboard origin and are proxied to the API
@@ -18,5 +18,5 @@ const client = hcWithType(API_URL, {
   },
 });
 
-/** Typed Hono RPC client for the Nibleaf API (rooted at `/api`). Sends the session cookie. */
+/** Typed Hono RPC client for the CMS API (rooted at `/api`). Sends the session cookie. */
 export const api = client.api;

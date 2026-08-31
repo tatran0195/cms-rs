@@ -1,4 +1,4 @@
-import type { AnalyticsRange } from '@nibleaf/validators';
+import type { AnalyticsRange } from '@cms/validators';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from '../client-helpers';

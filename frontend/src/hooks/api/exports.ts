@@ -1,4 +1,4 @@
-import type { CreateExportScheduleBody, ExportFormatInput, UpdateExportScheduleBody } from '@nibleaf/validators';
+import type { CreateExportScheduleBody, ExportFormatInput, UpdateExportScheduleBody } from '@cms/validators';
 import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData, mutateData } from './client-helpers';

@@ -74,31 +74,31 @@ const publicDataEnvelope = (description: string): OpenApiSchema => ({
   },
 });
 
-/** Stable, deliberately bounded contract for Nibleaf's public reader surface.
+/** Stable, deliberately bounded contract for CMS's public reader surface.
  * Dashboard/session endpoints are implementation details and are not advertised
  * as a supported third-party write API. */
-export function nibleafPublicOpenApi(origin: string) {
+export function cmsPublicOpenApi(origin: string) {
   return {
     openapi: '3.1.0',
     info: {
-      title: 'Nibleaf Public Reader API',
+      title: 'CMS Public Reader API',
       version: '1.0.0',
       description:
-        'Read published Nibleaf documentation, search public sites, and discover their machine-readable files. This contract covers the public reader surface only; Nibleaf does not currently offer a supported third-party write API.',
-      contact: { name: 'Nibleaf product support', email: 'support@nibleaf.com', url: `${origin}/contact` },
+        'Read published CMS documentation, search public sites, and discover their machine-readable files. This contract covers the public reader surface only; CMS does not currently offer a supported third-party write API.',
+      contact: { name: 'CMS product support', email: 'support@cms.com', url: `${origin}/contact` },
       license: { name: 'AGPL-3.0-only', identifier: 'AGPL-3.0-only', url: 'https://www.gnu.org/licenses/agpl-3.0.html' },
     },
-    externalDocs: { description: 'Nibleaf API and OpenAPI documentation', url: 'https://docs.nibleaf.com/reference/api' },
-    servers: [{ url: origin, description: 'Nibleaf Cloud' }],
+    externalDocs: { description: 'CMS API and OpenAPI documentation', url: 'https://docs.cms.com/reference/api' },
+    servers: [{ url: origin, description: 'CMS Cloud' }],
     tags: [{ name: 'Published sites', description: 'Read-only access to immutable published documentation and discovery files.' }],
     paths: {
       '/openapi.json': {
         get: {
-          operationId: 'getNibleafPublicOpenApi',
+          operationId: 'getCMSPublicOpenApi',
           tags: ['Published sites'],
           summary: 'Download this OpenAPI document',
-          description: 'Returns the stable OpenAPI 3.1 contract for Nibleaf public reader endpoints.',
-          responses: { 200: jsonResponse('The Nibleaf public reader OpenAPI document.', { type: 'object', additionalProperties: true }) },
+          description: 'Returns the stable OpenAPI 3.1 contract for CMS public reader endpoints.',
+          responses: { 200: jsonResponse('The CMS public reader OpenAPI document.', { type: 'object', additionalProperties: true }) },
         },
       },
       '/api/public/sites/{siteId}': {
@@ -146,7 +146,7 @@ export function nibleafPublicOpenApi(origin: string) {
           operationId: 'searchPublishedSite',
           tags: ['Published sites'],
           summary: 'Search a published site',
-          description: 'Runs Nibleaf full-text and fuzzy search against the selected published language and version.',
+          description: 'Runs CMS full-text and fuzzy search against the selected published language and version.',
           parameters: [
             ...siteParameters,
             {

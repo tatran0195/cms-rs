@@ -1,10 +1,10 @@
-# Nibleaf - Modern Documentation Platform
+# CMS - Modern Documentation Platform
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org/)
 [![Status](https://img.shields.io/badge/status-beta-yellow.svg)]
 
-Nibleaf is a modern, fast, and searchable documentation platform built with Rust and React. It provides a seamless experience for creating and hosting beautiful documentation sites.
+CMS is a modern, fast, and searchable documentation platform built with Rust and React. It provides a seamless experience for creating and hosting beautiful documentation sites.
 
 ---
 
@@ -25,21 +25,21 @@ Following AppFlowy's layering discipline:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    API Layer (nibleaf-api)                     │
+│                    API Layer (cms-api)                     │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
 │  │   Routes    │  │  Handlers   │  │   Middleware (RateLimit) │ │
 │  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                  Business Logic (nibleaf-biz)                  │
+│                  Business Logic (cms-biz)                  │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
 │  │   Services  │  │   Traits    │  │   Orchestration         │ │
 │  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                    Data Layer (nibleaf-db)                     │
+│                    Data Layer (cms-db)                     │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
 │  │   Queries   │  │   Models    │  │   SQLx Operations        │ │
 │  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
@@ -56,6 +56,7 @@ Following AppFlowy's layering discipline:
 ```
 
 **Key Design Decisions:**
+
 - ✅ No ORM - Hand-written SQLx queries
 - ✅ No Actix - Axum for async web
 - ✅ No GoTrue - In-process auth
@@ -67,6 +68,7 @@ Following AppFlowy's layering discipline:
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Rust 1.70+ (MSVC toolchain for Windows)
 - Node.js 18+ (for frontend)
 - PostgreSQL 14+
@@ -74,40 +76,45 @@ Following AppFlowy's layering discipline:
 ### Development Setup
 
 1. **Clone the repository**
+
    ```bash
-   git clone https://github.com/your-org/nibleaf.git
-   cd nibleaf
+   git clone https://github.com/your-org/cms.git
+   cd cms
    ```
 
 2. **Configure environment**
+
    ```bash
    # Copy example config
    cp config/dev.env.example config/dev.env
-   
+
    # Edit config with your settings
    nano config/dev.env
    ```
 
 3. **Setup database**
+
    ```bash
    # Create database
-   createdb nibleaf_dev
-   
+   createdb cms_dev
+
    # Run migrations (will run automatically on first startup)
    sqlx migrate run
    ```
 
 4. **Build and run**
+
    ```bash
    # Build and start
    cargo run
-   
+
    # Or build separately
    cargo build
-   ./target/debug/nibleaf-server
+   ./target/debug/cms-server
    ```
 
 5. **Frontend development**
+
    ```bash
    cd frontend
    npm install
@@ -124,27 +131,27 @@ Following AppFlowy's layering discipline:
 ## 📦 Project Structure
 
 ```
-nibleaf-rs/
+cms-rs/
 ├── Cargo.toml                    # Workspace manifest
 ├── src/                           # Binary crate (composition root)
 │   └── main.rs                    # Entry point
 ├── crates/                        # Library crates
-│   ├── nibleaf-config/            # Configuration
-│   ├── nibleaf-error/             # Error handling
-│   ├── nibleaf-entity/            # Entity types (24 files)
-│   ├── nibleaf-db/                # Database queries (23 files)
-│   ├── nibleaf-auth/              # Authentication
-│   ├── nibleaf-access-control/   # Access control
-│   ├── nibleaf-storage/           # Storage (Local/S3)
-│   ├── nibleaf-search/            # Search (pgvector/Qdrant)
-│   ├── nibleaf-queue/             # Job queue (Memory/Redis)
-│   ├── nibleaf-analytics/         # Analytics (Postgres/ClickHouse)
-│   ├── nibleaf-mcp/               # MCP protocol
-│   ├── nibleaf-biz/               # Business logic (26 files)
-│   ├── nibleaf-sites/             # Published sites (6 files)
-│   ├── nibleaf-api/               # API routes/handlers (72 files)
-│   ├── nibleaf-worker/            # Background jobs
-│   └── nibleaf-middleware/        # Middleware (7 files)
+│   ├── cms-config/            # Configuration
+│   ├── cms-error/             # Error handling
+│   ├── cms-entity/            # Entity types (24 files)
+│   ├── cms-db/                # Database queries (23 files)
+│   ├── cms-auth/              # Authentication
+│   ├── cms-access-control/   # Access control
+│   ├── cms-storage/           # Storage (Local/S3)
+│   ├── cms-search/            # Search (pgvector/Qdrant)
+│   ├── cms-queue/             # Job queue (Memory/Redis)
+│   ├── cms-analytics/         # Analytics (Postgres/ClickHouse)
+│   ├── cms-mcp/               # MCP protocol
+│   ├── cms-biz/               # Business logic (26 files)
+│   ├── cms-sites/             # Published sites (6 files)
+│   ├── cms-api/               # API routes/handlers (72 files)
+│   ├── cms-worker/            # Background jobs
+│   └── cms-middleware/        # Middleware (7 files)
 ├── migrations/                    # Database migrations
 │   └── 20260101000000_init.sql     # Initial schema
 ├── frontend/                      # Frontend (Vite 8 + React)
@@ -172,19 +179,20 @@ nibleaf-rs/
 
 ## 📊 Statistics
 
-| Metric | Value |
-|--------|-------|
-| **Total Crates** | 15 library + 1 binary |
-| **Total Rust Files** | 175+ |
-| **API Handlers** | 150+ across 25 modules |
-| **Database Tables** | 40+ |
-| **Lines of Code** | ~40,000+ (Rust) |
+| Metric               | Value                  |
+| -------------------- | ---------------------- |
+| **Total Crates**     | 15 library + 1 binary  |
+| **Total Rust Files** | 175+                   |
+| **API Handlers**     | 150+ across 25 modules |
+| **Database Tables**  | 40+                    |
+| **Lines of Code**    | ~40,000+ (Rust)        |
 
 ---
 
 ## 🎯 Implementation Status
 
 ### ✅ Completed
+
 - All 15 crates implemented
 - All entity types defined
 - All database queries implemented
@@ -200,10 +208,12 @@ nibleaf-rs/
 - **Comprehensive tests added**
 
 ### 🚧 In Progress
+
 - Frontend migration (Vite 8 SPA) - Basic structure created
 - Windows deployment packaging - NSSM scripts created
 
 ### 📋 Remaining
+
 - Comprehensive integration tests
 - Frontend feature completion
 - Deployment testing
@@ -218,34 +228,34 @@ Create `config/dev.env` or `config/deploy.env`:
 
 ```env
 # Server
-NIBLEAF_ENV=dev
-NIBLEAF_SERVER__PORT=3000
-NIBLEAF_SERVER__HOST=0.0.0.0
+CMS_ENV=dev
+CMS_SERVER__PORT=3000
+CMS_SERVER__HOST=0.0.0.0
 
 # Database
-NIBLEAF_DATABASE__URL=postgres://user:password@localhost:5432/nibleaf
+CMS_DATABASE__URL=postgres://user:password@localhost:5432/cms
 
 # Auth
-NIBLEAF_AUTH__JWT_SECRET=your-jwt-secret
-NIBLEAF_AUTH__SESSION_SECRET=your-session-secret
+CMS_AUTH__JWT_SECRET=your-jwt-secret
+CMS_AUTH__SESSION_SECRET=your-session-secret
 
 # Storage
-NIBLEAF_STORAGE__BACKEND=local
-NIBLEAF_STORAGE__LOCAL_ROOT=./storage
+CMS_STORAGE__BACKEND=local
+CMS_STORAGE__LOCAL_ROOT=./storage
 
 # Rate Limiting
-NIBLEAF_RATE_LIMIT__ENABLED=true
-NIBLEAF_RATE_LIMIT__REQUESTS_PER_SECOND=100
-NIBLEAF_RATE_LIMIT__BURST_SIZE=200
+CMS_RATE_LIMIT__ENABLED=true
+CMS_RATE_LIMIT__REQUESTS_PER_SECOND=100
+CMS_RATE_LIMIT__BURST_SIZE=200
 
 # Security Headers
-NIBLEAF_SECURITY_HEADERS__ENABLE_HSTS=true
-NIBLEAF_SECURITY_HEADERS__HSTS_MAX_AGE=31536000
+CMS_SECURITY_HEADERS__ENABLE_HSTS=true
+CMS_SECURITY_HEADERS__HSTS_MAX_AGE=31536000
 
 # Admin Origin
-NIBLEAF_ADMIN_ORIGIN__ALLOWED_ORIGINS=https://admin.nibleaf.com,https://app.nibleaf.com
-NIBLEAF_ADMIN_ORIGIN__ENFORCE=true
-NIBLEAF_ADMIN_ORIGIN__ALLOW_LOCALHOST=true
+CMS_ADMIN_ORIGIN__ALLOWED_ORIGINS=https://admin.cms.com,https://app.cms.com
+CMS_ADMIN_ORIGIN__ENFORCE=true
+CMS_ADMIN_ORIGIN__ALLOW_LOCALHOST=true
 ```
 
 ---
@@ -253,6 +263,7 @@ NIBLEAF_ADMIN_ORIGIN__ALLOW_LOCALHOST=true
 ## 🏃 Running the Application
 
 ### Development
+
 ```bash
 # Start backend
 cargo run
@@ -263,24 +274,26 @@ npm run dev
 ```
 
 ### Production
+
 ```bash
 # Build everything
 cargo build --release
 cd frontend && npm run build
 
 # Run with production config
-NIBLEAF_ENV=deploy cargo run --release
+CMS_ENV=deploy cargo run --release
 ```
 
 ### With NSSM (Windows Service)
+
 ```powershell
 # Install service
 cd deploy
 nssm-install.bat
-nssm start NibleafServer
+nssm start CMSServer
 
 # Check status
-nssm status NibleafServer
+nssm status CMSServer
 ```
 
 ---
@@ -288,18 +301,21 @@ nssm status NibleafServer
 ## 🧪 Testing
 
 ### Run all tests
+
 ```bash
 cargo test --workspace
 ```
 
 ### Run specific crate tests
+
 ```bash
-cargo test -p nibleaf-middleware
-cargo test -p nibleaf-api
-cargo test -p nibleaf-db
+cargo test -p cms-middleware
+cargo test -p cms-api
+cargo test -p cms-db
 ```
 
 ### Integration tests
+
 ```bash
 cargo test --test middleware_test
 ```

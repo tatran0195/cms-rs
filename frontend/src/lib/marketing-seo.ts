@@ -1,27 +1,27 @@
 import { APP_URL, GITHUB_URL } from '@/lib/links';
-import { NIBLEAF_ORGANIZATION } from '@/lib/marketing-organization';
+import { CMS_ORGANIZATION } from '@/lib/marketing-organization';
 
 /**
  * SEO helpers for the marketing + legal routes served from the cloud app
- * (nibleaf.com): /, /cloud, /pricing, /terms, /privacy, /self-hosting, /about,
+ * (cms.com): /, /cloud, /pricing, /terms, /privacy, /self-hosting, /about,
  * and the /compare and /alternatives pages. Typical usage in a route:
  *
  *   head: () => ({
- *     meta: pageMeta({ title: 'Pricing — Nibleaf', description: '…', path: '/pricing' }),
+ *     meta: pageMeta({ title: 'Pricing — CMS', description: '…', path: '/pricing' }),
  *     links: [{ rel: 'canonical', href: canonicalHref('/pricing') }],
  *     scripts: [marketingLd(), breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Pricing', path: '/pricing' }])],
  *   }),
  */
 
-const SITE_NAME = 'Nibleaf';
-const OG_IMAGE_PATH = '/brand/raster/social/nibleaf-og-card.png';
-const OG_IMAGE_ALT = 'Nibleaf documentation publishing with Markdown and Arabic/RTL support';
+const SITE_NAME = 'CMS';
+const OG_IMAGE_PATH = '/brand/raster/social/cms-og-card.png';
+const OG_IMAGE_ALT = 'CMS documentation publishing with Markdown and Arabic/RTL support';
 
 /** One-line product description reused across metadata and structured data. */
 export const ENTITY_SENTENCE =
-  'Nibleaf is a documentation platform with a visual Markdown editor, versioned publishing, Arabic and RTL support, custom domains, search, analytics, and a free cloud beta at nibleaf.com.';
+  'CMS is a documentation platform with a visual Markdown editor, versioned publishing, Arabic and RTL support, custom domains, search, analytics, and a free cloud beta at cms.com.';
 
-/** Absolute URL for a marketing path (https://nibleaf.com/<path> in production). */
+/** Absolute URL for a marketing path (https://cms.com/<path> in production). */
 export const canonicalHref = (path: string) => new URL(path, APP_URL).toString();
 
 /** Title + description + Open Graph + Twitter card meta for one marketing page. */
@@ -113,12 +113,12 @@ export function marketingLd() {
         {
           '@type': 'Organization',
           '@id': `${homepage}#organization`,
-          name: NIBLEAF_ORGANIZATION.name,
+          name: CMS_ORGANIZATION.name,
           url: homepage,
-          logo: canonicalHref('/brand/raster/logo/nibleaf-logo-horizontal-ltr.png'),
+          logo: canonicalHref('/brand/raster/logo/cms-logo-horizontal-ltr.png'),
           sameAs: [GITHUB_URL],
-          address: NIBLEAF_ORGANIZATION.address,
-          contactPoint: NIBLEAF_ORGANIZATION.supportContact,
+          address: CMS_ORGANIZATION.address,
+          contactPoint: CMS_ORGANIZATION.supportContact,
         },
         {
           '@type': 'WebSite',

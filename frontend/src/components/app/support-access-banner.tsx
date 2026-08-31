@@ -1,10 +1,16 @@
-import { Button } from '@nibleaf/design-system/components/ui/button';
-import { ShieldAlert } from 'lucide-react';
-import { useState } from 'react';
-import { ADMIN_URL } from '@/lib/links';
-import { authClient } from '@/services/auth-client';
+import { Button } from "@cms/design-system/components/ui/button";
+import { ShieldAlert } from "lucide-react";
+import { useState } from "react";
+import { ADMIN_URL } from "@/lib/links";
+import { authClient } from "@/services/auth-client";
 
-export function SupportAccessBanner({ customerId, customerName }: { customerId: string; customerName: string }) {
+export function SupportAccessBanner({
+  customerId,
+  customerName,
+}: {
+  customerId: string;
+  customerName: string;
+}) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -13,10 +19,18 @@ export function SupportAccessBanner({ customerId, customerName }: { customerId: 
     setError(null);
     try {
       const response = await authClient.admin.stopImpersonating();
-      if (response.error) throw new Error(response.error.message || 'Could not stop support access. Sign out if the problem continues.');
+      if (response.error)
+        throw new Error(
+          response.error.message ||
+            "Could not stop support access. Sign out if the problem continues.",
+        );
       window.location.assign(`${ADMIN_URL}/users/${customerId}`);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not stop support access.');
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Could not stop support access.",
+      );
       setPending(false);
     }
   };
@@ -29,7 +43,8 @@ export function SupportAccessBanner({ customerId, customerName }: { customerId: 
       <div className="flex min-w-0 items-center gap-2 text-sm">
         <ShieldAlert className="size-4 shrink-0" />
         <span>
-          <strong>Support access active.</strong> Viewing Nibleaf as {customerName}. The session expires within one hour.
+          <strong>Support access active.</strong> Viewing CMS as {customerName}.
+          The session expires within one hour.
         </span>
       </div>
       {error ? (
@@ -37,8 +52,13 @@ export function SupportAccessBanner({ customerId, customerName }: { customerId: 
           {error}
         </p>
       ) : null}
-      <Button className="h-8 bg-warning text-warning-foreground hover:bg-warning/90" disabled={pending} onClick={stop} size="sm">
-        {pending ? 'Stopping…' : 'Stop support access'}
+      <Button
+        className="h-8 bg-warning text-warning-foreground hover:bg-warning/90"
+        disabled={pending}
+        onClick={stop}
+        size="sm"
+      >
+        {pending ? "Stopping…" : "Stop support access"}
       </Button>
     </aside>
   );

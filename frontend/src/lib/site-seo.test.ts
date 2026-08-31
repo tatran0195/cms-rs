@@ -254,9 +254,9 @@ describe('canonical consolidation across origins', () => {
   });
 
   it('falls back to the slug subdomain when a base domain is configured and no primary exists', () => {
-    vi.stubEnv('VITE_SITE_BASE_DOMAIN', 'nibleaf.site');
+    vi.stubEnv('VITE_SITE_BASE_DOMAIN', 'cms.site');
     const head = pageHead(base(), 'p1', 'en');
-    expect(canonical(head)).toBe('https://acme.nibleaf.site/quickstart');
+    expect(canonical(head)).toBe('https://acme.cms.site/quickstart');
   });
 
   it('keeps canonicalizing a custom-domain request to itself when nothing better is known', () => {
@@ -268,10 +268,10 @@ describe('canonical consolidation across origins', () => {
 describe('canonicalSiteBase priority', () => {
   it('primary domain > slug subdomain > request origin > app origin', () => {
     expect(
-      canonicalSiteBase('p1', { primaryDomain: 'docs.acme.com', slug: 'acme', baseDomain: 'nibleaf.site', requestOrigin: 'https://x.example' }),
+      canonicalSiteBase('p1', { primaryDomain: 'docs.acme.com', slug: 'acme', baseDomain: 'cms.site', requestOrigin: 'https://x.example' }),
     ).toBe('https://docs.acme.com');
-    expect(canonicalSiteBase('p1', { slug: 'acme', baseDomain: 'nibleaf.site', requestOrigin: 'https://x.example' })).toBe(
-      'https://acme.nibleaf.site',
+    expect(canonicalSiteBase('p1', { slug: 'acme', baseDomain: 'cms.site', requestOrigin: 'https://x.example' })).toBe(
+      'https://acme.cms.site',
     );
     expect(canonicalSiteBase('p1', { slug: 'acme', baseDomain: null, requestOrigin: 'https://x.example' })).toBe('https://x.example');
     expect(canonicalSiteBase('p1', { baseDomain: null })).toBe('http://localhost:4310/sites/p1');

@@ -1,0 +1,29 @@
+[package]
+name = "cms-queue"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+cms-error = { path = "../cms-error" }
+cms-config = { path = "../cms-config" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+
+# Optional Redis backend
+redis = { version = "0.25", features = ["tokio-comp"], optional = true }
+deadpool-redis = { version = "0.15", optional = true }
+
+# Optional apalis backend (not actually used - we have our own implementations)
+# apalis = { version = "0.4", optional = true }
+
+[features]
+default = ["memory"]
+redis = ["dep:redis", "dep:deadpool-redis"]
+memory = []
+
+[lints]
+workspace = true

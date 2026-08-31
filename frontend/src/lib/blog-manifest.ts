@@ -1,4 +1,4 @@
-import { translateFn } from '@nibleaf/i18n';
+import { translateFn } from '@cms/i18n';
 import type { BlogEntry } from './blog';
 
 /** Lightweight article metadata. Keep this in sync with MDX frontmatter.
@@ -22,7 +22,7 @@ export const BLOG_MANIFEST = [
     readingMinutes: 8,
     faqs: [
       {
-        question: 'أي قالب يستخدمه مشروع Nibleaf الجديد؟',
+        question: 'أي قالب يستخدمه مشروع CMS الجديد؟',
         answer:
           'ابدأ بـ Harbor عندما يجمع المحتوى بين الأدلة والمراجع. استخدم Manuscript للقراءة المتتابعة عبر الفصول، أو Signal عندما يكون مسح الشيفرة وواجهات API هو المهمة الغالبة.',
       },
@@ -40,18 +40,18 @@ export const BLOG_MANIFEST = [
   {
     slug: 'documentation-templates-harbor-manuscript-signal-ar',
     title: 'تقديم Harbor وManuscript وSignal: ثلاثة قوالب لثلاثة أنماط من التوثيق',
-    metaTitle: 'قوالب Nibleaf الجديدة للتوثيق: Harbor وManuscript وSignal',
-    description: 'يقدّم Nibleaf ثلاثة قوالب بنيوية لأدلة المنتجات، وقواعد المعرفة الطويلة، ومراجع API كثيفة الشيفرة، مع دعم كامل للعربية وRTL.',
+    metaTitle: 'قوالب CMS الجديدة للتوثيق: Harbor وManuscript وSignal',
+    description: 'يقدّم CMS ثلاثة قوالب بنيوية لأدلة المنتجات، وقواعد المعرفة الطويلة، ومراجع API كثيفة الشيفرة، مع دعم كامل للعربية وRTL.',
     language: 'ar',
     datePublished: '2026-08-24',
     dateModified: '2026-08-24',
     tags: ['إعلان', 'القوالب', 'السمات'],
-    related: ['choosing-documentation-template-ar', 'documentation-templates-harbor-manuscript-signal', 'nibleaf-august-2026-source-release-ar'],
+    related: ['choosing-documentation-template-ar', 'documentation-templates-harbor-manuscript-signal', 'cms-august-2026-source-release-ar'],
     translationOf: 'documentation-templates-harbor-manuscript-signal',
     readingMinutes: 7,
     faqs: [
       {
-        question: 'هل قوالب Nibleaf مجرد ألوان مختلفة؟',
+        question: 'هل قوالب CMS مجرد ألوان مختلفة؟',
         answer:
           'لا. يملك كل قالب موضع الرأس والتنقل وإطار المحتوى وفهرس الصفحة وسلوك المعاينة، بينما تبقى الألوان ومعالجات المكوّنات قابلة للتخصيص داخل تلك البنية.',
       },
@@ -66,11 +66,11 @@ export const BLOG_MANIFEST = [
     ],
   },
   {
-    slug: 'nibleaf-august-2026-source-release-ar',
-    title: 'إصدار مصدر Nibleaf في أغسطس 2026: ست قدرات ومسار ترحيل واحد',
-    metaTitle: 'إصدار مصدر Nibleaf: البحث والسمات والاستخدام والإضافات والتكاملات وMCP',
+    slug: 'cms-august-2026-source-release-ar',
+    title: 'إصدار مصدر CMS في أغسطس 2026: ست قدرات ومسار ترحيل واحد',
+    metaTitle: 'إصدار مصدر CMS: البحث والسمات والاستخدام والإضافات والتكاملات وMCP',
     description:
-      'إعلان تقني عن القدرات المدمجة في فرع Nibleaf الرئيسي: البحث الهجين والاستخدام والإضافات والتكاملات والسمات المحمولة وMCP للقراءة فقط.',
+      'إعلان تقني عن القدرات المدمجة في فرع CMS الرئيسي: البحث الهجين والاستخدام والإضافات والتكاملات والسمات المحمولة وMCP للقراءة فقط.',
     language: 'ar',
     datePublished: '2026-08-24',
     dateModified: '2026-08-24',
@@ -78,17 +78,17 @@ export const BLOG_MANIFEST = [
     related: [
       'documentation-templates-harbor-manuscript-signal-ar',
       'arabic-technical-documentation-rtl-checklist',
-      'nibleaf-august-2026-source-release',
+      'cms-august-2026-source-release',
     ],
-    translationOf: 'nibleaf-august-2026-source-release',
+    translationOf: 'cms-august-2026-source-release',
     readingMinutes: 11,
   },
   {
-    slug: 'nibleaf-august-2026-source-release',
-    title: 'Nibleaf’s August 2026 source release: six capabilities, one migration path',
-    metaTitle: 'Nibleaf August 2026 source release: search, themes, usage, add-ons, integrations, and MCP',
+    slug: 'cms-august-2026-source-release',
+    title: 'CMS’s August 2026 source release: six capabilities, one migration path',
+    metaTitle: 'CMS August 2026 source release: search, themes, usage, add-ons, integrations, and MCP',
     description:
-      'A technical launch note for the capabilities merged into Nibleaf main: hybrid search, usage, add-ons, integrations, portable themes, and read-only MCP.',
+      'A technical launch note for the capabilities merged into CMS main: hybrid search, usage, add-ons, integrations, portable themes, and read-only MCP.',
     datePublished: '2026-08-24',
     dateModified: '2026-08-24',
     tags: ['announcement', 'release', 'operations'],
@@ -97,7 +97,7 @@ export const BLOG_MANIFEST = [
       'self-host-documentation-site-docker-compose',
       'docs-should-live-in-plain-markdown',
     ],
-    translationOf: 'nibleaf-august-2026-source-release-ar',
+    translationOf: 'cms-august-2026-source-release-ar',
     readingMinutes: 10,
   },
   {
@@ -114,7 +114,7 @@ export const BLOG_MANIFEST = [
     readingMinutes: 7,
     faqs: [
       {
-        question: 'Which Nibleaf template should a new project use?',
+        question: 'Which CMS template should a new project use?',
         answer:
           'Start with Harbor when the content mixes guides and reference material. Move to Manuscript for chapter-led reading or Signal when code and API scanning dominate the experience.',
       },
@@ -133,18 +133,18 @@ export const BLOG_MANIFEST = [
   {
     slug: 'documentation-templates-harbor-manuscript-signal',
     title: 'Introducing Harbor, Manuscript, and Signal: three layouts for three kinds of documentation',
-    metaTitle: 'New Nibleaf documentation templates: Harbor, Manuscript, and Signal',
+    metaTitle: 'New CMS documentation templates: Harbor, Manuscript, and Signal',
     description:
-      'Nibleaf now includes three structural documentation templates for product guides, editorial knowledge, and code-first API references.',
+      'CMS now includes three structural documentation templates for product guides, editorial knowledge, and code-first API references.',
     datePublished: '2026-08-23',
     dateModified: '2026-08-23',
     tags: ['announcement', 'templates', 'theming'],
-    related: ['choosing-documentation-template', 'documentation-templates-harbor-manuscript-signal-ar', 'nibleaf-august-2026-source-release'],
+    related: ['choosing-documentation-template', 'documentation-templates-harbor-manuscript-signal-ar', 'cms-august-2026-source-release'],
     translationOf: 'documentation-templates-harbor-manuscript-signal-ar',
     readingMinutes: 6,
     faqs: [
       {
-        question: 'Are Nibleaf templates only color themes?',
+        question: 'Are CMS templates only color themes?',
         answer:
           'No. Each template owns the placement and behavior of the header, navigation, content frame, page outline, and preview. Colors and component treatments remain customizable inside that structure.',
       },
@@ -204,7 +204,7 @@ export const BLOG_MANIFEST = [
     datePublished: '2026-08-15',
     dateModified: '2026-08-17',
     tags: ['comparison', 'gitbook', 'mintlify'],
-    related: ['open-source-documentation-tools', 'docs-should-live-in-plain-markdown', 'introducing-nibleaf-open-source-mintlify-alternative'],
+    related: ['open-source-documentation-tools', 'docs-should-live-in-plain-markdown', 'introducing-cms-open-source-mintlify-alternative'],
     readingMinutes: 8,
     faqs: [
       {
@@ -232,7 +232,7 @@ export const BLOG_MANIFEST = [
   {
     slug: 'arabic-documentation-rtl',
     title: 'Arabic documentation and RTL: a practical implementation guide',
-    metaTitle: 'Arabic documentation and RTL: a practical guide | Nibleaf',
+    metaTitle: 'Arabic documentation and RTL: a practical guide | CMS',
     description:
       'A practical guide to RTL layout, bidirectional code, Arabic search, language trees, hreflang, and typography for product documentation.',
     datePublished: '2026-07-13',
@@ -245,7 +245,7 @@ export const BLOG_MANIFEST = [
       {
         question: 'Why can Arabic documentation search miss a word that is on the page?',
         answer:
-          'An English tokenizer can drop Arabic text entirely. Nibleaf selects Orama’s Arabic tokenizer, normalizes common spelling variants, and applies conservative light morphology to prefixes, attached pronouns, and common plural or dual forms while preserving exact tokens.',
+          'An English tokenizer can drop Arabic text entirely. CMS selects Orama’s Arabic tokenizer, normalizes common spelling variants, and applies conservative light morphology to prefixes, attached pronouns, and common plural or dual forms while preserving exact tokens.',
       },
       {
         question: 'Does Docusaurus support Arabic and RTL layouts?',
@@ -267,7 +267,7 @@ export const BLOG_MANIFEST = [
   {
     slug: 'docs-should-live-in-plain-markdown',
     title: 'Your Docs Should Live in Plain Markdown (Even With a Visual Editor)',
-    metaTitle: 'Why documentation should live in Markdown | Nibleaf',
+    metaTitle: 'Why documentation should live in Markdown | CMS',
     description:
       'Why plain Markdown is the portability contract for documentation: greppable, diffable, AI-ready, and compatible with a visual editor.',
     datePublished: '2026-07-13',
@@ -275,7 +275,7 @@ export const BLOG_MANIFEST = [
     tags: ['markdown', 'content-ownership'],
     related: [
       'open-source-documentation-tools',
-      'introducing-nibleaf-open-source-mintlify-alternative',
+      'introducing-cms-open-source-mintlify-alternative',
       'self-host-documentation-site-docker-compose',
     ],
     readingMinutes: 7,
@@ -302,11 +302,11 @@ export const BLOG_MANIFEST = [
     ],
   },
   {
-    slug: 'introducing-nibleaf-open-source-mintlify-alternative',
-    title: 'Why we built Nibleaf for teams that want to own their docs',
-    metaTitle: 'Why we built Nibleaf for documentation ownership',
+    slug: 'introducing-cms-open-source-mintlify-alternative',
+    title: 'Why we built CMS for teams that want to own their docs',
+    metaTitle: 'Why we built CMS for documentation ownership',
     description:
-      'Why Nibleaf combines a visual Markdown editor, versioned publishing, built-in search, and Arabic support in one documentation platform.',
+      'Why CMS combines a visual Markdown editor, versioned publishing, built-in search, and Arabic support in one documentation platform.',
     datePublished: '2026-07-13',
     dateModified: '2026-08-24',
     tags: ['announcement', 'open-source'],
@@ -314,17 +314,17 @@ export const BLOG_MANIFEST = [
     readingMinutes: 7,
     faqs: [
       {
-        question: 'Is Nibleaf available as a hosted product?',
+        question: 'Is CMS available as a hosted product?',
         answer:
-          'Yes. Nibleaf Cloud is available in beta, and the public AGPL-3.0 release can be installed with a pinned GHCR image and Docker Compose.',
+          'Yes. CMS Cloud is available in beta, and the public AGPL-3.0 release can be installed with a pinned GHCR image and Docker Compose.',
       },
       {
-        question: 'Does Nibleaf lock content into a proprietary format?',
+        question: 'Does CMS lock content into a proprietary format?',
         answer:
           'Pages are stored as Markdown in the database and can be exported as Markdown. The live source is not a directory in Git unless the team exports and commits it.',
       },
       {
-        question: 'Does Nibleaf support Arabic and right-to-left documentation?',
+        question: 'Does CMS support Arabic and right-to-left documentation?',
         answer:
           'Yes. Each language gets its own page tree, RTL layout is built into the reader and editor, search uses an Arabic tokenizer, and the interface is localized in English and Arabic.',
       },
@@ -335,26 +335,26 @@ export const BLOG_MANIFEST = [
     title: 'Open-source documentation tools in 2026: how to choose',
     metaTitle: '7 open-source documentation tools compared (2026)',
     description:
-      'Compare Docusaurus, MkDocs Material, Starlight, Fumadocs, BookStack, Wiki.js, and Nibleaf by authoring model, search, i18n, and hosting.',
+      'Compare Docusaurus, MkDocs Material, Starlight, Fumadocs, BookStack, Wiki.js, and CMS by authoring model, search, i18n, and hosting.',
     datePublished: '2026-07-13',
     dateModified: '2026-08-24',
     tags: ['comparison', 'open-source'],
     related: [
       'self-host-documentation-site-docker-compose',
       'docs-should-live-in-plain-markdown',
-      'introducing-nibleaf-open-source-mintlify-alternative',
+      'introducing-cms-open-source-mintlify-alternative',
     ],
     readingMinutes: 7,
     faqs: [
       {
         question: 'What is the best open-source documentation tool?',
         answer:
-          'It depends on the writing workflow. Git-centered teams often prefer Docusaurus or Starlight. Teams that need a browser editor should compare BookStack, Wiki.js, and Nibleaf, then verify each public installation path.',
+          'It depends on the writing workflow. Git-centered teams often prefer Docusaurus or Starlight. Teams that need a browser editor should compare BookStack, Wiki.js, and CMS, then verify each public installation path.',
       },
       {
         question: 'Which open-source documentation tools support Arabic and RTL?',
         answer:
-          'Starlight and Docusaurus support RTL locales. Nibleaf adds per-language page trees, an Arabic tokenizer, and an Arabic interface. Test search, bidirectional code, and fonts in any candidate.',
+          'Starlight and Docusaurus support RTL locales. CMS adds per-language page trees, an Arabic tokenizer, and an Arabic interface. Test search, bidirectional code, and fonts in any candidate.',
       },
       {
         question: 'Can non-developers contribute to docs-as-code tools?',
@@ -371,7 +371,7 @@ export const BLOG_MANIFEST = [
     datePublished: '2026-07-13',
     dateModified: '2026-08-15',
     tags: ['self-hosting', 'docker', 'guide'],
-    related: ['introducing-nibleaf-open-source-mintlify-alternative', 'open-source-documentation-tools', 'docs-should-live-in-plain-markdown'],
+    related: ['introducing-cms-open-source-mintlify-alternative', 'open-source-documentation-tools', 'docs-should-live-in-plain-markdown'],
     readingMinutes: 6,
     faqs: [
       {

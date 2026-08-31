@@ -8,7 +8,7 @@ use axum::{
     response::Response,
     Router,
 };
-use nibleaf_middleware::{
+use cms_middleware::{
     app_state::AppState,
     rate_limit::{RateLimitConfig, RateLimitClient, RateLimitResult, create_per_client_rate_limit_layer},
     security_headers::{SecurityHeadersConfig, create_security_headers_layer, presets},

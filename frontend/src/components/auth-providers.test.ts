@@ -6,16 +6,16 @@ const translate = (key: string) =>
     'auth.signIn.submit': 'لاگ ان کریں۔',
     'auth.signUp.submit': 'اکاؤنٹ بنائیں',
     'auth.verify.title': 'اپنے ای میل کی تصدیق کریں',
-    'auth.passwordless.subtitle': 'Nibleaf پاس ورڈ کے بغیر ہے۔',
+    'auth.passwordless.subtitle': 'CMS پاس ورڈ کے بغیر ہے۔',
   })[key] ?? key;
 
 describe('authDocumentTitle', () => {
   it.each([
-    ['/sign-in', 'لاگ ان کریں۔ — Nibleaf'],
-    ['/sign-up', 'اکاؤنٹ بنائیں — Nibleaf'],
-    ['/verify-email', 'اپنے ای میل کی تصدیق کریں — Nibleaf'],
-    ['/forgot-password', 'Nibleaf پاس ورڈ کے بغیر ہے۔ — Nibleaf'],
-    ['/reset-password', 'Nibleaf پاس ورڈ کے بغیر ہے۔ — Nibleaf'],
+    ['/sign-in', 'لاگ ان کریں۔ — CMS'],
+    ['/sign-up', 'اکاؤنٹ بنائیں — CMS'],
+    ['/verify-email', 'اپنے ای میل کی تصدیق کریں — CMS'],
+    ['/forgot-password', 'CMS پاس ورڈ کے بغیر ہے۔ — CMS'],
+    ['/reset-password', 'CMS پاس ورڈ کے بغیر ہے۔ — CMS'],
   ])('localizes %s', (pathname, expected) => {
     expect(authDocumentTitle(pathname, translate)).toBe(expected);
   });

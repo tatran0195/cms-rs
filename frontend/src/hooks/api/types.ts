@@ -1,9 +1,9 @@
 // UI-facing shapes for API responses. Dates arrive as ISO strings over JSON.
 
-import type { AddonAvailabilityState, AddonGroup, AddonId } from '@nibleaf/shared/addons';
-import type { LanguageConfig, PageConfig, ProjectConfig } from '@nibleaf/validators';
+import type { AddonAvailabilityState, AddonGroup, AddonId } from '@cms/shared/addons';
+import type { LanguageConfig, PageConfig, ProjectConfig } from '@cms/validators';
 
-export type { AnalyticsRange, LanguageConfig, PageConfig, ProjectConfig } from '@nibleaf/validators';
+export type { AnalyticsRange, LanguageConfig, PageConfig, ProjectConfig } from '@cms/validators';
 
 type PublishedLanguageConfig = LanguageConfig & { name?: string; description?: string };
 

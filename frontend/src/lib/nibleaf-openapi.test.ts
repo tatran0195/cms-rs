@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { nibleafPublicOpenApi } from './nibleaf-openapi';
+import { cmsPublicOpenApi } from './cms-openapi';
 
-describe('nibleafPublicOpenApi', () => {
-  const document = nibleafPublicOpenApi('https://nibleaf.com');
+describe('cmsPublicOpenApi', () => {
+  const document = cmsPublicOpenApi('https://cms.com');
   const operations = Object.values(document.paths).flatMap((path) => Object.values(path));
 
   it('publishes a stable OpenAPI 3.1 contract at the cloud origin', () => {
     expect(document.openapi).toBe('3.1.0');
-    expect(document.info.title).toBe('Nibleaf Public Reader API');
-    expect(document.servers).toEqual([{ url: 'https://nibleaf.com', description: 'Nibleaf Cloud' }]);
+    expect(document.info.title).toBe('CMS Public Reader API');
+    expect(document.servers).toEqual([{ url: 'https://cms.com', description: 'CMS Cloud' }]);
     expect(document.paths).toHaveProperty('/openapi.json');
     expect(document.paths).toHaveProperty('/api/public/sites/{siteId}/page');
   });

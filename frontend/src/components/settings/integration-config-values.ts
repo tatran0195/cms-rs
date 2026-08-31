@@ -1,5 +1,5 @@
-import type { MessageKey } from '@nibleaf/i18n';
-import type { IntegrationPublicConfig } from '@nibleaf/shared/integrations';
+import type { MessageKey } from '@cms/i18n';
+import type { IntegrationPublicConfig } from '@cms/shared/integrations';
 
 type SearchRuntime = Extract<IntegrationPublicConfig, { providerId: 'qdrant' }>['searchRuntime'];
 type ClickHouseMode = Extract<IntegrationPublicConfig, { providerId: 'clickhouse' }>['mode'];

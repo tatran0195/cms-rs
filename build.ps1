@@ -1,6 +1,6 @@
 #!/usr/bin/env powershell
-# Nibleaf Build Script for Windows
-# This script builds the complete Nibleaf application (backend + frontend)
+# CMS Build Script for Windows
+# This script builds the complete CMS application (backend + frontend)
 
 param(
     [string]$Environment = "dev",
@@ -37,7 +37,7 @@ function Write-Warning([string]$message) {
 # Track start time
 $startTime = Get-Date
 
-Write-Status "Starting Nibleaf build..."
+Write-Status "Starting CMS build..."
 Write-Status "Environment: $Environment"
 Write-Status "Release mode: $Release"
 Write-Status "Build frontend: $Frontend"
@@ -46,7 +46,7 @@ Write-Status "Run tests: $Test"
 Write-Status ""
 
 # Set environment variable
-$env:NIBLEAF_ENV = $Environment
+$env:CMS_ENV = $Environment
 
 # Step 1: Build Backend
 if ($Backend) {
@@ -60,7 +60,8 @@ if ($Backend) {
     try {
         cargo build @cargoArgs
         Write-Success "Backend built successfully"
-    } catch {
+    }
+    catch {
         Write-Error "Backend build failed: $_"
         exit 1
     }
@@ -76,12 +77,14 @@ if ($Frontend) {
         npm install
         if ($Release) {
             npm run build
-        } else {
+        }
+        else {
             npm run build
         }
         cd ..
         Write-Success "Frontend built successfully"
-    } catch {
+    }
+    catch {
         Write-Error "Frontend build failed: $_"
         exit 1
     }
@@ -104,7 +107,8 @@ if ($Test) {
             Write-Success "Frontend tests passed"
         }
         cd ..
-    } catch {
+    }
+    catch {
         Write-Warning "Tests failed: $_"
         # Don't exit on test failure in CI
     }
@@ -119,9 +123,10 @@ Write-Success "Build completed in $($duration.TotalSeconds) seconds"
 
 # Output binary location
 if ($Release) {
-    Write-Status "Release binary: .\target\release\nibleaf-server.exe"
-} else {
-    Write-Status "Debug binary: .\target\debug\nibleaf-server.exe"
+    Write-Status "Release binary: .\target\release\cms-server.exe"
+}
+else {
+    Write-Status "Debug binary: .\target\debug\cms-server.exe"
 }
 
 # Output frontend location

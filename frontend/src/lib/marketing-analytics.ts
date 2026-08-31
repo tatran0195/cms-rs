@@ -1,6 +1,6 @@
 import { getDomain } from 'tldts';
 
-export const MARKETING_ANALYTICS_CONSENT_KEY = 'nibleaf.marketing.analytics.consent.v1';
+export const MARKETING_ANALYTICS_CONSENT_KEY = 'cms.marketing.analytics.consent.v1';
 
 export type MarketingAnalyticsConsent = 'accepted' | 'declined' | 'pending';
 export type MarketingAnalyticsLanguage = 'ar' | 'en';
@@ -21,7 +21,7 @@ declare global {
 
 const GA4_ID = /^G-[A-Z0-9]{6,}$/u;
 const GTM_ID = /^GTM-[A-Z0-9]{6,}$/u;
-export const GTM_MARKETING_EVENT = 'nibleaf_marketing_event';
+export const GTM_MARKETING_EVENT = 'cms_marketing_event';
 let activeTarget: MarketingAnalyticsTarget | null = null;
 const CTA_DESTINATIONS = new Set<MarketingCtaDestination>([
   'comparison',
@@ -52,7 +52,7 @@ const exactKeys = (value: Record<string, unknown>, keys: string[]): boolean => {
 
 const validVersion = (value: unknown): boolean => typeof value === 'string' && /^\d+\.\d+\.\d+$/u.test(value);
 
-/** Final privacy boundary for every event delivered to the Nibleaf GA property. */
+/** Final privacy boundary for every event delivered to the CMS GA property. */
 function isApprovedMarketingAnalyticsEvent(event: string, properties: Record<string, unknown>): boolean {
   if (event === 'sign_up') return exactKeys(properties, ['method']) && properties.method === 'email_otp';
   if (event === 'cta_clicked') {
@@ -66,7 +66,7 @@ function isApprovedMarketingAnalyticsEvent(event: string, properties: Record<str
       CTA_PLACEMENTS.has(properties.placement as MarketingCtaPlacement)
     );
   }
-  if (properties.product !== 'nibleaf' || properties.tool_slug !== 'rtl-documentation-readiness') return false;
+  if (properties.product !== 'cms' || properties.tool_slug !== 'rtl-documentation-readiness') return false;
   if (event === 'free_tool_started') {
     return (
       exactKeys(properties, ['input_mode', 'page_path', 'product', 'rubric_version', 'tool_slug']) &&
@@ -172,7 +172,7 @@ export function initializeMarketingAnalytics(target: MarketingAnalyticsTarget): 
   gtag('consent', 'update', consentState(true));
 
   if (target.provider === 'gtm') {
-    const elementId = 'nibleaf-marketing-gtm';
+    const elementId = 'cms-marketing-gtm';
     if (document.getElementById(elementId)) return true;
     window.dataLayer?.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
     const script = document.createElement('script');
@@ -185,7 +185,7 @@ export function initializeMarketingAnalytics(target: MarketingAnalyticsTarget): 
     return true;
   }
 
-  const elementId = 'nibleaf-marketing-ga4';
+  const elementId = 'cms-marketing-ga4';
   if (document.getElementById(elementId)) return true;
   gtag('js', new Date());
   gtag('config', target.id, { anonymize_ip: true, cookie_domain: 'none', send_page_view: false });

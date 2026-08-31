@@ -1,6 +1,6 @@
 @echo off
-:: Nibleaf Server - NSSM Uninstallation Script
-:: This script removes the Nibleaf Windows service
+:: CMS Server - NSSM Uninstallation Script
+:: This script removes the CMS Windows service
 ::
 :: Usage:
 ::   nssm-uninstall.bat [service_name]
@@ -8,7 +8,7 @@
 SETLOCAL ENABLEDELAYEDEXPANSION
 
 :: Default service name
-SET SERVICE_NAME=NibleafServer
+SET SERVICE_NAME=CMSServer
 
 :: Parse command line arguments
 IF NOT "%~1"=="" SET SERVICE_NAME=%~1

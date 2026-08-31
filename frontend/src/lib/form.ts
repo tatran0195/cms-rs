@@ -7,18 +7,18 @@
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-import type { MessageKey } from '@nibleaf/i18n';
+import type { MessageKey } from '@cms/i18n';
 
 type Translator = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 export const required =
   (label = 'This field', t?: Translator) =>
-  (value: string) => {
-    if (value.trim().length > 0) {
-      return;
-    }
-    return t ? t('validation.required', { label }) : `${label} is required`;
-  };
+    (value: string) => {
+      if (value.trim().length > 0) {
+        return;
+      }
+      return t ? t('validation.required', { label }) : `${label} is required`;
+    };
 
 export const email = (value: string, t?: Translator) => {
   if (value.trim().length === 0) {

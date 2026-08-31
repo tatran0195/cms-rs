@@ -38,7 +38,7 @@ const matchFor = (entries: AcceptEntry[], representation: DocumentRepresentation
 };
 
 /** RFC 9110-style proactive negotiation for the two document representations
- * Nibleaf can produce. A specific q=0 rejection wins over a permissive wildcard;
+ * CMS can produce. A specific q=0 rejection wins over a permissive wildcard;
  * candidate ties follow client order, then the server's offered order. */
 export function preferredRepresentation(
   accept: string | null,

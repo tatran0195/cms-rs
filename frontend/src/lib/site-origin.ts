@@ -16,7 +16,7 @@ export const customDomainOrigin = createIsomorphicFn()
   .client((): string | undefined => undefined)
   .server((): string | undefined => {
     try {
-      return getRequest()?.headers.get('x-nibleaf-site-origin') ?? undefined;
+      return getRequest()?.headers.get('x-cms-site-origin') ?? undefined;
     } catch {
       return undefined;
     }

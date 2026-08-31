@@ -25,9 +25,9 @@ import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as ArIndexRouteImport } from './routes/ar/index'
 import { Route as ToolsRtlDocumentationReadinessRouteImport } from './routes/tools/rtl-documentation-readiness'
 import { Route as GitPreviewTokenRouteImport } from './routes/git-preview.$token'
-import { Route as CompareNibleafVsMintlifyRouteImport } from './routes/compare/nibleaf-vs-mintlify'
-import { Route as CompareNibleafVsGitbookRouteImport } from './routes/compare/nibleaf-vs-gitbook'
-import { Route as CompareNibleafVsDocusaurusRouteImport } from './routes/compare/nibleaf-vs-docusaurus'
+import { Route as CompareCMSVsMintlifyRouteImport } from './routes/compare/cms-vs-mintlify'
+import { Route as CompareCMSVsGitbookRouteImport } from './routes/compare/cms-vs-gitbook'
+import { Route as CompareCMSVsDocusaurusRouteImport } from './routes/compare/cms-vs-docusaurus'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as ArDocumentationPlatformsRouteImport } from './routes/ar/documentation-platforms'
 import { Route as AlternativesReadmeRouteImport } from './routes/alternatives/readme'
@@ -136,21 +136,21 @@ const GitPreviewTokenRoute = GitPreviewTokenRouteImport.update({
   path: '/git-preview/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CompareNibleafVsMintlifyRoute =
-  CompareNibleafVsMintlifyRouteImport.update({
-    id: '/compare/nibleaf-vs-mintlify',
-    path: '/compare/nibleaf-vs-mintlify',
+const CompareCMSVsMintlifyRoute =
+  CompareCMSVsMintlifyRouteImport.update({
+    id: '/compare/cms-vs-mintlify',
+    path: '/compare/cms-vs-mintlify',
     getParentRoute: () => rootRouteImport,
   } as any)
-const CompareNibleafVsGitbookRoute = CompareNibleafVsGitbookRouteImport.update({
-  id: '/compare/nibleaf-vs-gitbook',
-  path: '/compare/nibleaf-vs-gitbook',
+const CompareCMSVsGitbookRoute = CompareCMSVsGitbookRouteImport.update({
+  id: '/compare/cms-vs-gitbook',
+  path: '/compare/cms-vs-gitbook',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CompareNibleafVsDocusaurusRoute =
-  CompareNibleafVsDocusaurusRouteImport.update({
-    id: '/compare/nibleaf-vs-docusaurus',
-    path: '/compare/nibleaf-vs-docusaurus',
+const CompareCMSVsDocusaurusRoute =
+  CompareCMSVsDocusaurusRouteImport.update({
+    id: '/compare/cms-vs-docusaurus',
+    path: '/compare/cms-vs-docusaurus',
     getParentRoute: () => rootRouteImport,
   } as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
@@ -320,9 +320,9 @@ export interface FileRoutesByFullPath {
   '/alternatives/readme': typeof AlternativesReadmeRoute
   '/ar/documentation-platforms': typeof ArDocumentationPlatformsRoute
   '/blog/$slug': typeof BlogSlugRoute
-  '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
-  '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
-  '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
+  '/compare/cms-vs-docusaurus': typeof CompareCMSVsDocusaurusRoute
+  '/compare/cms-vs-gitbook': typeof CompareCMSVsGitbookRoute
+  '/compare/cms-vs-mintlify': typeof CompareCMSVsMintlifyRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
   '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
   '/ar/': typeof ArIndexRoute
@@ -364,9 +364,9 @@ export interface FileRoutesByTo {
   '/alternatives/readme': typeof AlternativesReadmeRoute
   '/ar/documentation-platforms': typeof ArDocumentationPlatformsRoute
   '/blog/$slug': typeof BlogSlugRoute
-  '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
-  '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
-  '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
+  '/compare/cms-vs-docusaurus': typeof CompareCMSVsDocusaurusRoute
+  '/compare/cms-vs-gitbook': typeof CompareCMSVsGitbookRoute
+  '/compare/cms-vs-mintlify': typeof CompareCMSVsMintlifyRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
   '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
   '/ar': typeof ArIndexRoute
@@ -411,9 +411,9 @@ export interface FileRoutesById {
   '/alternatives/readme': typeof AlternativesReadmeRoute
   '/ar/documentation-platforms': typeof ArDocumentationPlatformsRoute
   '/blog/$slug': typeof BlogSlugRoute
-  '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
-  '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
-  '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
+  '/compare/cms-vs-docusaurus': typeof CompareCMSVsDocusaurusRoute
+  '/compare/cms-vs-gitbook': typeof CompareCMSVsGitbookRoute
+  '/compare/cms-vs-mintlify': typeof CompareCMSVsMintlifyRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
   '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
   '/ar/': typeof ArIndexRoute
@@ -436,140 +436,140 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
-    | '/app'
-    | '/ar'
-    | '/about'
-    | '/cloud'
-    | '/contact'
-    | '/developers'
-    | '/pricing'
-    | '/privacy'
-    | '/self-hosting'
-    | '/terms'
-    | '/sites/$projectId'
-    | '/forgot-password'
-    | '/reset-password'
-    | '/sign-in'
-    | '/sign-up'
-    | '/verify-email'
-    | '/accept-invite/$invitationId'
-    | '/alternatives/gitbook'
-    | '/alternatives/mintlify'
-    | '/alternatives/readme'
-    | '/ar/documentation-platforms'
-    | '/blog/$slug'
-    | '/compare/nibleaf-vs-docusaurus'
-    | '/compare/nibleaf-vs-gitbook'
-    | '/compare/nibleaf-vs-mintlify'
-    | '/git-preview/$token'
-    | '/tools/rtl-documentation-readiness'
-    | '/ar/'
-    | '/blog/'
-    | '/app/projects/$projectId'
-    | '/app/analytics'
-    | '/app/members'
-    | '/app/settings'
-    | '/app/sites'
-    | '/sites/$projectId/$'
-    | '/sites/$projectId/changelog'
-    | '/app/'
-    | '/sites/$projectId/'
-    | '/app/projects/$projectId/analytics'
-    | '/app/projects/$projectId/editor'
-    | '/app/projects/$projectId/preview'
-    | '/app/projects/$projectId/settings'
-    | '/app/projects/$projectId/'
+  | '/'
+  | '/app'
+  | '/ar'
+  | '/about'
+  | '/cloud'
+  | '/contact'
+  | '/developers'
+  | '/pricing'
+  | '/privacy'
+  | '/self-hosting'
+  | '/terms'
+  | '/sites/$projectId'
+  | '/forgot-password'
+  | '/reset-password'
+  | '/sign-in'
+  | '/sign-up'
+  | '/verify-email'
+  | '/accept-invite/$invitationId'
+  | '/alternatives/gitbook'
+  | '/alternatives/mintlify'
+  | '/alternatives/readme'
+  | '/ar/documentation-platforms'
+  | '/blog/$slug'
+  | '/compare/cms-vs-docusaurus'
+  | '/compare/cms-vs-gitbook'
+  | '/compare/cms-vs-mintlify'
+  | '/git-preview/$token'
+  | '/tools/rtl-documentation-readiness'
+  | '/ar/'
+  | '/blog/'
+  | '/app/projects/$projectId'
+  | '/app/analytics'
+  | '/app/members'
+  | '/app/settings'
+  | '/app/sites'
+  | '/sites/$projectId/$'
+  | '/sites/$projectId/changelog'
+  | '/app/'
+  | '/sites/$projectId/'
+  | '/app/projects/$projectId/analytics'
+  | '/app/projects/$projectId/editor'
+  | '/app/projects/$projectId/preview'
+  | '/app/projects/$projectId/settings'
+  | '/app/projects/$projectId/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
-    | '/app'
-    | '/about'
-    | '/cloud'
-    | '/contact'
-    | '/developers'
-    | '/pricing'
-    | '/privacy'
-    | '/self-hosting'
-    | '/terms'
-    | '/forgot-password'
-    | '/reset-password'
-    | '/sign-in'
-    | '/sign-up'
-    | '/verify-email'
-    | '/accept-invite/$invitationId'
-    | '/alternatives/gitbook'
-    | '/alternatives/mintlify'
-    | '/alternatives/readme'
-    | '/ar/documentation-platforms'
-    | '/blog/$slug'
-    | '/compare/nibleaf-vs-docusaurus'
-    | '/compare/nibleaf-vs-gitbook'
-    | '/compare/nibleaf-vs-mintlify'
-    | '/git-preview/$token'
-    | '/tools/rtl-documentation-readiness'
-    | '/ar'
-    | '/blog'
-    | '/app/analytics'
-    | '/app/members'
-    | '/app/settings'
-    | '/app/sites'
-    | '/sites/$projectId/$'
-    | '/sites/$projectId/changelog'
-    | '/sites/$projectId'
-    | '/app/projects/$projectId/analytics'
-    | '/app/projects/$projectId/editor'
-    | '/app/projects/$projectId/preview'
-    | '/app/projects/$projectId/settings'
-    | '/app/projects/$projectId'
+  | '/'
+  | '/app'
+  | '/about'
+  | '/cloud'
+  | '/contact'
+  | '/developers'
+  | '/pricing'
+  | '/privacy'
+  | '/self-hosting'
+  | '/terms'
+  | '/forgot-password'
+  | '/reset-password'
+  | '/sign-in'
+  | '/sign-up'
+  | '/verify-email'
+  | '/accept-invite/$invitationId'
+  | '/alternatives/gitbook'
+  | '/alternatives/mintlify'
+  | '/alternatives/readme'
+  | '/ar/documentation-platforms'
+  | '/blog/$slug'
+  | '/compare/cms-vs-docusaurus'
+  | '/compare/cms-vs-gitbook'
+  | '/compare/cms-vs-mintlify'
+  | '/git-preview/$token'
+  | '/tools/rtl-documentation-readiness'
+  | '/ar'
+  | '/blog'
+  | '/app/analytics'
+  | '/app/members'
+  | '/app/settings'
+  | '/app/sites'
+  | '/sites/$projectId/$'
+  | '/sites/$projectId/changelog'
+  | '/sites/$projectId'
+  | '/app/projects/$projectId/analytics'
+  | '/app/projects/$projectId/editor'
+  | '/app/projects/$projectId/preview'
+  | '/app/projects/$projectId/settings'
+  | '/app/projects/$projectId'
   id:
-    | '__root__'
-    | '/'
-    | '/(auth)'
-    | '/app'
-    | '/ar'
-    | '/about'
-    | '/cloud'
-    | '/contact'
-    | '/developers'
-    | '/pricing'
-    | '/privacy'
-    | '/self-hosting'
-    | '/terms'
-    | '/app/(dashboard)'
-    | '/sites/$projectId'
-    | '/(auth)/forgot-password'
-    | '/(auth)/reset-password'
-    | '/(auth)/sign-in'
-    | '/(auth)/sign-up'
-    | '/(auth)/verify-email'
-    | '/accept-invite/$invitationId'
-    | '/alternatives/gitbook'
-    | '/alternatives/mintlify'
-    | '/alternatives/readme'
-    | '/ar/documentation-platforms'
-    | '/blog/$slug'
-    | '/compare/nibleaf-vs-docusaurus'
-    | '/compare/nibleaf-vs-gitbook'
-    | '/compare/nibleaf-vs-mintlify'
-    | '/git-preview/$token'
-    | '/tools/rtl-documentation-readiness'
-    | '/ar/'
-    | '/blog/'
-    | '/app/projects/$projectId'
-    | '/app/(dashboard)/analytics'
-    | '/app/(dashboard)/members'
-    | '/app/(dashboard)/settings'
-    | '/app/(dashboard)/sites'
-    | '/sites/$projectId/$'
-    | '/sites/$projectId/changelog'
-    | '/app/(dashboard)/'
-    | '/sites/$projectId/'
-    | '/app/projects/$projectId/analytics'
-    | '/app/projects/$projectId/editor'
-    | '/app/projects/$projectId/preview'
-    | '/app/projects/$projectId/settings'
-    | '/app/projects/$projectId/'
+  | '__root__'
+  | '/'
+  | '/(auth)'
+  | '/app'
+  | '/ar'
+  | '/about'
+  | '/cloud'
+  | '/contact'
+  | '/developers'
+  | '/pricing'
+  | '/privacy'
+  | '/self-hosting'
+  | '/terms'
+  | '/app/(dashboard)'
+  | '/sites/$projectId'
+  | '/(auth)/forgot-password'
+  | '/(auth)/reset-password'
+  | '/(auth)/sign-in'
+  | '/(auth)/sign-up'
+  | '/(auth)/verify-email'
+  | '/accept-invite/$invitationId'
+  | '/alternatives/gitbook'
+  | '/alternatives/mintlify'
+  | '/alternatives/readme'
+  | '/ar/documentation-platforms'
+  | '/blog/$slug'
+  | '/compare/cms-vs-docusaurus'
+  | '/compare/cms-vs-gitbook'
+  | '/compare/cms-vs-mintlify'
+  | '/git-preview/$token'
+  | '/tools/rtl-documentation-readiness'
+  | '/ar/'
+  | '/blog/'
+  | '/app/projects/$projectId'
+  | '/app/(dashboard)/analytics'
+  | '/app/(dashboard)/members'
+  | '/app/(dashboard)/settings'
+  | '/app/(dashboard)/sites'
+  | '/sites/$projectId/$'
+  | '/sites/$projectId/changelog'
+  | '/app/(dashboard)/'
+  | '/sites/$projectId/'
+  | '/app/projects/$projectId/analytics'
+  | '/app/projects/$projectId/editor'
+  | '/app/projects/$projectId/preview'
+  | '/app/projects/$projectId/settings'
+  | '/app/projects/$projectId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -591,9 +591,9 @@ export interface RootRouteChildren {
   AlternativesMintlifyRoute: typeof AlternativesMintlifyRoute
   AlternativesReadmeRoute: typeof AlternativesReadmeRoute
   BlogSlugRoute: typeof BlogSlugRoute
-  CompareNibleafVsDocusaurusRoute: typeof CompareNibleafVsDocusaurusRoute
-  CompareNibleafVsGitbookRoute: typeof CompareNibleafVsGitbookRoute
-  CompareNibleafVsMintlifyRoute: typeof CompareNibleafVsMintlifyRoute
+  CompareCMSVsDocusaurusRoute: typeof CompareCMSVsDocusaurusRoute
+  CompareCMSVsGitbookRoute: typeof CompareCMSVsGitbookRoute
+  CompareCMSVsMintlifyRoute: typeof CompareCMSVsMintlifyRoute
   GitPreviewTokenRoute: typeof GitPreviewTokenRoute
   ToolsRtlDocumentationReadinessRoute: typeof ToolsRtlDocumentationReadinessRoute
   BlogIndexRoute: typeof BlogIndexRoute
@@ -713,25 +713,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GitPreviewTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/compare/nibleaf-vs-mintlify': {
-      id: '/compare/nibleaf-vs-mintlify'
-      path: '/compare/nibleaf-vs-mintlify'
-      fullPath: '/compare/nibleaf-vs-mintlify'
-      preLoaderRoute: typeof CompareNibleafVsMintlifyRouteImport
+    '/compare/cms-vs-mintlify': {
+      id: '/compare/cms-vs-mintlify'
+      path: '/compare/cms-vs-mintlify'
+      fullPath: '/compare/cms-vs-mintlify'
+      preLoaderRoute: typeof CompareCMSVsMintlifyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/compare/nibleaf-vs-gitbook': {
-      id: '/compare/nibleaf-vs-gitbook'
-      path: '/compare/nibleaf-vs-gitbook'
-      fullPath: '/compare/nibleaf-vs-gitbook'
-      preLoaderRoute: typeof CompareNibleafVsGitbookRouteImport
+    '/compare/cms-vs-gitbook': {
+      id: '/compare/cms-vs-gitbook'
+      path: '/compare/cms-vs-gitbook'
+      fullPath: '/compare/cms-vs-gitbook'
+      preLoaderRoute: typeof CompareCMSVsGitbookRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/compare/nibleaf-vs-docusaurus': {
-      id: '/compare/nibleaf-vs-docusaurus'
-      path: '/compare/nibleaf-vs-docusaurus'
-      fullPath: '/compare/nibleaf-vs-docusaurus'
-      preLoaderRoute: typeof CompareNibleafVsDocusaurusRouteImport
+    '/compare/cms-vs-docusaurus': {
+      id: '/compare/cms-vs-docusaurus'
+      path: '/compare/cms-vs-docusaurus'
+      fullPath: '/compare/cms-vs-docusaurus'
+      preLoaderRoute: typeof CompareCMSVsDocusaurusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog/$slug': {
@@ -974,13 +974,13 @@ interface AppProjectsProjectIdRouteRouteChildren {
 }
 
 const AppProjectsProjectIdRouteRouteChildren: AppProjectsProjectIdRouteRouteChildren =
-  {
-    AppProjectsProjectIdAnalyticsRoute: AppProjectsProjectIdAnalyticsRoute,
-    AppProjectsProjectIdEditorRoute: AppProjectsProjectIdEditorRoute,
-    AppProjectsProjectIdPreviewRoute: AppProjectsProjectIdPreviewRoute,
-    AppProjectsProjectIdSettingsRoute: AppProjectsProjectIdSettingsRoute,
-    AppProjectsProjectIdIndexRoute: AppProjectsProjectIdIndexRoute,
-  }
+{
+  AppProjectsProjectIdAnalyticsRoute: AppProjectsProjectIdAnalyticsRoute,
+  AppProjectsProjectIdEditorRoute: AppProjectsProjectIdEditorRoute,
+  AppProjectsProjectIdPreviewRoute: AppProjectsProjectIdPreviewRoute,
+  AppProjectsProjectIdSettingsRoute: AppProjectsProjectIdSettingsRoute,
+  AppProjectsProjectIdIndexRoute: AppProjectsProjectIdIndexRoute,
+}
 
 const AppProjectsProjectIdRouteRouteWithChildren =
   AppProjectsProjectIdRouteRoute._addFileChildren(
@@ -1048,9 +1048,9 @@ const rootRouteChildren: RootRouteChildren = {
   AlternativesMintlifyRoute: AlternativesMintlifyRoute,
   AlternativesReadmeRoute: AlternativesReadmeRoute,
   BlogSlugRoute: BlogSlugRoute,
-  CompareNibleafVsDocusaurusRoute: CompareNibleafVsDocusaurusRoute,
-  CompareNibleafVsGitbookRoute: CompareNibleafVsGitbookRoute,
-  CompareNibleafVsMintlifyRoute: CompareNibleafVsMintlifyRoute,
+  CompareCMSVsDocusaurusRoute: CompareCMSVsDocusaurusRoute,
+  CompareCMSVsGitbookRoute: CompareCMSVsGitbookRoute,
+  CompareCMSVsMintlifyRoute: CompareCMSVsMintlifyRoute,
   GitPreviewTokenRoute: GitPreviewTokenRoute,
   ToolsRtlDocumentationReadinessRoute: ToolsRtlDocumentationReadinessRoute,
   BlogIndexRoute: BlogIndexRoute,

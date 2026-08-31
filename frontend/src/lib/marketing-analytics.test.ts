@@ -89,7 +89,7 @@ describe('marketing analytics', () => {
     expect(initializeMarketingAnalytics(GA4_TARGET)).toBe(true);
     expect(initializeMarketingAnalytics(GA4_TARGET)).toBe(true);
 
-    const scripts = [...document.head.querySelectorAll<HTMLScriptElement>('#nibleaf-marketing-ga4')];
+    const scripts = [...document.head.querySelectorAll<HTMLScriptElement>('#cms-marketing-ga4')];
     expect(scripts).toHaveLength(1);
     expect(scripts[0]?.nonce).toBe('response-nonce');
     expect(scripts[0]?.src).toBe('https://www.googletagmanager.com/gtag/js?id=G-ABC123');
@@ -106,11 +106,11 @@ describe('marketing analytics', () => {
     expect(initializeMarketingAnalytics(GTM_TARGET)).toBe(true);
     expect(initializeMarketingAnalytics(GTM_TARGET)).toBe(true);
 
-    const scripts = [...document.head.querySelectorAll<HTMLScriptElement>('#nibleaf-marketing-gtm')];
+    const scripts = [...document.head.querySelectorAll<HTMLScriptElement>('#cms-marketing-gtm')];
     expect(scripts).toHaveLength(1);
     expect(scripts[0]?.nonce).toBe('response-nonce');
     expect(scripts[0]?.src).toBe('https://www.googletagmanager.com/gtm.js?id=GTM-ABC123');
-    expect(document.querySelector('#nibleaf-marketing-ga4')).toBeNull();
+    expect(document.querySelector('#cms-marketing-ga4')).toBeNull();
     expect(window.dataLayer).toContainEqual(expect.objectContaining({ event: 'gtm.js' }));
     expect(gtagCommands().every((command) => !Array.isArray(command))).toBe(true);
     expect(gtagCommandValues()).toContainEqual(['consent', 'default', expect.objectContaining({ analytics_storage: 'denied' })]);
@@ -146,7 +146,7 @@ describe('marketing analytics', () => {
     sendMarketingAnalyticsEvent('free_tool_started', {
       input_mode: 'html',
       page_path: '/tools/rtl-documentation-readiness',
-      product: 'nibleaf',
+      product: 'cms',
       rubric_version: '1.0.0',
       tool_slug: 'rtl-documentation-readiness',
     });
@@ -154,7 +154,7 @@ describe('marketing analytics', () => {
       category_count: 6,
       checks_run: 18,
       checks_unknown: 0,
-      product: 'nibleaf',
+      product: 'cms',
       result_type: 'strong_evidence',
       rubric_version: '1.0.0',
       tool_slug: 'rtl-documentation-readiness',
@@ -162,7 +162,7 @@ describe('marketing analytics', () => {
     sendMarketingAnalyticsEvent('free_tool_cta_clicked', {
       destination: 'sample_project_signup',
       placement: 'result_bridge',
-      product: 'nibleaf',
+      product: 'cms',
       tool_slug: 'rtl-documentation-readiness',
     });
     sendMarketingAnalyticsEvent('newsletter_subscribed', { email: 'private@example.com' });

@@ -42,7 +42,7 @@ describe('RTL readiness rubric samples', () => {
   });
 
   it('keeps scripts and remote resources inert while parsing untrusted HTML', () => {
-    const marker = '__nibleaf_rtl_grader_script_ran__';
+    const marker = '__cms_rtl_grader_script_ran__';
     const scope = globalThis as typeof globalThis & Record<string, unknown>;
     delete scope[marker];
 

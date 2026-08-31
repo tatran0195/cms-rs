@@ -1,12 +1,12 @@
 @echo off
-:: Nibleaf Server - NSSM Installation Script
-:: This script installs Nibleaf as a Windows service using NSSM
+:: CMS Server - NSSM Installation Script
+:: This script installs CMS as a Windows service using NSSM
 ::
 :: Prerequisites:
 ::   - NSSM (Non-Sucking Service Manager) must be installed
 ::   - Node.js must be installed (for frontend build)
 ::   - Rust must be installed
-::   - Nibleaf binary must be built
+::   - CMS binary must be built
 ::
 :: Usage:
 ::   nssm-install.bat [service_name] [binary_path] [config_path]
@@ -14,8 +14,8 @@
 SETLOCAL ENABLEDELAYEDEXPANSION
 
 :: Default values
-SET SERVICE_NAME=NibleafServer
-SET BINARY_PATH=%~dp0..\target\release\nibleaf-server.exe
+SET SERVICE_NAME=CMSServer
+SET BINARY_PATH=%~dp0..\target\release\cms-server.exe
 SET CONFIG_PATH=%~dp0..\config\deploy.env
 SET FRONTEND_DIR=%~dp0..\dist\frontend
 
@@ -49,7 +49,7 @@ IF NOT EXIST "%CONFIG_PATH%" (
     SET CONFIG_PATH=
 )
 
-ECHO Installing Nibleaf service...
+ECHO Installing CMS service...
 ECHO Service name: %SERVICE_NAME%
 ECHO Binary path: %BINARY_PATH%
 ECHO Config path: %CONFIG_PATH%
@@ -65,8 +65,8 @@ nssm install %SERVICE_NAME% "%BINARY_PATH%" || (
 :: Configure the service
 nssm set %SERVICE_NAME% AppDirectory "%~dp0.."
 IF DEFINED CONFIG_PATH (
-    nssm set %SERVICE_NAME% AppEnvironmentExtra NIBLEAF_ENV=deploy
-    nssm set %SERVICE_NAME% AppEnvironmentExtra NIBLEAF_CONFIG_PATH="%CONFIG_PATH%"
+    nssm set %SERVICE_NAME% AppEnvironmentExtra CMS_ENV=deploy
+    nssm set %SERVICE_NAME% AppEnvironmentExtra CMS_CONFIG_PATH="%CONFIG_PATH%"
 )
 
 :: Set service to start automatically
@@ -76,8 +76,8 @@ nssm set %SERVICE_NAME% Start SERVICE_AUTO_START
 nssm set %SERVICE_NAME% AppRestartDelay 5000
 
 :: Set service display name and description
-nssm set %SERVICE_NAME% DisplayName "Nibleaf Documentation Server"
-nssm set %SERVICE_NAME% Description "Nibleaf - Modern Documentation Platform Server"
+nssm set %SERVICE_NAME% DisplayName "CMS Documentation Server"
+nssm set %SERVICE_NAME% Description "CMS - Modern Documentation Platform Server"
 
 :: Set service to run as a specific user (optional)
 :: Uncomment and modify the following lines if you want to run as a specific user

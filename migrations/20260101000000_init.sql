@@ -1,5 +1,5 @@
 -- Migration: Initial schema
--- This migration creates the foundational tables for Nibleaf
+-- This migration creates the foundational tables for CMS
 -- Based on the existing Prisma schema from the TypeScript monorepo
 
 -- Enable required extensions

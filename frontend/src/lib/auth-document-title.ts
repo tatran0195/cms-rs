@@ -10,5 +10,5 @@ type AuthTitleKey = NonNullable<ReturnType<typeof authTitleKey>>;
 
 export const authDocumentTitle = (pathname: string, translate: (key: AuthTitleKey) => string): string | null => {
   const key = authTitleKey(pathname);
-  return key ? `${translate(key)} — Nibleaf` : null;
+  return key ? `${translate(key)} — CMS` : null;
 };

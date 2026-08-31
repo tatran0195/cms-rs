@@ -1,5 +1,5 @@
 {
-  "extends": "@nibleaf/tsconfig/react.json",
+  "extends": "@cms/tsconfig/react.json",
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"]

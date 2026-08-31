@@ -1,4 +1,4 @@
-/* TipTap WYSIWYG styles — scoped to .ProseMirror, matching the Nibleaf design.
+/* TipTap WYSIWYG styles — scoped to .ProseMirror, matching the CMS design.
    Uses the app's Tailwind color tokens (var(--color-*)) so it follows light/dark. */
 
 .pl-editor {

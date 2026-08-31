@@ -1,17 +1,17 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { translateFn } from '@nibleaf/i18n';
+import { translateFn } from '@cms/i18n';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
 import got from 'got';
 import { z } from 'zod';
 import { serverEnv } from '@/env.server';
 import { BLOG_ENTRIES } from '@/lib/blog';
-import { nibleafPricing, nibleafProductLimitations } from '@/lib/comparison-data';
+import { cmsPricing, cmsProductLimitations } from '@/lib/comparison-data';
 import { contentSecurityPolicy } from '@/lib/content-security-policy';
 import { agentFriendlyNotFoundMarkdown, marketingMarkdownResponse } from '@/lib/marketing-markdown';
 import { marketingSitemap, marketingSitemapEntries } from '@/lib/marketing-sitemap';
-import { nibleafPublicOpenApi } from '@/lib/nibleaf-openapi';
+import { cmsPublicOpenApi } from '@/lib/cms-openapi';
 import { encodePublicRouteManifestResponse } from '@/lib/public-route-manifest';
 import {
   acceptsHtml,
@@ -36,7 +36,7 @@ import INSTALL_SCRIPT from '../../../scripts/install.sh?raw';
  *  - robots.txt / sitemap.xml / llms.txt / llms-full.txt at both origins,
  *  - 301 consolidation of secondary origins onto a verified primary domain,
  *  - a shared Cache-Control on public published-site HTML,
- *  - stamping the real visitor IP onto SSR loader fetches (x-nibleaf-client-ip)
+ *  - stamping the real visitor IP onto SSR loader fetches (x-cms-client-ip)
  *    so the API rate-limiter doesn't key every SSR render on this container.
  */
 
@@ -70,10 +70,10 @@ const SKIP = /^\/(api|_|assets|favicon|sites)\b/;
 
 // The public cloud marketing brand host. Only a deployment whose configured app
 // origin IS this host serves the marketing SEO docs (robots/sitemap/llms that
-// advertise "Nibleaf Cloud" and link nibleaf.com's sitemap). A self-hoster's
+// advertise "CMS Cloud" and link cms.com's sitemap). A self-hoster's
 // APP_URL points at their OWN dashboard, so IS_CLOUD_MARKETING is false for them
 // and they get a minimal, self-referential robots.txt with no marketing docs.
-const MARKETING_HOST = 'nibleaf.com';
+const MARKETING_HOST = 'cms.com';
 const CONFIGURED_HOST = serverEnv.APP_URL.replace(/^https?:\/\//, '')
   .split('/')[0]
   ?.toLowerCase();
@@ -87,7 +87,7 @@ function serveSelfHostingArtifact(pathname: string, bare: string): Response | nu
     return null;
   }
   const artifacts: Record<string, { body: string; type: string; filename: string }> = {
-    '/install.sh': { body: renderSelfHostInstaller(INSTALL_SCRIPT), type: 'text/x-shellscript; charset=utf-8', filename: 'nibleaf-install.sh' },
+    '/install.sh': { body: renderSelfHostInstaller(INSTALL_SCRIPT), type: 'text/x-shellscript; charset=utf-8', filename: 'cms-install.sh' },
     '/docker-compose.yml': { body: PRODUCTION_COMPOSE, type: 'application/yaml; charset=utf-8', filename: 'docker-compose.yml' },
   };
   const artifact = artifacts[pathname];
@@ -107,7 +107,7 @@ function serveSelfHostingArtifact(pathname: string, bare: string): Response | nu
 // ─── Visitor IP forwarding for SSR loader fetches ────────────────────────────
 // SSR data loaders fetch the API from THIS process, so without help every page
 // render shares the container's one rate-limit bucket. We capture the visitor's
-// IP per request (AsyncLocalStorage) and stamp it as `x-nibleaf-client-ip` on
+// IP per request (AsyncLocalStorage) and stamp it as `x-cms-client-ip` on
 // fetches to our own /api proxy; the API only honours the header when its direct
 // peer is a private address (see apps/server/src/middlewares/rate-limit.ts).
 
@@ -191,7 +191,7 @@ interface PublishedRequestAuth {
 }
 const publishedRequestAuth = new AsyncLocalStorage<PublishedRequestAuth>();
 
-// Shared secret proving to the API that `x-nibleaf-client-ip` was stamped by
+// Shared secret proving to the API that `x-cms-client-ip` was stamped by
 // THIS server entry (and not spoofed by a browser through the nitro /api
 // proxy, which forwards request headers). Must match the API's
 // INTERNAL_API_SECRET; when unset the API simply ignores the hint.
@@ -209,8 +209,8 @@ const safeSecretMatch = (left: string, right: string): boolean => {
 };
 
 const effectiveRequestHost = (request: Request, url: URL): string => {
-  const edgeSecret = request.headers.get('x-nibleaf-edge-secret') || '';
-  const edgeHost = request.headers.get('x-nibleaf-custom-host')?.trim().toLowerCase() || '';
+  const edgeSecret = request.headers.get('x-cms-edge-secret') || '';
+  const edgeHost = request.headers.get('x-cms-custom-host')?.trim().toLowerCase() || '';
   if (safeSecretMatch(edgeSecret, CUSTOM_DOMAIN_EDGE_SECRET) && /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}$/.test(edgeHost)) {
     return edgeHost;
   }
@@ -229,9 +229,9 @@ globalThis.fetch = ((input: Parameters<typeof fetch>[0], init?: Parameters<typeo
       const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
       // Always overwrite: an inbound (possibly attacker-supplied) value must
       // never ride along on our authenticated internal hint.
-      if (requestAuth.ip) headers.set('x-nibleaf-client-ip', requestAuth.ip);
+      if (requestAuth.ip) headers.set('x-cms-client-ip', requestAuth.ip);
       if (requestAuth.ip && INTERNAL_API_SECRET) {
-        headers.set('x-nibleaf-internal', INTERNAL_API_SECRET);
+        headers.set('x-cms-internal', INTERNAL_API_SECRET);
       }
       // SSR loaders and edge metadata/SEO fetches must make the same access
       // decision as the browser request. Forward only credentials, never the
@@ -247,8 +247,8 @@ globalThis.fetch = ((input: Parameters<typeof fetch>[0], init?: Parameters<typeo
 const internalRequestHeaders = () => {
   const requestAuth = publishedRequestAuth.getStore();
   return {
-    ...(requestAuth?.ip ? { 'x-nibleaf-client-ip': requestAuth.ip } : {}),
-    ...(requestAuth?.ip && INTERNAL_API_SECRET ? { 'x-nibleaf-internal': INTERNAL_API_SECRET } : {}),
+    ...(requestAuth?.ip ? { 'x-cms-client-ip': requestAuth.ip } : {}),
+    ...(requestAuth?.ip && INTERNAL_API_SECRET ? { 'x-cms-internal': INTERNAL_API_SECRET } : {}),
     ...(requestAuth?.cookie ? { cookie: requestAuth.cookie } : {}),
     ...(requestAuth?.authorization ? { authorization: requestAuth.authorization } : {}),
   };
@@ -459,11 +459,11 @@ async function serveAppOriginSeo(pathname: string): Promise<Response | null> {
 // ─── App-origin root SEO docs (marketing vs self-hosted dashboard) ────────────
 // The four /robots.txt, /sitemap.xml, /llms.txt, /llms-full.txt files at the app
 // root are generated here (there is no static public/ copy) so that:
-//  - the cloud marketing site (nibleaf.com) serves the full marketing documents,
+//  - the cloud marketing site (cms.com) serves the full marketing documents,
 //    with absolute URLs built from the request origin, and
 //  - every OTHER origin (a self-hoster's dashboard) serves only a minimal
 //    robots.txt keeping crawlers off the app surfaces, and 404s the marketing
-//    sitemap/llms — a self-hoster must never advertise as "Nibleaf Cloud".
+//    sitemap/llms — a self-hoster must never advertise as "CMS Cloud".
 
 /** Minimal robots.txt for a self-hosted dashboard: no Sitemap line, no marketing
  *  docs, just keep crawlers out of the app/auth/api surfaces. (`/app$` catches the
@@ -493,9 +493,9 @@ function marketingRobots(origin: string): string {
 }
 
 function marketingLlms(origin: string): string {
-  return `# Nibleaf
+  return `# CMS
 
-> Nibleaf is a documentation platform with a visual Markdown editor, versioned publishing, built-in search, Arabic/RTL support, custom domains, and a free cloud beta at nibleaf.com.
+> CMS is a documentation platform with a visual Markdown editor, versioned publishing, built-in search, Arabic/RTL support, custom domains, and a free cloud beta at cms.com.
 
 Last reviewed: 2026-08-24
 
@@ -515,23 +515,23 @@ Last reviewed: 2026-08-24
 - Custom-domain and project-subdomain workflows are active; operators must still verify their own DNS and TLS configuration
 - First-party reader analytics (page views, top pages, top searches); the hosted service also uses Cloudflare for delivery, security, and web analytics
 - Works with any S3-compatible storage (AWS S3, Cloudflare R2, Backblaze B2, or the bundled storage service)
-- Nibleaf Cloud (nibleaf.com) is a managed instance, free while in beta
+- CMS Cloud (cms.com) is a managed instance, free while in beta
 
 ## Pages
 
 - [Home](${origin}/): overview and features
 - [Arabic home](${origin}/ar): Arabic product overview and RTL-first workflow
 - [Documentation platforms for Arabic teams](${origin}/ar/documentation-platforms): source-backed Arabic buyer guide
-- [Nibleaf Cloud](${origin}/cloud): hosted documentation sites, free during beta
+- [CMS Cloud](${origin}/cloud): hosted documentation sites, free during beta
 - [Pricing](${origin}/pricing): free cloud beta and self-hosting requirements
 - [Self-hosting](${origin}/self-hosting): guided installer and deployment architecture
 - [About](${origin}/about): mission and stack
 - [Contact](${origin}/contact): product support, privacy, security, abuse, and editorial corrections
-- [Nibleaf developer resources](${origin}/developers): public API contract, agent access, authentication boundaries, and CLI status
+- [CMS developer resources](${origin}/developers): public API contract, agent access, authentication boundaries, and CLI status
 - [RTL documentation readiness grader](${origin}/tools/rtl-documentation-readiness): browser-only static HTML checks with transparent unknowns
-- [Nibleaf vs Mintlify](${origin}/compare/nibleaf-vs-mintlify)
-- [Nibleaf vs GitBook](${origin}/compare/nibleaf-vs-gitbook)
-- [Nibleaf vs Docusaurus](${origin}/compare/nibleaf-vs-docusaurus)
+- [CMS vs Mintlify](${origin}/compare/cms-vs-mintlify)
+- [CMS vs GitBook](${origin}/compare/cms-vs-gitbook)
+- [CMS vs Docusaurus](${origin}/compare/cms-vs-docusaurus)
 - [Mintlify alternatives](${origin}/alternatives/mintlify)
 - [GitBook alternatives](${origin}/alternatives/gitbook)
 - [ReadMe alternatives](${origin}/alternatives/readme)
@@ -540,28 +540,28 @@ Last reviewed: 2026-08-24
 
 ## Product truth and source
 
-- [Public source repository](https://github.com/lord007tn/nibleaf): AGPL-3.0 code, issues, releases, and implementation details
-- [Product documentation](https://docs.nibleaf.com): current public user and operator documentation
+- [Public source repository](https://github.com/lord007tn/cms): AGPL-3.0 code, issues, releases, and implementation details
+- [Product documentation](https://docs.cms.com): current public user and operator documentation
 - [Machine-readable pricing](${origin}/pricing.md): current plans, limits, and operational responsibilities
-- [Nibleaf public OpenAPI specification](${origin}/openapi.json): typed public reader endpoints with unique operation IDs
+- [CMS public OpenAPI specification](${origin}/openapi.json): typed public reader endpoints with unique operation IDs
 - [Security contact](${origin}/.well-known/security.txt): supported disclosure channel
 
-## When to use Nibleaf
+## When to use CMS
 
-Use Nibleaf when a team needs to author, publish, search, or self-host versioned Markdown documentation, especially for bilingual English/Arabic sites, right-to-left interfaces, portable MDX content, or immutable release snapshots. Do not use Nibleaf as a general-purpose CMS, transactional database, or hosted write API: the supported developer contract currently covers public read access only.
+Use CMS when a team needs to author, publish, search, or self-host versioned Markdown documentation, especially for bilingual English/Arabic sites, right-to-left interfaces, portable MDX content, or immutable release snapshots. Do not use CMS as a general-purpose CMS, transactional database, or hosted write API: the supported developer contract currently covers public read access only.
 
-## How agents should call Nibleaf
+## How agents should call CMS
 
 1. Read this file for product routing, then use [llms-full.txt](${origin}/llms-full.txt) when the complete product description is needed.
-2. Request a human-facing Nibleaf URL with \`Accept: text/markdown\` for its clean Markdown representation.
+2. Request a human-facing CMS URL with \`Accept: text/markdown\` for its clean Markdown representation.
 3. Read [openapi.json](${origin}/openapi.json) before calling public reader endpoints. Use the \`siteId\` from a published site's URL and do not assume dashboard session endpoints are a supported write API.
 4. For a published documentation site, prefer its own \`/llms.txt\`, \`/llms-full.txt\`, \`/sitemap.xml\`, and, when configured by that site owner, \`/openapi.json\`.
 5. If a path returns 404, follow the sitemap or llms index instead of guessing paths.
 
 ## Current limitations
 
-- No paid Nibleaf Cloud plan is offered while the service is in beta.
-${nibleafProductLimitations.map((limitation) => `- ${limitation}`).join('\n')}
+- No paid CMS Cloud plan is offered while the service is in beta.
+${cmsProductLimitations.map((limitation) => `- ${limitation}`).join('\n')}
 - GitHub has a two-way authoring workflow; public GitLab and generic Git imports are currently one-way.
 
 ## Blog
@@ -575,17 +575,17 @@ ${BLOG_ENTRIES.map((entry) => `- [${entry.title}](${origin}/blog/${entry.slug}):
 }
 
 function marketingLlmsFull(origin: string): string {
-  return `# Nibleaf - full description
+  return `# CMS - full description
 
-Nibleaf is a documentation platform with a visual Markdown editor, versioned publishing, built-in search, Arabic/RTL support, custom domains, and a free cloud beta at nibleaf.com.
+CMS is a documentation platform with a visual Markdown editor, versioned publishing, built-in search, Arabic/RTL support, custom domains, and a free cloud beta at cms.com.
 
-Nibleaf lets teams write documentation in Markdown/MDX, organize it into a navigable tree, and publish a searchable, multilingual site with versioned deploys, per-site teams, custom domains, and analytics. The managed cloud at nibleaf.com is free while in beta.
+CMS lets teams write documentation in Markdown/MDX, organize it into a navigable tree, and publish a searchable, multilingual site with versioned deploys, per-site teams, custom domains, and analytics. The managed cloud at cms.com is free while in beta.
 
-## What is Nibleaf?
+## What is CMS?
 
-Nibleaf combines a browser editor, Markdown content, publishing, search, analytics, and multilingual reader sites. Pages are stored as Markdown in the database and can be exported as Markdown, so the content format is portable even though the live source is not a Git directory.
+CMS combines a browser editor, Markdown content, publishing, search, analytics, and multilingual reader sites. Pages are stored as Markdown in the database and can be exported as Markdown, so the content format is portable even though the live source is not a Git directory.
 
-Nibleaf was built with English and Arabic authoring as core features, including right-to-left layout and per-language page trees.
+CMS was built with English and Arabic authoring as core features, including right-to-left layout and per-language page trees.
 
 ## Features
 
@@ -605,16 +605,16 @@ Nibleaf was built with English and Arabic authoring as core features, including 
 - Custom domains and subdomains: guided DNS setup and verification plus host-based published-site routing. Production DNS readiness depends on the configured domain and must be verified separately.
 - SEO built in: server-side rendering, per-page canonical/Open Graph/Twitter/JSON-LD, sitemaps, robots controls, hreflang, and noindex controls.
 - Per-site teams: each site is its own workspace with role-based members (owner/admin/editor).
-- Analytics: first-party page views, unique visitors, top pages, top searches, plus device and language breakdowns. Nibleaf Cloud also uses Cloudflare for delivery, security, and web analytics.
+- Analytics: first-party page views, unique visitors, top pages, top searches, plus device and language breakdowns. CMS Cloud also uses Cloudflare for delivery, security, and web analytics.
 - Bring-your-own storage: any S3-compatible store (AWS S3, Cloudflare R2, Backblaze B2, or the bundled storage service).
 
 ## Self-hosting
 
 The codebase is licensed under AGPL-3.0. Its public repository, pinned GHCR release, guided installer, and production Docker Compose file are anonymously accessible. The stack contains the app, API, worker, PostgreSQL, cache, and object storage. Operators remain responsible for DNS, TLS, backups, monitoring, and restore testing; see ${origin}/self-hosting for the verified installation path and production checklist.
 
-## Nibleaf Cloud
+## CMS Cloud
 
-Nibleaf Cloud (${origin}) is the managed instance run by the Nibleaf team: hosted dashboard, managed database, queues and storage, automatic upgrades, custom domains, and analytics. It is free while in beta. No paid plan is currently offered.
+CMS Cloud (${origin}) is the managed instance run by the CMS team: hosted dashboard, managed database, queues and storage, automatic upgrades, custom domains, and analytics. It is free while in beta. No paid plan is currently offered.
 
 ## License
 
@@ -632,33 +632,33 @@ AGPL-3.0. The license governs your rights to use, copy, modify, and distribute t
 - Blog: ${origin}/blog
 - About: ${origin}/about
 - Developer resources: ${origin}/developers
-- Nibleaf public OpenAPI specification: ${origin}/openapi.json
+- CMS public OpenAPI specification: ${origin}/openapi.json
 - Terms of Service: ${origin}/terms
 - Privacy Policy: ${origin}/privacy
-- Support: support@nibleaf.com
+- Support: support@cms.com
 - RTL documentation readiness grader: ${origin}/tools/rtl-documentation-readiness
-- Product documentation: https://docs.nibleaf.com
-- Integrated release notes: https://docs.nibleaf.com/releases/august-2026-capabilities
-- Ordered migration and rollback guide: https://docs.nibleaf.com/self-hosting/combined-release-migration
-- Add-ons reference: https://docs.nibleaf.com/product/add-ons
-- MCP operator guide: https://docs.nibleaf.com/self-hosting/mcp
-- Public source: https://github.com/lord007tn/nibleaf
+- Product documentation: https://docs.cms.com
+- Integrated release notes: https://docs.cms.com/releases/august-2026-capabilities
+- Ordered migration and rollback guide: https://docs.cms.com/self-hosting/combined-release-migration
+- Add-ons reference: https://docs.cms.com/product/add-ons
+- MCP operator guide: https://docs.cms.com/self-hosting/mcp
+- Public source: https://github.com/lord007tn/cms
 `;
 }
 
 /** Stable, non-JavaScript pricing truth for search engines and software agents.
  * Keep this synchronized with /pricing and lib/comparison-data.ts. */
 function marketingPricingMarkdown(origin: string): string {
-  const cloud = nibleafPricing.rows.find((row) => row.plan === 'Cloud');
-  const selfHosted = nibleafPricing.rows.find((row) => row.plan === 'Self-hosted');
+  const cloud = cmsPricing.rows.find((row) => row.plan === 'Cloud');
+  const selfHosted = cmsPricing.rows.find((row) => row.plan === 'Self-hosted');
 
-  return `# Nibleaf pricing
+  return `# CMS pricing
 
 Last reviewed: 2026-08-22
 
-Nibleaf currently has no paid cloud plan. The managed cloud is free while in beta, and the self-hosted codebase is available under AGPL-3.0. No credit card is required to create a cloud account.
+CMS currently has no paid cloud plan. The managed cloud is free while in beta, and the self-hosted codebase is available under AGPL-3.0. No credit card is required to create a cloud account.
 
-## Nibleaf Cloud beta
+## CMS Cloud beta
 
 - Price: ${cloud?.price ?? 'Free while in beta'}
 - Billing: no paid plan is currently offered
@@ -666,10 +666,10 @@ Nibleaf currently has no paid cloud plan. The managed cloud is free while in bet
 - Limits: fair-use controls apply; product limits can change during beta
 - Sign up: ${origin}/sign-up
 
-## Self-hosted Nibleaf
+## Self-hosted CMS
 
 - Software price: ${selfHosted?.price ?? 'Free under AGPL-3.0'}
-- Source: https://github.com/lord007tn/nibleaf
+- Source: https://github.com/lord007tn/cms
 - Includes: ${selfHosted?.includes ?? 'App, API, worker, PostgreSQL, cache, object storage, installer, and production Docker Compose configuration.'}
 - Operator responsibilities: infrastructure, DNS, TLS, secrets, backups, monitoring, upgrades, incident response, and restore testing
 - Deployment guide: ${origin}/self-hosting
@@ -677,7 +677,7 @@ Nibleaf currently has no paid cloud plan. The managed cloud is free while in bet
 ## Important limitations
 
 - There is no committed date or price for a future paid cloud plan.
-${nibleafProductLimitations.map((limitation) => `- ${limitation}`).join('\n')}
+${cmsProductLimitations.map((limitation) => `- ${limitation}`).join('\n')}
 - Cloudflare processes traffic for delivery, security, and web analytics on the managed service.
 
 ## ${translateFn('marketing.machine.arabic.heading', undefined, 'ar')}
@@ -703,10 +703,10 @@ function serveRootSeo(pathname: string, host: string, bare: string, request: Req
     const origin = `${proto}://${host}`;
     const expires = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString();
     const body = [
-      'Contact: mailto:security@nibleaf.com',
+      'Contact: mailto:security@cms.com',
       `Expires: ${expires}`,
       `Canonical: ${origin}/.well-known/security.txt`,
-      'Policy: mailto:security@nibleaf.com',
+      'Policy: mailto:security@cms.com',
       'Preferred-Languages: en, ar',
       '',
     ].join('\n');
@@ -734,7 +734,7 @@ function serveRootSeo(pathname: string, host: string, bare: string, request: Req
   const origin = `${proto}://${host}`;
   const body =
     file === 'openapi.json'
-      ? `${JSON.stringify(nibleafPublicOpenApi(origin), null, 2)}\n`
+      ? `${JSON.stringify(cmsPublicOpenApi(origin), null, 2)}\n`
       : file === 'pricing.md'
         ? marketingPricingMarkdown(origin)
         : file === 'robots.txt'
@@ -814,7 +814,7 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
   const host = effectiveRequestHost(request, url);
   const bare = host.split(':')[0] ?? '';
   const isCustomDomain = Boolean(host) && !ownHosts.has(host) && !ownHosts.has(bare);
-  // Consolidate the marketing origin: www.nibleaf.com would otherwise resolve as
+  // Consolidate the marketing origin: www.cms.com would otherwise resolve as
   // an unknown custom domain and serve duplicate 200 content on every path.
   if (IS_CLOUD_MARKETING && bare === `www.${MARKETING_HOST}`) {
     return Response.redirect(`https://${MARKETING_HOST}${url.pathname}${url.search}`, 301);
@@ -874,7 +874,7 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
         if (artifact) {
           return withoutHeadBody(artifact, request.method);
         }
-        // App-origin ROOT robots/sitemap/llms: the marketing docs on nibleaf.com,
+        // App-origin ROOT robots/sitemap/llms: the marketing docs on cms.com,
         // a minimal robots.txt (and 404s) on every self-hosted dashboard.
         const rootSeo = serveRootSeo(url.pathname, host, bare, request);
         if (rootSeo) {
@@ -932,7 +932,7 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
         // against the custom domain root, not the internal /sites/:id origin.
         const rewritten = new Request(url, request);
         const proto = request.headers.get('x-forwarded-proto') || 'https';
-        rewritten.headers.set('x-nibleaf-site-origin', `${proto}://${host}`);
+        rewritten.headers.set('x-cms-site-origin', `${proto}://${host}`);
         return renderHtml(rewritten);
       }
     }

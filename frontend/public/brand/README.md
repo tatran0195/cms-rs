@@ -1,6 +1,6 @@
-# Nibleaf brand assets
+# CMS brand assets
 
-The Nibleaf mark is the **Reversible Source**: one continuous `N` that reads the same after a half turn. It represents the product's reversible path between visual editing and source Markdown.
+The CMS mark is the **Reversible Source**: one continuous `N` that reads the same after a half turn. It represents the product's reversible path between visual editing and source Markdown.
 
 ## Core mark
 
@@ -21,28 +21,28 @@ Do not redraw, rotate, outline, add a shadow, or place another symbol inside the
 
 ## Color and backgrounds
 
-| Token | Hex | Use |
-| --- | --- | --- |
-| Ink | `#181612` | Mark and wordmark on light surfaces; dark tile/background |
-| Paper | `#FBF7EE` | Mark and wordmark on dark surfaces; light background |
-| Paper 2 | `#EEE4D3` | Quiet supporting surfaces |
-| Umber | `#8A4B2E` | Editorial accent, not the core mark |
-| Copper | `#B96A3D` | Small supporting accent only |
+| Token   | Hex       | Use                                                       |
+| ------- | --------- | --------------------------------------------------------- |
+| Ink     | `#181612` | Mark and wordmark on light surfaces; dark tile/background |
+| Paper   | `#FBF7EE` | Mark and wordmark on dark surfaces; light background      |
+| Paper 2 | `#EEE4D3` | Quiet supporting surfaces                                 |
+| Umber   | `#8A4B2E` | Editorial accent, not the core mark                       |
+| Copper  | `#B96A3D` | Small supporting accent only                              |
 
-- On white, Paper, or another light background, use `nibleaf-icon.svg` or `nibleaf-logo-horizontal-ltr.svg`.
-- On Ink or another dark background, use `nibleaf-icon-reverse.svg` or `nibleaf-logo-horizontal-ltr-reverse.svg`.
+- On white, Paper, or another light background, use `cms-icon.svg` or `cms-logo-horizontal-ltr.svg`.
+- On Ink or another dark background, use `cms-icon-reverse.svg` or `cms-logo-horizontal-ltr-reverse.svg`.
 - Use filled tiles for compact product UI marks and where the container is outside our control: favicon, installed app icon, and social avatar.
 - Keep clear space around the standalone mark equal to at least half its vertical stroke width.
 
 ## Asset families
 
-- `nibleaf-icon*.svg`: standalone marks for light, dark, monochrome, and current-color contexts.
-- `nibleaf-logo-horizontal*.svg`: navigation, README, partner, LTR, and RTL lockups.
-- `nibleaf-logo-stacked*.svg`: light, dark, transparent, monochrome, and Arabic presentation lockups.
-- `nibleaf-wordmark*.svg`: wordmark-only placements.
-- `nibleaf-sidebar-lockup*.svg`: compact product and documentation navigation.
-- `nibleaf-app-icon.svg`, `nibleaf-favicon.svg`, `nibleaf-social-avatar.svg`: controlled-background square assets.
-- `nibleaf-og-card*.svg`: English and Arabic social cards.
+- `cms-icon*.svg`: standalone marks for light, dark, monochrome, and current-color contexts.
+- `cms-logo-horizontal*.svg`: navigation, README, partner, LTR, and RTL lockups.
+- `cms-logo-stacked*.svg`: light, dark, transparent, monochrome, and Arabic presentation lockups.
+- `cms-wordmark*.svg`: wordmark-only placements.
+- `cms-sidebar-lockup*.svg`: compact product and documentation navigation.
+- `cms-app-icon.svg`, `cms-favicon.svg`, `cms-social-avatar.svg`: controlled-background square assets.
+- `cms-og-card*.svg`: English and Arabic social cards.
 
 Raster exports, ICO files, PWA icons, and public copies are generated from these sources with:
 

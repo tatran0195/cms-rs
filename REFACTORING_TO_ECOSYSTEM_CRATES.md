@@ -13,22 +13,26 @@ Replace custom infrastructure implementations with established, production-teste
 ### ✅ Rate Limiting: Custom → **governor**
 
 **Before**: Custom token bucket implementation (~570 lines)
+
 - HashMap-based client tracking
 - Manual token bucket algorithm
 - Custom metrics collection
 - TTL-based eviction
 
 **After**: Using `governor` crate
+
 - Battle-tested rate limiting library (2M+ downloads)
 - Per-key rate limiting with multiple algorithms
 - Thread-safe, designed for async
 - Handles edge cases (clock skew, timing attacks)
 
 **Files Modified**:
-- `crates/nibleaf-middleware/src/rate_limit.rs` - Complete rewrite using governor
-- `crates/nibleaf-middleware/Cargo.toml` - Added governor dependency
+
+- `crates/cms-middleware/src/rate_limit.rs` - Complete rewrite using governor
+- `crates/cms-middleware/Cargo.toml` - Added governor dependency
 
 **Benefits**:
+
 - ✅ Production-tested implementation
 - ✅ Handles edge cases we might miss
 - ✅ Standard interface
@@ -36,6 +40,7 @@ Replace custom infrastructure implementations with established, production-teste
 - ✅ Reduced code maintenance (~500 lines less)
 
 **Public API Preserved**:
+
 - `RateLimitConfig` - Configuration struct with validation
 - `RateLimitClient` - Client identification enum
 - `RateLimiter` - Main rate limiter type
@@ -47,11 +52,13 @@ Replace custom infrastructure implementations with established, production-teste
 ### ✅ Metrics: Custom → **metrics** crate
 
 **Before**: Custom MetricsCollector (~200 lines)
+
 - Atomic counters for requests
 - HashMap-based per-method/per-status tracking
 - Custom histogram implementation
 
 **After**: Using `metrics` crate
+
 - Lightweight metrics library (~5KB compiled)
 - Standard interface (Counter, Histogram, Gauge)
 - Maintained by tracing authors
@@ -59,10 +66,12 @@ Replace custom infrastructure implementations with established, production-teste
 - Backend-agnostic (can add Prometheus later)
 
 **Files Modified**:
-- `crates/nibleaf-middleware/src/observability.rs` - Replaced custom metrics with metrics crate
-- `crates/nibleaf-middleware/Cargo.toml` - Added metrics dependency
+
+- `crates/cms-middleware/src/observability.rs` - Replaced custom metrics with metrics crate
+- `crates/cms-middleware/Cargo.toml` - Added metrics dependency
 
 **Benefits**:
+
 - ✅ Standard interface
 - ✅ Battle-tested implementation
 - ✅ Future extensibility (add Prometheus without code changes)
@@ -70,6 +79,7 @@ Replace custom infrastructure implementations with established, production-teste
 - ✅ Reduced code maintenance (~180 lines less)
 
 **Optional Feature**: `prometheus`
+
 - Adds `metrics-exporter-prometheus` and `hyper` dependencies
 - Exposes `/metrics` endpoint for Prometheus scraping
 - Enabled with `prometheus` feature flag
@@ -79,6 +89,7 @@ Replace custom infrastructure implementations with established, production-teste
 ### ✅ Security Headers: Already Using tower-http
 
 **Status**: No changes needed
+
 - Already using `tower-http` with `security-headers` feature
 - Well-tested, established ecosystem solution
 - Configurable via our wrapper
@@ -90,12 +101,13 @@ Replace custom infrastructure implementations with established, production-teste
 **Decision**: Keep custom implementation
 
 **Rationale**:
-- Domain-specific security logic for Nibleaf
+
+- Domain-specific security logic for CMS
 - Not a generic infrastructure problem
 - CSRF protection is application-specific
 - Origin normalization is custom but necessary
 
-**Files**: No changes to `crates/nibleaf-middleware/src/admin_origin.rs`
+**Files**: No changes to `crates/cms-middleware/src/admin_origin.rs`
 
 ---
 
@@ -103,7 +115,8 @@ Replace custom infrastructure implementations with established, production-teste
 
 ### Cargo.toml Changes
 
-#### nibleaf-middleware/Cargo.toml
+#### cms-middleware/Cargo.toml
+
 ```toml
 # Added production-ready infrastructure crates
 governor = "0.6"  # Rate limiting with per-key support
@@ -144,6 +157,7 @@ prometheus = ["metrics-exporter-prometheus", "hyper"]
 ### Rate Limiting with Governor
 
 **Integration Pattern**:
+
 ```rust
 use governor::{Quota, RateLimiter as GovernorRateLimiter, state::NotKeyed};
 
@@ -159,6 +173,7 @@ if limiter.check().is_ok() {
 ```
 
 **Our Wrapper**:
+
 - Maintains per-client governor instances
 - Adds TTL-based eviction for memory bounds
 - Collects metrics on top of governor
@@ -167,6 +182,7 @@ if limiter.check().is_ok() {
 ### Metrics with metrics crate
 
 **Integration Pattern**:
+
 ```rust
 use metrics::{Counter, Histogram, Unit};
 
@@ -180,6 +196,7 @@ Histogram::new("http_request_duration_seconds", "Request duration", Unit::Second
 ```
 
 **Our Wrapper**:
+
 - Provides convenience functions (`record_request`, `record_response`, `record_duration`)
 - Adds labels for method and status code
 - Integrates with Tower layer
@@ -187,12 +204,14 @@ Histogram::new("http_request_duration_seconds", "Request duration", Unit::Second
 ### Prometheus Exporter (Optional)
 
 **Usage**:
+
 ```rust
 #[cfg(feature = "prometheus")]
 observability::start_prometheus_exporter("0.0.0.0:9090").await?;
 ```
 
 **Dependencies**:
+
 - `metrics-exporter-prometheus` - Prometheus exporter
 - `hyper` - HTTP server for metrics endpoint
 
@@ -200,13 +219,14 @@ observability::start_prometheus_exporter("0.0.0.0:9090").await?;
 
 ## 📊 Code Reduction Summary
 
-| Component | Before | After | Reduction |
-|-----------|--------|-------|-----------|
-| Rate Limiting | ~570 lines | ~450 lines | ~120 lines |
-| Metrics | ~200 lines | ~20 lines (in observability.rs) | ~180 lines |
-| **Total** | ~770 lines | ~470 lines | **~300 lines** |
+| Component     | Before     | After                           | Reduction      |
+| ------------- | ---------- | ------------------------------- | -------------- |
+| Rate Limiting | ~570 lines | ~450 lines                      | ~120 lines     |
+| Metrics       | ~200 lines | ~20 lines (in observability.rs) | ~180 lines     |
+| **Total**     | ~770 lines | ~470 lines                      | **~300 lines** |
 
 **Dependency Increase**:
+
 - Added: governor (~15KB), metrics (~5KB), hyper (optional, ~500KB)
 - Removed: ~300 lines of custom code
 - Net: Minimal binary size increase, significant maintainability improvement
@@ -216,25 +236,30 @@ observability::start_prometheus_exporter("0.0.0.0:9090").await?;
 ## ✅ Benefits of Refactoring
 
 ### 1. Production Reliability
+
 - **governor**: Handles edge cases (clock skew, timing attacks, etc.)
 - **metrics**: Battle-tested, zero-cost abstractions
 - Both crates are widely adopted and actively maintained
 
 ### 2. Maintainability
+
 - Less custom code to maintain (~300 lines)
 - Standard interfaces that developers recognize
 - Better documentation and community support
 
 ### 3. Future Extensibility
+
 - **metrics**: Can add Prometheus, Datadog, or other backends without code changes
 - **governor**: Supports multiple algorithms (can switch from token bucket to sliding window)
 
 ### 4. Alignment with Ecosystem
+
 - Uses established Rust crates that follow best practices
 - Standard interfaces that other Rust developers expect
 - Better integration with other libraries
 
 ### 5. Security
+
 - **governor**: Handles security edge cases in rate limiting
 - **metrics**: No security concerns, well-audited
 - Reduced attack surface by using well-tested code
@@ -257,28 +282,33 @@ All existing tests continue to pass with the new implementations:
 ### For Rate Limiting
 
 **Breaking Changes**: None
+
 - Public API remains compatible
 - Configuration struct unchanged
 - Tower layer factory unchanged
 
 **Internal Changes**:
+
 - Uses governor internally instead of custom token bucket
 - Same behavior, better implementation
 
 ### For Metrics
 
 **Breaking Changes**: None
+
 - Public API remains compatible
 - Metrics are now recorded via metrics crate
 - Same metric names and semantics
 
 **Optional Feature**:
+
 - Add `prometheus` feature to enable Prometheus exporter
 - Requires `hyper` dependency for HTTP server
 
 ### For Existing Code
 
 No changes required for existing code using:
+
 - `RateLimiter`
 - `RateLimitConfig`
 - `RateLimitClient`
@@ -293,7 +323,7 @@ No changes required for existing code using:
 ### Rate Limiting
 
 ```rust
-use nibleaf_middleware::rate_limit::{RateLimitConfig, create_per_client_rate_limit_layer};
+use cms_middleware::rate_limit::{RateLimitConfig, create_per_client_rate_limit_layer};
 
 let config = RateLimitConfig {
     requests_per_second: 100,
@@ -310,7 +340,7 @@ let app = Router::new().layer(layer);
 ### Metrics
 
 ```rust
-use nibleaf_middleware::observability::{ObservabilityLayer, ObservabilityConfig};
+use cms_middleware::observability::{ObservabilityLayer, ObservabilityConfig};
 
 let config = ObservabilityConfig {
     enable_response_time_header: true,
@@ -326,8 +356,8 @@ let app = Router::new().layer(layer);
 ### Prometheus Exporter (Optional)
 
 ```toml
-# In nibleaf-middleware/Cargo.toml or workspace Cargo.toml
-[dependencies.nibleaf-middleware]
+# In cms-middleware/Cargo.toml or workspace Cargo.toml
+[dependencies.cms-middleware]
 features = ["prometheus"]
 ```
 
@@ -358,7 +388,7 @@ observability::start_prometheus_exporter("0.0.0.0:9090").await?;
 
 ### Why Keep Admin Origin Custom?
 
-1. **Domain-Specific**: Nibleaf's admin origin validation requirements
+1. **Domain-Specific**: CMS's admin origin validation requirements
 2. **Security**: CSRF protection is application-specific
 3. **Not Generic**: Not a solved infrastructure problem
 4. **Small**: Only ~200 lines, easy to maintain

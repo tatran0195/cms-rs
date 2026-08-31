@@ -3,7 +3,7 @@ import {
   searchIndexDiagnosticsResultSchema,
   type UpdateProjectSearchConfigurationBody,
   updateProjectSearchConfigurationBody,
-} from '@nibleaf/validators';
+} from '@cms/validators';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData, mutateData } from './client-helpers';

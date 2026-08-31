@@ -30,7 +30,7 @@ function extractMarkdownTables(content: Element, document: Document): Map<string
     const header = normalized[0];
     if (!header) continue;
     const lines = [header, Array.from({ length: columnCount }, () => '---'), ...normalized.slice(1)].map((row) => `| ${row.join(' | ')} |`);
-    const token = `NIBLEAFTABLEPLACEHOLDER${index}TOKEN`;
+    const token = `CMSTABLEPLACEHOLDER${index}TOKEN`;
     const placeholder = document.createElement('p');
     placeholder.textContent = token;
     table.replaceWith(placeholder);
@@ -83,14 +83,14 @@ export async function marketingMarkdownResponse(htmlResponse: Response, canonica
 
 export function agentFriendlyNotFoundMarkdown(origin: string): Response {
   const response = new Response(
-    `# 404 — Nibleaf page not found
+    `# 404 — CMS page not found
 
 The requested path does not exist. Use one of these machine-readable indexes to recover:
 
-- [Nibleaf sitemap](${origin}/sitemap.xml)
-- [Nibleaf agent index](${origin}/llms.txt)
-- [Nibleaf developer resources](${origin}/developers)
-- [Nibleaf product documentation](https://docs.nibleaf.com/)
+- [CMS sitemap](${origin}/sitemap.xml)
+- [CMS agent index](${origin}/llms.txt)
+- [CMS developer resources](${origin}/developers)
+- [CMS product documentation](https://docs.cms.com/)
 `,
     {
       status: 404,

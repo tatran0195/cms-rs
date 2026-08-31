@@ -1,4 +1,4 @@
-# Nibleaf Rust Migration - Coding Progress
+# CMS Rust Migration - Coding Progress
 
 ## Date: 2026-08-27
 
@@ -13,12 +13,14 @@ All architecture requirements from `/home/user/uploads/00-executive-summary.md` 
 Following proactive architecture evaluation, custom infrastructure implementations have been replaced with established Rust ecosystem crates for maximum production reliability:
 
 ### Rate Limiting: Custom → governor
+
 - **Before**: ~570 lines of custom token bucket implementation
 - **After**: Using `governor` crate (2M+ downloads, battle-tested)
 - **Benefits**: Handles edge cases, standard interface, community support
 - **Reduction**: ~120 lines of code
 
 ### Metrics: Custom → metrics crate
+
 - **Before**: ~200 lines of custom metrics collector
 - **After**: Using `metrics` crate (lightweight, maintained by tracing authors)
 - **Benefits**: Standard interface, zero-cost abstractions, future extensibility
@@ -28,15 +30,17 @@ Following proactive architecture evaluation, custom infrastructure implementatio
 ### Total Code Reduction: ~300 lines
 
 **Dependencies Added**:
+
 - `governor = "0.6"` - Production-tested rate limiting
 - `metrics = "0.21"` - Lightweight metrics collection
 - `metrics-exporter-prometheus = { version = "0.11", optional = true }` - Optional Prometheus support
 - `hyper = { version = "1.0", optional = true }` - For Prometheus HTTP server
 
 **Files Refactored**:
-- `crates/nibleaf-middleware/src/rate_limit.rs` - Now uses governor internally
-- `crates/nibleaf-middleware/src/observability.rs` - Now uses metrics crate
-- `crates/nibleaf-middleware/Cargo.toml` - Added ecosystem dependencies
+
+- `crates/cms-middleware/src/rate_limit.rs` - Now uses governor internally
+- `crates/cms-middleware/src/observability.rs` - Now uses metrics crate
+- `crates/cms-middleware/Cargo.toml` - Added ecosystem dependencies
 
 **Public API**: Remains compatible - no breaking changes for existing code
 
@@ -45,6 +49,7 @@ Following proactive architecture evaluation, custom infrastructure implementatio
 ## ✅ COMPLETED
 
 ### Architecture Foundation
+
 - [x] Cargo workspace with 15 crates + binary
 - [x] Dependency graph following AppFlowy's layering discipline
 - [x] Axum + SQLx stack (no Actix, no ORM)
@@ -53,7 +58,8 @@ Following proactive architecture evaluation, custom infrastructure implementatio
 - [x] Japanese search with Lindera tokenizer
 - [x] Single Windows machine deployment target (no Docker)
 
-### Entity Layer (nibleaf-entity) - 24 files
+### Entity Layer (cms-entity) - 24 files
+
 - [x] All 40+ database tables have corresponding entity types
 - [x] Request/Response DTOs for all domains
 - [x] Proper serde serialization
@@ -62,7 +68,8 @@ Following proactive architecture evaluation, custom infrastructure implementatio
 
 **Domains:** auth, common, org, project, page, branch, language, git, integration, deployment, domain, reader_access, comment, search, export, openapi, usage, notification, asset, analytics, theme, platform_event, mcp
 
-### Database Layer (nibleaf-db) - 23 files
+### Database Layer (cms-db) - 23 files
+
 - [x] Hand-written SQLx queries for all domains
 - [x] CRUD operations for all tables
 - [x] QueryBuilder for dynamic queries
@@ -71,7 +78,8 @@ Following proactive architecture evaluation, custom infrastructure implementatio
 
 **Modules:** auth, org, project, page, branch, language, git, integration, deployment, domain, reader_access, comment, search_index, export, asset, usage, notification, platform_event, analytics, theme, mcp
 
-### Business Logic Layer (nibleaf-biz) - 26 files
+### Business Logic Layer (cms-biz) - 26 files
+
 - [x] Service classes for all domains
 - [x] Thin functions with resolved dependencies
 - [x] Orchestration of multi-step operations
@@ -80,7 +88,8 @@ Following proactive architecture evaluation, custom infrastructure implementatio
 
 **Modules:** org, project, page, branch, language, git, integration, deployment, domain, reader_access, comment, search, export, openapi, usage, entitlement, notification, asset, analytics, theme, platform_event, mcp, auth, email, queue
 
-### API Layer (nibleaf-api) - 72 files
+### API Layer (cms-api) - 72 files
+
 - [x] Axum router hierarchy for all domains
 - [x] **Handler implementations for all domains**
   - Auth: login, register, logout, me, refresh, API keys
@@ -128,7 +137,8 @@ Following proactive architecture evaluation, custom infrastructure implementatio
   - CORS support
   - Compression support
 
-### Middleware Layer (nibleaf-middleware) - 7 files
+### Middleware Layer (cms-middleware) - 7 files
+
 - [x] **AppState** - Complete with all dependencies and **config validation**
 - [x] **Rate Limit** - **Production-ready implementation**
   - Per-client rate limiting (not global) - FIXES RL-001
@@ -175,7 +185,8 @@ Following proactive architecture evaluation, custom infrastructure implementatio
   - ISO 639-1 and BCP 47 support
   - Cookie setting helper
 
-### Sites Layer (nibleaf-sites) - 6 files
+### Sites Layer (cms-sites) - 6 files
+
 - [x] **Host Resolution** - Full implementation
   - Host extraction from headers (Host, X-Forwarded-Host)
   - Database lookups for domains
@@ -249,6 +260,7 @@ Following proactive architecture evaluation, custom infrastructure implementatio
 ## 🎯 Production-Ready Middleware Fixes (This Session)
 
 ### Rate Limiting (All Issues Fixed)
+
 - ✅ **RL-001**: Global rate limiting → Per-client rate limiting implemented
 - ✅ **RL-002**: Unbounded memory growth → Memory-bounded with max 10,000 clients and TTL eviction
 - ✅ **RL-003**: No client identification → Client enum (User, ApiKey, Ip, Anonymous) implemented
@@ -258,15 +270,18 @@ Following proactive architecture evaluation, custom infrastructure implementatio
 - ✅ **RL-007**: Retry-After always 60s fallback → Calculated from token bucket state
 
 ### Security Headers (All Issues Fixed)
+
 - ✅ **S1**: CSP too restrictive for API → Appropriate API CSP with presets for different use cases
 - ✅ **S2**: Duplicate implementation → Both layer and middleware kept for compatibility, no functional duplication
 
 ### Admin Origin (All Issues Fixed)
+
 - ✅ **A1**: Trusts Referer header → **CRITICAL FIX**: Now only uses Origin header, Referer is NOT trusted
 - ✅ **A2**: No origin normalization → Implemented: lowercase, trailing slash removal, default port removal
 - ✅ **A3**: No validation in AppState::from_config → Added comprehensive config validation
 
 ### Observability (All Issues Fixed)
+
 - ✅ **O1**: Metrics middleware is stub → Implemented real MetricsCollector with atomic counters
 - ✅ **O2**: Double initialization risk → Protected with std::sync::Once
 - ✅ **O3**: No request ID in error responses → Added via add_request_id_to_error() and response headers
@@ -281,6 +296,7 @@ Following proactive architecture evaluation, custom infrastructure implementatio
 ### Medium Priority (Enhancement)
 
 ### Completed
+
 - [x] **Request Validation** - Added validator crate with Validate derive to all request types
   - Auth: CreateUserRequest, UpdateUserRequest, CreateApiKeyRequest, LoginRequest
   - Org: CreateOrganizationRequest, UpdateOrganizationRequest, CreateInvitationRequest, AcceptInvitationRequest
@@ -301,6 +317,7 @@ Following proactive architecture evaluation, custom infrastructure implementatio
   - Added security, params, request_body, and responses to all handlers
 
 ### Low Priority (Future)
+
 1. **Frontend Migration** - Vite 8 SPA with generated API client
 2. **Windows Deployment** - NSSM/windows-service packaging
 3. **Comprehensive Tests** - Unit and integration tests
@@ -310,6 +327,7 @@ Following proactive architecture evaluation, custom infrastructure implementatio
 ## 📝 Notes
 
 ### Design Decisions
+
 - All entity types match the database schema exactly
 - All enums use sqlx::Type for database compatibility
 - All DTOs have both entity and response variants
@@ -322,6 +340,7 @@ Following proactive architecture evaluation, custom infrastructure implementatio
 - Authentication middleware supports multiple methods (session, JWT, API key, basic)
 
 ### Security Improvements (This Session)
+
 - **CSRF Protection**: Admin origin middleware no longer trusts Referer header
 - **Rate Limiting**: Per-client limiting prevents one user from blocking all users
 - **Memory Safety**: Rate limiter has bounded memory usage with TTL eviction
@@ -329,6 +348,7 @@ Following proactive architecture evaluation, custom infrastructure implementatio
 - **Config Validation**: All middleware configs are validated at startup
 
 ### File Organization
+
 - Each domain has its own module
 - Each module has consistent structure (types, queries, services, handlers)
 - All dependencies flow downward (api → biz → db)
@@ -337,6 +357,7 @@ Following proactive architecture evaluation, custom infrastructure implementatio
 - Authentication middleware is centralized in auth module
 
 ### Handler Implementation Pattern
+
 ```rust
 pub async fn handler_name(
     State(state): State<Arc<AppState>>,
@@ -351,12 +372,13 @@ pub async fn handler_name(
         &resource_id,
         request,
     ).await?;
-    
+
     Ok(Json(result))
 }
 ```
 
 ### Middleware Pattern
+
 ```rust
 // Configuration
 let config = RateLimitConfig {
@@ -377,6 +399,7 @@ let app = Router::new()
 ```
 
 ### Authentication Flow
+
 ```
 Request
   ↓
@@ -408,14 +431,14 @@ To continue the implementation:
 ## 📚 Documentation
 
 - Architecture decisions: `/home/user/uploads/00-executive-summary.md` through `10-windows-aws-deployment.md`
-- Implementation summary: `/home/user/nibleaf-rs/IMPLEMENTATION_SUMMARY.md`
-- This progress file: `/home/user/nibleaf-rs/CODING_PROGRESS.md`
+- Implementation summary: `/home/user/cms-rs/IMPLEMENTATION_SUMMARY.md`
+- This progress file: `/home/user/cms-rs/CODING_PROGRESS.md`
 
 ---
 
 ## ✨ Achievement
 
-The Nibleaf Rust migration has reached **PRODUCTION-READY** status!
+The CMS Rust migration has reached **PRODUCTION-READY** status!
 
 - ✅ All 15 crates implemented
 - ✅ All 175+ Rust files created
@@ -437,6 +460,7 @@ The Nibleaf Rust migration has reached **PRODUCTION-READY** status!
 This represents a **complete, production-ready implementation** of the core infrastructure!
 
 The remaining work is:
+
 1. Add comprehensive tests
 2. Frontend migration (Vite 8 SPA)
 3. Windows deployment packaging

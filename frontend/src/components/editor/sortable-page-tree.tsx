@@ -10,16 +10,29 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-} from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { Button } from '@nibleaf/design-system/components/ui/button';
-import { cn } from '@nibleaf/design-system/lib/utils';
-import { useT } from '@nibleaf/i18n/react';
-import { ChevronRight, FileText, Folder, GripVertical, Plus, Settings2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { hasIcon, PageIcon } from '@/components/site/page-icon';
-import type { PageNode } from '@/hooks/api';
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Button } from "@cms/design-system/components/ui/button";
+import { cn } from "@cms/design-system/lib/utils";
+import { useT } from "@cms/i18n/react";
+import {
+  ChevronRight,
+  FileText,
+  Folder,
+  GripVertical,
+  Plus,
+  Settings2,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import { hasIcon, PageIcon } from "@/components/site/page-icon";
+import type { PageNode } from "@/hooks/api";
 
 /**
  * A Notion-style page tree with @dnd-kit: drag the handle to reorder, drag
@@ -42,7 +55,7 @@ interface Flat {
 function flatten(pages: PageNode[]): Flat[] {
   const byParent = new Map<string, PageNode[]>();
   for (const page of pages) {
-    const key = page.parentId ?? '__root';
+    const key = page.parentId ?? "__root";
     const list = byParent.get(key) ?? [];
     list.push(page);
     byParent.set(key, list);
@@ -52,7 +65,7 @@ function flatten(pages: PageNode[]): Flat[] {
   }
   const out: Flat[] = [];
   const walk = (parentId: string | null, depth: number) => {
-    for (const node of byParent.get(parentId ?? '__root') ?? []) {
+    for (const node of byParent.get(parentId ?? "__root") ?? []) {
       out.push({ id: node.id, parentId, depth, node });
       walk(node.id, depth + 1);
     }
@@ -81,7 +94,10 @@ function hideCollapsed(items: Flat[], collapsed: Set<string>): Flat[] {
   }
   const hidden = new Set<string>();
   return items.filter((item) => {
-    if (item.parentId && (collapsed.has(item.parentId) || hidden.has(item.parentId))) {
+    if (
+      item.parentId &&
+      (collapsed.has(item.parentId) || hidden.has(item.parentId))
+    ) {
       hidden.add(item.id);
       return false;
     }
@@ -89,10 +105,11 @@ function hideCollapsed(items: Flat[], collapsed: Set<string>): Flat[] {
   });
 }
 
-const collapsedStoreKey = (treeKey: string) => `nibleaf.editor.collapsedGroups:${treeKey}`;
+const collapsedStoreKey = (treeKey: string) =>
+  `cms.editor.collapsedGroups:${treeKey}`;
 
 function readCollapsed(treeKey?: string): Set<string> {
-  if (typeof window === 'undefined' || !treeKey) {
+  if (typeof window === "undefined" || !treeKey) {
     return new Set();
   }
   try {
@@ -108,7 +125,13 @@ interface Projection {
   parentId: string | null;
 }
 
-function getProjection(items: Flat[], activeId: string, overId: string, dragOffset: number, indent: number): Projection {
+function getProjection(
+  items: Flat[],
+  activeId: string,
+  overId: string,
+  dragOffset: number,
+  indent: number,
+): Projection {
   const overIndex = items.findIndex((i) => i.id === overId);
   const activeIndex = items.findIndex((i) => i.id === activeId);
   const activeItem = items[activeIndex];
@@ -119,7 +142,12 @@ function getProjection(items: Flat[], activeId: string, overId: string, dragOffs
   const projectedDepth = (activeItem?.depth ?? 0) + dragDepth;
   const maxDepth = previousItem ? previousItem.depth + 1 : 0;
   const minDepth = nextItem ? nextItem.depth : 0;
-  const depth = projectedDepth > maxDepth ? maxDepth : projectedDepth < minDepth ? minDepth : projectedDepth;
+  const depth =
+    projectedDepth > maxDepth
+      ? maxDepth
+      : projectedDepth < minDepth
+        ? minDepth
+        : projectedDepth;
 
   const parentId = (() => {
     if (depth === 0 || !previousItem) {
@@ -156,7 +184,9 @@ export function SortablePageTree({
   onSelect: (id: string) => void;
   onAddChild: (parentId: string) => void;
   onSettings: (id: string) => void;
-  onMove: (items: Array<{ id: string; parentId: string | null; position: number }>) => void;
+  onMove: (
+    items: Array<{ id: string; parentId: string | null; position: number }>,
+  ) => void;
   /** Namespace for persisting which groups are collapsed (e.g. the language id). */
   treeKey?: string;
 }) {
@@ -165,7 +195,9 @@ export function SortablePageTree({
   const [offsetLeft, setOffsetLeft] = useState(0);
 
   // Which GROUP rows are collapsed (their children hidden). Persisted per tree.
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => readCollapsed(treeKey));
+  const [collapsed, setCollapsed] = useState<Set<string>>(() =>
+    readCollapsed(treeKey),
+  );
   const toggleCollapse = (id: string) => {
     const next = new Set(collapsed);
     if (next.has(id)) {
@@ -176,7 +208,10 @@ export function SortablePageTree({
     setCollapsed(next);
     if (treeKey) {
       try {
-        window.localStorage.setItem(collapsedStoreKey(treeKey), JSON.stringify([...next]));
+        window.localStorage.setItem(
+          collapsedStoreKey(treeKey),
+          JSON.stringify([...next]),
+        );
       } catch {
         // ignore storage failures (private mode etc.)
       }
@@ -195,15 +230,26 @@ export function SortablePageTree({
     return set;
   }, [flatFull]);
   // Hide collapsed groups' descendants, then (while dragging) the dragged subtree.
-  const visible = useMemo(() => hideCollapsed(flatFull, collapsed), [flatFull, collapsed]);
-  const flat = useMemo(() => (draggingId ? removeDescendants(visible, draggingId) : visible), [visible, draggingId]);
+  const visible = useMemo(
+    () => hideCollapsed(flatFull, collapsed),
+    [flatFull, collapsed],
+  );
+  const flat = useMemo(
+    () => (draggingId ? removeDescendants(visible, draggingId) : visible),
+    [visible, draggingId],
+  );
   const ids = flat.map((f) => f.id);
 
-  const projection = draggingId && overId ? getProjection(flat, draggingId, overId, offsetLeft, INDENT) : null;
+  const projection =
+    draggingId && overId
+      ? getProjection(flat, draggingId, overId, offsetLeft, INDENT)
+      : null;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   const reset = () => {
@@ -217,7 +263,8 @@ export function SortablePageTree({
     setOverId(String(active.id));
   };
   const onDragMove = ({ delta }: DragMoveEvent) => setOffsetLeft(delta.x);
-  const onDragOver = ({ over }: DragOverEvent) => setOverId(over ? String(over.id) : null);
+  const onDragOver = ({ over }: DragOverEvent) =>
+    setOverId(over ? String(over.id) : null);
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     reset();
     if (!projection || !over) {
@@ -229,11 +276,14 @@ export function SortablePageTree({
     if (activeIndex < 0 || overIndex < 0) {
       return;
     }
-    clone[activeIndex] = { id: String(active.id), parentId: projection.parentId };
+    clone[activeIndex] = {
+      id: String(active.id),
+      parentId: projection.parentId,
+    };
     const sorted = arrayMove(clone, activeIndex, overIndex);
     const posByParent = new Map<string, number>();
     const items = sorted.map((it) => {
-      const key = it.parentId ?? '__root';
+      const key = it.parentId ?? "__root";
       const position = posByParent.get(key) ?? 0;
       posByParent.set(key, position + 1);
       return { id: it.id, parentId: it.parentId, position };
@@ -241,7 +291,9 @@ export function SortablePageTree({
     onMove(items);
   };
 
-  const draggingNode = draggingId ? flatFull.find((f) => f.id === draggingId)?.node : null;
+  const draggingNode = draggingId
+    ? flatFull.find((f) => f.id === draggingId)?.node
+    : null;
 
   return (
     <DndContext
@@ -259,7 +311,11 @@ export function SortablePageTree({
             key={item.id}
             id={item.id}
             node={item.node}
-            depth={item.id === draggingId && projection ? projection.depth : item.depth}
+            depth={
+              item.id === draggingId && projection
+                ? projection.depth
+                : item.depth
+            }
             active={activeId === item.id}
             hasChildren={parentIds.has(item.id)}
             collapsed={collapsed.has(item.id)}
@@ -270,7 +326,11 @@ export function SortablePageTree({
           />
         ))}
       </SortableContext>
-      <DragOverlay>{draggingNode ? <RowPresentation node={draggingNode} depth={0} overlay /> : null}</DragOverlay>
+      <DragOverlay>
+        {draggingNode ? (
+          <RowPresentation node={draggingNode} depth={0} overlay />
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }
@@ -298,10 +358,21 @@ function SortableRow({
   onAddChild: (parentId: string) => void;
   onSettings: (id: string) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
   const style = { transform: CSS.Translate.toString(transform), transition };
   return (
-    <div ref={setNodeRef} style={style} className={cn(isDragging && 'opacity-40')}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(isDragging && "opacity-40")}
+    >
       <RowPresentation
         node={node}
         depth={depth}
@@ -344,22 +415,24 @@ function RowPresentation({
   handleProps?: Record<string, unknown>;
 }) {
   const t = useT();
-  const isGroup = node.kind === 'GROUP';
+  const isGroup = node.kind === "GROUP";
   const label = node.config?.sidebarTitle?.trim() || node.title;
   const collapsible = isGroup && hasChildren && Boolean(onToggleCollapse);
   return (
     <div
       className={cn(
-        'group/row flex items-center gap-1 rounded-md pe-1',
-        overlay && 'bg-card shadow-lg ring-1 ring-border',
-        !overlay && active && 'bg-primary/10 font-medium text-primary',
-        !overlay && !active && 'text-foreground/80 hover:bg-muted hover:text-foreground',
+        "group/row flex items-center gap-1 rounded-md pe-1",
+        overlay && "bg-card shadow-lg ring-1 ring-border",
+        !overlay && active && "bg-primary/10 font-medium text-primary",
+        !overlay &&
+          !active &&
+          "text-foreground/80 hover:bg-muted hover:text-foreground",
       )}
       style={{ marginInlineStart: depth * INDENT }}
     >
       <button
         type="button"
-        aria-label={t('editor.dragToReorder')}
+        aria-label={t("editor.dragToReorder")}
         className="flex size-5 shrink-0 cursor-grab items-center justify-center text-muted-foreground/50 opacity-0 transition-opacity hover:text-foreground group-hover/row:opacity-100 active:cursor-grabbing"
         {...handleProps}
       >
@@ -370,7 +443,7 @@ function RowPresentation({
       {collapsible ? (
         <button
           type="button"
-          aria-label={collapsed ? t('editor.expand') : t('editor.collapse')}
+          aria-label={collapsed ? t("editor.expand") : t("editor.collapse")}
           aria-expanded={!collapsed}
           className="flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground hover:text-foreground"
           onClick={(event) => {
@@ -380,7 +453,12 @@ function RowPresentation({
         >
           {/* expanded → points down (both dirs); collapsed → points to the reading
               start (right in LTR, left in RTL). */}
-          <ChevronRight className={cn('size-3.5 transition-transform', collapsed ? 'rtl:rotate-180' : 'rotate-90')} />
+          <ChevronRight
+            className={cn(
+              "size-3.5 transition-transform",
+              collapsed ? "rtl:rotate-180" : "rotate-90",
+            )}
+          />
         </button>
       ) : (
         <span className="size-4 shrink-0" aria-hidden />
@@ -389,16 +467,32 @@ function RowPresentation({
         type="button"
         onClick={() => onSelect?.(node.id)}
         className={cn(
-          'flex min-w-0 flex-1 items-center gap-2 py-1.5 text-start text-sm',
-          isGroup && 'font-semibold text-[11px] uppercase tracking-wide',
+          "flex min-w-0 flex-1 items-center gap-2 py-1.5 text-start text-sm",
+          isGroup && "font-semibold text-[11px] uppercase tracking-wide",
         )}
       >
         {isGroup ? (
-          <Folder className={cn('size-3.5 shrink-0', active ? 'text-primary' : 'text-muted-foreground')} />
+          <Folder
+            className={cn(
+              "size-3.5 shrink-0",
+              active ? "text-primary" : "text-muted-foreground",
+            )}
+          />
         ) : hasIcon(node.icon) ? (
-          <PageIcon name={node.icon} className={cn('size-3.5 shrink-0', active ? 'text-primary' : 'text-muted-foreground')} />
+          <PageIcon
+            name={node.icon}
+            className={cn(
+              "size-3.5 shrink-0",
+              active ? "text-primary" : "text-muted-foreground",
+            )}
+          />
         ) : (
-          <FileText className={cn('size-3.5 shrink-0', active ? 'text-primary' : 'text-muted-foreground')} />
+          <FileText
+            className={cn(
+              "size-3.5 shrink-0",
+              active ? "text-primary" : "text-muted-foreground",
+            )}
+          />
         )}
         <span className="truncate">{label}</span>
       </button>
@@ -408,8 +502,8 @@ function RowPresentation({
           variant="ghost"
           className="shrink-0 cursor-pointer opacity-0 group-hover/row:opacity-100"
           onClick={() => onSettings(node.id)}
-          title={t('editor.pageSettings.title')}
-          aria-label={t('editor.pageSettings.title')}
+          title={t("editor.pageSettings.title")}
+          aria-label={t("editor.pageSettings.title")}
         >
           <Settings2 className="size-3" />
         </Button>
@@ -420,8 +514,8 @@ function RowPresentation({
           variant="ghost"
           className="shrink-0 cursor-pointer opacity-0 group-hover/row:opacity-100"
           onClick={() => onAddChild(node.id)}
-          title={t('editor.newPage')}
-          aria-label={t('editor.newPage')}
+          title={t("editor.newPage")}
+          aria-label={t("editor.newPage")}
         >
           <Plus className="size-3" />
         </Button>

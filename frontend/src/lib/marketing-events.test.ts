@@ -14,7 +14,7 @@ describe('trackMarketingEvent', () => {
     trackMarketingEvent('free_tool_started', {
       input_mode: 'html',
       page_path: '/tools/rtl-documentation-readiness',
-      product: 'nibleaf',
+      product: 'cms',
       rubric_version: '0.1.0',
       tool_slug: 'rtl-documentation-readiness',
     });
@@ -26,7 +26,7 @@ describe('trackMarketingEvent', () => {
     trackMarketingEvent('free_tool_started', {
       input_mode: 'html',
       page_path: '/tools/rtl-documentation-readiness',
-      product: 'nibleaf',
+      product: 'cms',
       rubric_version: '0.1.0',
       submitted_html: '<p>private</p>',
       tool_slug: 'rtl-documentation-readiness',

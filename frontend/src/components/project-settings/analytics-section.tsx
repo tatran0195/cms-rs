@@ -1,11 +1,18 @@
-import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
-import { Input } from '@nibleaf/design-system/components/ui/input';
-import { useT } from '@nibleaf/i18n/react';
-import { useForm } from '@tanstack/react-form';
-import { useState } from 'react';
-import type { Project } from '@/hooks/api';
-import { useUpdateProjectConfig } from '@/hooks/api';
-import { FIELD_MONO, Field, SaveBar, SectionHeader, saveConfigSection, ToggleRow } from './shared';
+import { FieldError } from "@cms/design-system/components/ui/form-field";
+import { Input } from "@cms/design-system/components/ui/input";
+import { useT } from "@cms/i18n/react";
+import { useForm } from "@tanstack/react-form";
+import { useState } from "react";
+import type { Project } from "@/hooks/api";
+import { useUpdateProjectConfig } from "@/hooks/api";
+import {
+  FIELD_MONO,
+  Field,
+  SaveBar,
+  SectionHeader,
+  saveConfigSection,
+  ToggleRow,
+} from "./shared";
 
 // Match the shapes the live-site injector accepts, so an invalid id is caught in
 // the form instead of being silently dropped (and never emitting analytics).
@@ -16,13 +23,17 @@ export function AnalyticsSection({ project }: { project: Project }) {
   const t = useT();
   const update = useUpdateProjectConfig(project.id);
   const analytics = project.config?.analytics ?? {};
-  const [campaignDimensions, setCampaignDimensions] = useState<boolean>(analytics.campaignDimensions ?? false);
-  const [storePublicSearchTerms, setStorePublicSearchTerms] = useState<boolean>(analytics.storePublicSearchTerms ?? false);
+  const [campaignDimensions, setCampaignDimensions] = useState<boolean>(
+    analytics.campaignDimensions ?? false,
+  );
+  const [storePublicSearchTerms, setStorePublicSearchTerms] = useState<boolean>(
+    analytics.storePublicSearchTerms ?? false,
+  );
 
   const form = useForm({
     defaultValues: {
-      ga4: analytics.ga4 ?? '',
-      plausible: analytics.plausible ?? '',
+      ga4: analytics.ga4 ?? "",
+      plausible: analytics.plausible ?? "",
     },
     onSubmit: async ({ value }) => {
       await saveConfigSection(update, {
@@ -43,15 +54,28 @@ export function AnalyticsSection({ project }: { project: Project }) {
         form.handleSubmit();
       }}
     >
-      <SectionHeader icon="◴" title={t('settings.analytics.title')} />
+      <SectionHeader icon="◴" title={t("settings.analytics.title")} />
 
       <form.Field
         name="ga4"
-        validators={{ onChange: ({ value }) => (value.trim() && !GA4_RE.test(value.trim()) ? t('settings.analytics.ga4.error') : undefined) }}
+        validators={{
+          onChange: ({ value }) =>
+            value.trim() && !GA4_RE.test(value.trim())
+              ? t("settings.analytics.ga4.error")
+              : undefined,
+        }}
       >
         {(field) => (
-          <Field hint={t('settings.analytics.ga4.hint')} label={t('settings.analytics.ga4.label')}>
-            <Input className={FIELD_MONO} onChange={(e) => field.handleChange(e.target.value)} placeholder="G-XXXXXXXXXX" value={field.state.value} />
+          <Field
+            hint={t("settings.analytics.ga4.hint")}
+            label={t("settings.analytics.ga4.label")}
+          >
+            <Input
+              className={FIELD_MONO}
+              onChange={(e) => field.handleChange(e.target.value)}
+              placeholder="G-XXXXXXXXXX"
+              value={field.state.value}
+            />
             <FieldError errors={field.state.meta.errors} />
           </Field>
         )}
@@ -60,11 +84,17 @@ export function AnalyticsSection({ project }: { project: Project }) {
       <form.Field
         name="plausible"
         validators={{
-          onChange: ({ value }) => (value.trim() && !PLAUSIBLE_RE.test(value.trim()) ? t('settings.analytics.plausible.error') : undefined),
+          onChange: ({ value }) =>
+            value.trim() && !PLAUSIBLE_RE.test(value.trim())
+              ? t("settings.analytics.plausible.error")
+              : undefined,
         }}
       >
         {(field) => (
-          <Field hint={t('settings.analytics.plausible.hint')} label={t('settings.analytics.plausible.label')}>
+          <Field
+            hint={t("settings.analytics.plausible.hint")}
+            label={t("settings.analytics.plausible.label")}
+          >
             <Input
               className={FIELD_MONO}
               onChange={(e) => field.handleChange(e.target.value)}
@@ -77,25 +107,27 @@ export function AnalyticsSection({ project }: { project: Project }) {
       </form.Field>
 
       <div className="mb-5 rounded-lg border border-border bg-muted/30 p-3 text-muted-foreground text-sm">
-        {t('settings.analytics.cookieConsent.managed')}
+        {t("settings.analytics.cookieConsent.managed")}
       </div>
 
       <ToggleRow
         checked={campaignDimensions}
-        hint={t('settings.analytics.campaignDimensions.hint')}
+        hint={t("settings.analytics.campaignDimensions.hint")}
         onCheckedChange={setCampaignDimensions}
-        title={t('settings.analytics.campaignDimensions.title')}
+        title={t("settings.analytics.campaignDimensions.title")}
       />
 
       <ToggleRow
         checked={storePublicSearchTerms}
-        hint={t('settings.analytics.searchTerms.hint')}
+        hint={t("settings.analytics.searchTerms.hint")}
         onCheckedChange={setStorePublicSearchTerms}
-        title={t('settings.analytics.searchTerms.title')}
+        title={t("settings.analytics.searchTerms.title")}
       />
 
       <div className="mt-4">
-        <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
+        <form.Subscribe selector={(state) => state.isSubmitting}>
+          {(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}
+        </form.Subscribe>
       </div>
     </form>
   );

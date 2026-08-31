@@ -11,7 +11,7 @@ import path from 'path';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  
+
   return {
     resolve: {
       alias: {
@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       // MDX for documentation
-      { 
+      {
         enforce: 'pre',
         ...mdx({
           remarkPlugins: [
@@ -50,7 +50,7 @@ export default defineConfig(({ mode }) => {
         outdir: './src/paraglide',
         emitTsDeclarations: true,
         strategy: ['cookie', 'preferredLanguage', 'baseLocale'],
-        cookieName: 'NIBLEAF_LOCALE',
+        cookieName: 'CMS_LOCALE',
       }),
       // Tailwind CSS
       tailwindcss(),

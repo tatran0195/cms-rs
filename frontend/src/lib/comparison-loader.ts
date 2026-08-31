@@ -4,9 +4,9 @@ export type ComparisonDataKey =
   | 'gitbookAlternatives'
   | 'mintlifyAlternatives'
   | 'readmeAlternatives'
-  | 'nibleafVsDocusaurus'
-  | 'nibleafVsGitbook'
-  | 'nibleafVsMintlify';
+  | 'cmsVsDocusaurus'
+  | 'cmsVsGitbook'
+  | 'cmsVsMintlify';
 
 /** Keep the source-heavy comparison registry out of the shared router entry.
  * Explicit property selection avoids a variable import/glob that would eagerly

@@ -1,14 +1,24 @@
-import { cn } from '@nibleaf/design-system/lib/utils';
-import type { MessageKey } from '@nibleaf/i18n';
-import { useT } from '@nibleaf/i18n/react';
-import type { Editor } from '@tiptap/core';
-import { NodeSelection } from '@tiptap/pm/state';
-import { CellSelection } from '@tiptap/pm/tables';
-import { useEditorState } from '@tiptap/react';
-import { BubbleMenu } from '@tiptap/react/menus';
-import { Bold, Check, Code, ExternalLink, Highlighter, Italic, Link as LinkIcon, Strikethrough, Unlink } from 'lucide-react';
-import { type ComponentType, useEffect, useState } from 'react';
-import { normalizeLinkUrl } from './link-utils';
+import { cn } from "@cms/design-system/lib/utils";
+import type { MessageKey } from "@cms/i18n";
+import { useT } from "@cms/i18n/react";
+import type { Editor } from "@tiptap/core";
+import { NodeSelection } from "@tiptap/pm/state";
+import { CellSelection } from "@tiptap/pm/tables";
+import { useEditorState } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
+import {
+  Bold,
+  Check,
+  Code,
+  ExternalLink,
+  Highlighter,
+  Italic,
+  Link as LinkIcon,
+  Strikethrough,
+  Unlink,
+} from "lucide-react";
+import { type ComponentType, useEffect, useState } from "react";
+import { normalizeLinkUrl } from "./link-utils";
 
 interface EditorBubbleMenuProps {
   editor: Editor;
@@ -55,11 +65,11 @@ export function LinkEditorPanel({
       setInvalid(true);
       return;
     }
-    editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
+    editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
     onDone();
   };
   const remove = () => {
-    editor.chain().focus().extendMarkRange('link').unsetLink().run();
+    editor.chain().focus().extendMarkRange("link").unsetLink().run();
     onDone();
   };
   const normalized = normalizeLinkUrl(draft);
@@ -67,9 +77,14 @@ export function LinkEditorPanel({
   // against the dashboard origin, not the published site — only absolute URLs
   // (which always carry a scheme after normalization) are openable from here.
   const openHref =
-    normalized && !normalized.startsWith('/') && !normalized.startsWith('#') && /^[a-z][a-z0-9+.-]*:/i.test(normalized) ? normalized : null;
+    normalized &&
+    !normalized.startsWith("/") &&
+    !normalized.startsWith("#") &&
+    /^[a-z][a-z0-9+.-]*:/i.test(normalized)
+      ? normalized
+      : null;
   const iconButton =
-    'flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-foreground/80 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40';
+    "flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-foreground/80 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
     <div className="flex items-center gap-1 p-0.5">
@@ -81,10 +96,10 @@ export function LinkEditorPanel({
           setInvalid(false);
         }}
         onKeyDown={(event) => {
-          if (event.key === 'Enter') {
+          if (event.key === "Enter") {
             event.preventDefault();
             save();
-          } else if (event.key === 'Escape') {
+          } else if (event.key === "Escape") {
             event.preventDefault();
             onDone();
             editor.commands.focus();
@@ -92,33 +107,51 @@ export function LinkEditorPanel({
         }}
         dir="ltr"
         placeholder="https://…  /page  #anchor"
-        aria-label={t('editor.format.linkPrompt')}
+        aria-label={t("editor.format.linkPrompt")}
         aria-invalid={invalid}
-        title={invalid ? t('editor.link.invalid') : undefined}
+        title={invalid ? t("editor.link.invalid") : undefined}
         className={cn(
-          'h-7 w-56 rounded-md border bg-background px-2 font-mono text-[12px] text-foreground outline-none placeholder:text-muted-foreground/60',
-          invalid ? 'border-destructive focus:ring-2 focus:ring-destructive/30' : 'border-border focus:ring-2 focus:ring-ring/40',
+          "h-7 w-56 rounded-md border bg-background px-2 font-mono text-[12px] text-foreground outline-none placeholder:text-muted-foreground/60",
+          invalid
+            ? "border-destructive focus:ring-2 focus:ring-destructive/30"
+            : "border-border focus:ring-2 focus:ring-ring/40",
         )}
       />
-      <button type="button" title={t('editor.link.save')} aria-label={t('editor.link.save')} onClick={save} className={iconButton}>
+      <button
+        type="button"
+        title={t("editor.link.save")}
+        aria-label={t("editor.link.save")}
+        onClick={save}
+        className={iconButton}
+      >
         <Check className="size-4" />
       </button>
       <button
         type="button"
-        title={normalized && !openHref ? t('editor.link.openRelativeHint') : t('editor.link.open')}
-        aria-label={t('editor.link.open')}
+        title={
+          normalized && !openHref
+            ? t("editor.link.openRelativeHint")
+            : t("editor.link.open")
+        }
+        aria-label={t("editor.link.open")}
         disabled={!openHref}
         onClick={() => {
           if (openHref) {
-            window.open(openHref, '_blank', 'noopener,noreferrer');
+            window.open(openHref, "_blank", "noopener,noreferrer");
           }
         }}
         className={iconButton}
       >
         <ExternalLink className="size-4" />
       </button>
-      {editor.isActive('link') ? (
-        <button type="button" title={t('editor.link.remove')} aria-label={t('editor.link.remove')} onClick={remove} className={iconButton}>
+      {editor.isActive("link") ? (
+        <button
+          type="button"
+          title={t("editor.link.remove")}
+          aria-label={t("editor.link.remove")}
+          onClick={remove}
+          className={iconButton}
+        >
           <Unlink className="size-4" />
         </button>
       ) : null}
@@ -137,13 +170,13 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
   const state = useEditorState({
     editor,
     selector: ({ editor: current }) => ({
-      bold: current.isActive('bold'),
-      italic: current.isActive('italic'),
-      strike: current.isActive('strike'),
-      code: current.isActive('code'),
-      highlight: current.isActive('highlight'),
-      link: current.isActive('link'),
-      href: (current.getAttributes('link').href as string | undefined) ?? '',
+      bold: current.isActive("bold"),
+      italic: current.isActive("italic"),
+      strike: current.isActive("strike"),
+      code: current.isActive("code"),
+      highlight: current.isActive("highlight"),
+      link: current.isActive("link"),
+      href: (current.getAttributes("link").href as string | undefined) ?? "",
       empty: current.state.selection.empty,
     }),
   });
@@ -160,23 +193,48 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
   }, [state.empty, state.link]);
 
   const buttons: MarkButton[] = [
-    { labelKey: 'editor.format.bold', icon: Bold, active: state.bold, run: () => editor.chain().focus().toggleBold().run() },
-    { labelKey: 'editor.format.italic', icon: Italic, active: state.italic, run: () => editor.chain().focus().toggleItalic().run() },
-    { labelKey: 'editor.format.strikethrough', icon: Strikethrough, active: state.strike, run: () => editor.chain().focus().toggleStrike().run() },
-    { labelKey: 'editor.format.code', icon: Code, active: state.code, run: () => editor.chain().focus().toggleCode().run() },
-    { labelKey: 'editor.format.highlight', icon: Highlighter, active: state.highlight, run: () => editor.chain().focus().toggleHighlight().run() },
+    {
+      labelKey: "editor.format.bold",
+      icon: Bold,
+      active: state.bold,
+      run: () => editor.chain().focus().toggleBold().run(),
+    },
+    {
+      labelKey: "editor.format.italic",
+      icon: Italic,
+      active: state.italic,
+      run: () => editor.chain().focus().toggleItalic().run(),
+    },
+    {
+      labelKey: "editor.format.strikethrough",
+      icon: Strikethrough,
+      active: state.strike,
+      run: () => editor.chain().focus().toggleStrike().run(),
+    },
+    {
+      labelKey: "editor.format.code",
+      icon: Code,
+      active: state.code,
+      run: () => editor.chain().focus().toggleCode().run(),
+    },
+    {
+      labelKey: "editor.format.highlight",
+      icon: Highlighter,
+      active: state.highlight,
+      run: () => editor.chain().focus().toggleHighlight().run(),
+    },
   ];
 
   return (
     <BubbleMenu
       editor={editor}
-      pluginKey="nibleaf-text-menu"
-      options={{ placement: 'top' }}
+      pluginKey="cms-text-menu"
+      options={{ placement: "top" }}
       // Show for a text selection (the classic formatting bar) or whenever the
       // caret is inside a link (link inspector). Never inside code blocks —
       // those have their own language menu and marks don't apply there.
       shouldShow={({ editor: current }) => {
-        if (!current.isEditable || current.isActive('codeBlock')) {
+        if (!current.isEditable || current.isActive("codeBlock")) {
           return false;
         }
         // Table cell selections get the table menu only — bail before the link
@@ -184,7 +242,7 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
         if (current.state.selection instanceof CellSelection) {
           return false;
         }
-        if (current.isActive('link')) {
+        if (current.isActive("link")) {
           return true;
         }
         const { selection } = current.state;
@@ -207,8 +265,8 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={button.run}
                 className={cn(
-                  'flex size-7 cursor-pointer items-center justify-center rounded-md text-foreground/80 hover:bg-muted',
-                  button.active && 'bg-muted text-foreground',
+                  "flex size-7 cursor-pointer items-center justify-center rounded-md text-foreground/80 hover:bg-muted",
+                  button.active && "bg-muted text-foreground",
                 )}
               >
                 <Icon className="size-4" />
@@ -218,22 +276,29 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
           <span className="mx-0.5 h-5 w-px bg-border" />
           <button
             type="button"
-            title={t('editor.format.link')}
-            aria-label={t('editor.format.link')}
+            title={t("editor.format.link")}
+            aria-label={t("editor.format.link")}
             aria-pressed={state.link}
             aria-expanded={showLinkPanel}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => setLinkOpen((open) => !open)}
             className={cn(
-              'flex size-7 cursor-pointer items-center justify-center rounded-md text-foreground/80 hover:bg-muted',
-              state.link && 'bg-muted text-foreground',
+              "flex size-7 cursor-pointer items-center justify-center rounded-md text-foreground/80 hover:bg-muted",
+              state.link && "bg-muted text-foreground",
             )}
           >
             <LinkIcon className="size-4" />
           </button>
         </div>
       ) : null}
-      {showLinkPanel ? <LinkEditorPanel editor={editor} initialUrl={state.href} onDone={() => setLinkOpen(false)} autoFocus={linkOpen} /> : null}
+      {showLinkPanel ? (
+        <LinkEditorPanel
+          editor={editor}
+          initialUrl={state.href}
+          onDone={() => setLinkOpen(false)}
+          autoFocus={linkOpen}
+        />
+      ) : null}
     </BubbleMenu>
   );
 }

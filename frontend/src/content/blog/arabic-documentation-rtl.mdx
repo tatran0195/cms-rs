@@ -1,6 +1,6 @@
 ---
 title: 'Arabic documentation and RTL: a practical implementation guide'
-metaTitle: 'Arabic documentation and RTL: a practical guide | Nibleaf'
+metaTitle: 'Arabic documentation and RTL: a practical guide | CMS'
 description: 'A practical guide to RTL layout, bidirectional code, Arabic search, language trees, hreflang, and typography for product documentation.'
 datePublished: '2026-07-13'
 dateModified: '2026-08-19'
@@ -10,7 +10,7 @@ translationOf: 'arabic-technical-documentation-rtl-checklist'
 readingMinutes: 7
 faqs:
   - question: 'Why can Arabic documentation search miss a word that is on the page?'
-    answer: 'An English tokenizer can drop Arabic text entirely. Nibleaf selects Orama’s Arabic tokenizer, normalizes common spelling variants, and applies conservative light morphology to prefixes, attached pronouns, and common plural or dual forms while preserving exact tokens.'
+    answer: 'An English tokenizer can drop Arabic text entirely. CMS selects Orama’s Arabic tokenizer, normalizes common spelling variants, and applies conservative light morphology to prefixes, attached pronouns, and common plural or dual forms while preserving exact tokens.'
   - question: 'Does Docusaurus support Arabic and RTL layouts?'
     answer: 'Yes. Docusaurus supports an RTL direction per locale and builds each locale separately. Search, fonts, and the editing workflow still need to be chosen and tested for Arabic.'
   - question: 'Should Arabic docs mirror the English page tree one to one?'
@@ -21,7 +21,7 @@ faqs:
 
 Turning on `dir="rtl"` is the quick part. The useful test comes next: put an option such as `-d`, a path, and a version number inside an Arabic sentence, then search for a word with and without its hamza.
 
-Those two tests expose many defects that a translated landing page will not. This guide covers the layout, bidirectional text, search, language-tree, `hreflang`, and typography checks we use in Nibleaf. You can apply the same checks to another documentation stack.
+Those two tests expose many defects that a translated landing page will not. This guide covers the layout, bidirectional text, search, language-tree, `hreflang`, and typography checks we use in CMS. You can apply the same checks to another documentation stack.
 
 ## Use logical CSS properties
 
@@ -65,7 +65,7 @@ Arabic technical writing mixes two directions. The sentence runs right-to-left, 
 
 Test the same mixed sentence in both the editor and the published reader. Then copy the command into a terminal. Visual order and copy behavior both matter.
 
-Nibleaf now applies this rule to inline and block code in the reader and the editor. Regression tests should still keep a mixed Arabic, path, and command sample because bidi defects are easy to reintroduce with a styling change.
+CMS now applies this rule to inline and block code in the reader and the editor. Regression tests should still keep a mixed Arabic, path, and command sample because bidi defects are easy to reintroduce with a styling change.
 
 ## Separate Arabic tokenization from normalization
 
@@ -80,7 +80,7 @@ Useful spelling tests include:
 | التحكــم | التحكم | tatweel |
 | إلى | الي | alef maqsura and ya |
 
-Nibleaf uses Orama's Arabic tokenizer. It also applies conservative normalization to indexed text and queries: diacritics and tatweel are removed, common alef forms are folded, and alef maqsura is folded to ya.
+CMS uses Orama's Arabic tokenizer. It also applies conservative normalization to indexed text and queries: diacritics and tatweel are removed, common alef forms are folded, and alef maqsura is folded to ya.
 
 The implementation deliberately does not fold ta marbuta `ة` into ha `ه`. They are different letters, and merging them can change the words returned. A separate conservative morphology field removes a bounded set of common conjunction, preposition, definite-article, attached-pronoun, plural, and dual affixes. That lets `مستخدم` match `للمستخدمين` without applying aggressive root extraction.
 
@@ -90,9 +90,9 @@ Original normalized tokens remain in higher-weight exact fields, while morpholog
 
 An Arabic documentation section often begins with installation, quickstart, and common support tasks rather than a complete translation of the English tree. Forcing a mirrored folder can leave the team with stubs or stale pages.
 
-Nibleaf gives each language its own page tree and connects corresponding pages through translation keys. An English `/getting-started` page and an Arabic `/البدء` page can be paired without sharing a slug or position.
+CMS gives each language its own page tree and connects corresponding pages through translation keys. An English `/getting-started` page and an Arabic `/البدء` page can be paired without sharing a slug or position.
 
-This is a product choice, not a universal rule. A docs-as-code team may prefer mirrored locale directories because that fits its review and build process. The [Nibleaf and Docusaurus comparison](/compare/nibleaf-vs-docusaurus) describes that workflow trade-off.
+This is a product choice, not a universal rule. A docs-as-code team may prefer mirrored locale directories because that fits its review and build process. The [CMS and Docusaurus comparison](/compare/cms-vs-docusaurus) describes that workflow trade-off.
 
 ## Make canonical and hreflang signals agree
 
@@ -110,7 +110,7 @@ Google may discover translated pages without `hreflang`, and fully translated pa
 
 Use generic `ar` unless the page is genuinely specific to a region. Also verify `lang`, `dir`, the canonical, `og:locale`, and structured data in the server response. Changing them only after JavaScript runs is too late for a reliable SSR implementation.
 
-Nibleaf emits alternates for pages that have an actual linked translation. It should not advertise a missing or non-indexable sibling.
+CMS emits alternates for pages that have an actual linked translation. It should not advertise a missing or non-indexable sibling.
 
 ## Test the real Arabic font stack
 
@@ -138,6 +138,6 @@ Before shipping an Arabic documentation section, verify:
 - Arabic pages declare Arabic in Open Graph and Article structured data.
 - The Arabic tree can grow without placeholder translations.
 
-Nibleaf currently provides per-language trees, RTL layout, inline-code isolation, Arabic tokenization with spelling normalization and conservative light morphology, `hreflang`, and an English and Arabic interface. The morphology deliberately favors precision over exhaustive linguistic coverage, and it cannot repair inconsistent terminology or weak translations.
+CMS currently provides per-language trees, RTL layout, inline-code isolation, Arabic tokenization with spelling normalization and conservative light morphology, `hreflang`, and an English and Arabic interface. The morphology deliberately favors precision over exhaustive linguistic coverage, and it cannot repair inconsistent terminology or weak translations.
 
 For an Arabic version of this checklist, read [كيف تنشر وثائق منتج بالعربية](/blog/arabic-technical-documentation-rtl-checklist). You can also run the HTML through the private, browser-only [RTL documentation readiness grader](/tools/rtl-documentation-readiness), [start on the hosted beta](/sign-up), or follow the public [self-hosting guide](/self-hosting).

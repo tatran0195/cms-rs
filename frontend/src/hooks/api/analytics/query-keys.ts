@@ -1,4 +1,4 @@
-import type { AnalyticsRange } from '@nibleaf/validators';
+import type { AnalyticsRange } from '@cms/validators';
 
 export const analyticsQueryKeys = {
   project: (projectId: string, range: AnalyticsRange, timezone: string) => ['analytics', 'project', projectId, range, timezone] as const,

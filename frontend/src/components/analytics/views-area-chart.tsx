@@ -1,13 +1,24 @@
-import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
-import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@nibleaf/design-system/components/ui/chart';
-import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
-import { cn } from '@nibleaf/design-system/lib/utils';
-import { useT } from '@nibleaf/i18n/react';
-import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
-import type { AnalyticsRange } from '@/hooks/api';
-import { useFormatters } from '@/lib/format';
+import {
+  Card,
+  CardAction,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@cms/design-system/components/ui/card";
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@cms/design-system/components/ui/chart";
+import { Skeleton } from "@cms/design-system/components/ui/skeleton";
+import { cn } from "@cms/design-system/lib/utils";
+import { useT } from "@cms/i18n/react";
+import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
+import type { AnalyticsRange } from "@/hooks/api";
+import { useFormatters } from "@/lib/format";
 
-const RANGES: AnalyticsRange[] = ['7d', '30d', '90d'];
+const RANGES: AnalyticsRange[] = ["7d", "30d", "90d"];
 
 /**
  * The dashboard-01 "interactive" chart: a gradient area of page views over time
@@ -31,7 +42,9 @@ export function ViewsAreaChart({
 }) {
   const t = useT();
   const { shortDate } = useFormatters();
-  const chartConfig = { views: { label: t('analytics.pageviews'), color: 'var(--chart-1)' } } satisfies ChartConfig;
+  const chartConfig = {
+    views: { label: t("analytics.pageviews"), color: "var(--chart-1)" },
+  } satisfies ChartConfig;
   const hasData = data.some((d) => d.views > 0);
 
   return (
@@ -47,11 +60,13 @@ export function ViewsAreaChart({
                 type="button"
                 onClick={() => onRangeChange(r)}
                 className={cn(
-                  'cursor-pointer rounded-md px-2.5 py-1 font-medium text-xs transition-colors',
-                  range === r ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                  "cursor-pointer rounded-md px-2.5 py-1 font-medium text-xs transition-colors",
+                  range === r
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {t(`analytics.range.${r}` as 'analytics.range.7d')}
+                {t(`analytics.range.${r}` as "analytics.range.7d")}
               </button>
             ))}
           </div>
@@ -61,22 +76,56 @@ export function ViewsAreaChart({
         {loading ? (
           <Skeleton className="h-[240px] w-full" />
         ) : hasData ? (
-          <ChartContainer config={chartConfig} className="aspect-auto h-[240px] w-full">
+          <ChartContainer
+            config={chartConfig}
+            className="aspect-auto h-[240px] w-full"
+          >
             <AreaChart data={data} margin={{ left: 4, right: 4, top: 8 }}>
               <defs>
                 <linearGradient id="fillViews" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--color-views)" stopOpacity={0.7} />
-                  <stop offset="95%" stopColor="var(--color-views)" stopOpacity={0.05} />
+                  <stop
+                    offset="5%"
+                    stopColor="var(--color-views)"
+                    stopOpacity={0.7}
+                  />
+                  <stop
+                    offset="95%"
+                    stopColor="var(--color-views)"
+                    stopOpacity={0.05}
+                  />
                 </linearGradient>
               </defs>
               <CartesianGrid vertical={false} />
-              <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} minTickGap={28} tickFormatter={(value) => shortDate(value)} />
-              <ChartTooltip cursor={false} content={<ChartTooltipContent labelFormatter={(value) => shortDate(value as string)} indicator="dot" />} />
-              <Area dataKey="views" type="natural" fill="url(#fillViews)" stroke="var(--color-views)" strokeWidth={2} />
+              <XAxis
+                dataKey="date"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                minTickGap={28}
+                tickFormatter={(value) => shortDate(value)}
+              />
+              <ChartTooltip
+                cursor={false}
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(value) => shortDate(value as string)}
+                    indicator="dot"
+                  />
+                }
+              />
+              <Area
+                dataKey="views"
+                type="natural"
+                fill="url(#fillViews)"
+                stroke="var(--color-views)"
+                strokeWidth={2}
+              />
             </AreaChart>
           </ChartContainer>
         ) : (
-          <div className="grid h-[240px] place-items-center text-center text-muted-foreground text-sm">{t('analytics.empty.traffic')}</div>
+          <div className="grid h-[240px] place-items-center text-center text-muted-foreground text-sm">
+            {t("analytics.empty.traffic")}
+          </div>
         )}
       </div>
     </Card>

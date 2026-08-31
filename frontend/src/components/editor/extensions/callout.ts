@@ -18,7 +18,7 @@ const KEYWORD_TO_VARIANT: Record<string, CalloutVariant> = Object.fromEntries(
   Object.entries(CALLOUT_VARIANTS).map(([variant, def]) => [def.keyword, variant as CalloutVariant]),
 );
 
-/** Resolve one of Nibleaf's canonical callout types/tag names to a variant. */
+/** Resolve one of CMS's canonical callout types/tag names to a variant. */
 const normalizeVariant = (raw?: string | null): CalloutVariant => {
   const t = (raw ?? 'note').toLowerCase();
   if (t in CALLOUT_VARIANTS) {
@@ -98,12 +98,12 @@ export const Callout = Node.create({
     return {
       setCallout:
         (attributes) =>
-        ({ commands }) =>
-          commands.wrapIn(this.name, attributes),
+          ({ commands }) =>
+            commands.wrapIn(this.name, attributes),
       toggleCallout:
         (attributes) =>
-        ({ commands }) =>
-          commands.toggleWrap(this.name, attributes),
+          ({ commands }) =>
+            commands.toggleWrap(this.name, attributes),
     };
   },
 

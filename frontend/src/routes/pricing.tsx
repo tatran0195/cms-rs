@@ -1,22 +1,29 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { PricingPage } from '@/components/marketing/pricing';
-import { marketingFaqs } from '@/lib/marketing-faqs';
-import { breadcrumbLd, canonicalHref, faqLd, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
+import { createFileRoute } from "@tanstack/react-router";
+import { PricingPage } from "@/components/marketing/pricing";
+import { marketingFaqs } from "@/lib/marketing-faqs";
+import {
+  breadcrumbLd,
+  canonicalHref,
+  faqLd,
+  getGithubStarsFn,
+  pageMeta,
+} from "@/lib/marketing-seo";
 
-export const Route = createFileRoute('/pricing')({
+export const Route = createFileRoute("/pricing")({
   loader: async () => ({ stars: await getGithubStarsFn() }),
   head: () => ({
     meta: pageMeta({
-      title: 'Nibleaf pricing: free cloud beta and self-hosting status',
-      description: 'Nibleaf Cloud is free while in beta. The public AGPL-3.0 release can be installed with a pinned container and Docker Compose.',
-      path: '/pricing',
+      title: "CMS pricing: free cloud beta and self-hosting status",
+      description:
+        "CMS Cloud is free while in beta. The public AGPL-3.0 release can be installed with a pinned container and Docker Compose.",
+      path: "/pricing",
     }),
-    links: [{ rel: 'canonical', href: canonicalHref('/pricing') }],
+    links: [{ rel: "canonical", href: canonicalHref("/pricing") }],
     scripts: [
       faqLd(marketingFaqs),
       breadcrumbLd([
-        { name: 'Home', path: '/' },
-        { name: 'Pricing', path: '/pricing' },
+        { name: "Home", path: "/" },
+        { name: "Pricing", path: "/pricing" },
       ]),
     ],
   }),

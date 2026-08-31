@@ -1,4 +1,4 @@
-import { translateFn } from '@nibleaf/i18n/react';
+import { translateFn } from '@cms/i18n/react';
 import { describe, expect, it } from 'vitest';
 import { CLICKHOUSE_MODE_MESSAGE_KEYS, SEARCH_RUNTIME_MESSAGE_KEYS } from './integration-config-values';
 

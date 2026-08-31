@@ -7,7 +7,7 @@ import type { Plugin } from 'vite';
  * deployed. Enable it with `BUNDLE_ANALYZE=true pnpm build:app`. */
 export function bundleAnalysisPlugin(): Plugin {
   return {
-    name: 'nibleaf-bundle-analysis',
+    name: 'cms-bundle-analysis',
     apply: 'build',
     generateBundle(outputOptions, bundle) {
       if (process.env.BUNDLE_ANALYZE !== 'true' || !outputOptions.dir?.replaceAll('\\', '/').endsWith('/.output/public')) return;

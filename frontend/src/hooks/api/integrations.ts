@@ -1,11 +1,11 @@
-import { useT } from '@nibleaf/i18n/react';
-import type { IntegrationCatalogEntry, IntegrationConnectionSummary, IntegrationProviderId } from '@nibleaf/shared/integrations';
+import { useT } from '@cms/i18n/react';
+import type { IntegrationCatalogEntry, IntegrationConnectionSummary, IntegrationProviderId } from '@cms/shared/integrations';
 import type {
   CreateProjectIntegrationBody,
   IntegrationRevisionBody,
   UpdateProjectIntegrationBody,
   VerifyProjectIntegrationBody,
-} from '@nibleaf/validators';
+} from '@cms/validators';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { ApiResponseError, getData, mutateData } from './client-helpers';

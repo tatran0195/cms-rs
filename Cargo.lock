@@ -2576,33 +2576,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
 
 [[package]]
-name = "nibleaf-access-control"
+name = "cms-access-control"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "nibleaf-db",
- "nibleaf-entity",
- "nibleaf-error",
+ "cms-db",
+ "cms-entity",
+ "cms-error",
  "tokio",
 ]
 
 [[package]]
-name = "nibleaf-analytics"
+name = "cms-analytics"
 version = "0.1.0"
 dependencies = [
  "async-trait",
  "chrono",
- "nibleaf-config",
- "nibleaf-db",
- "nibleaf-entity",
- "nibleaf-error",
+ "cms-config",
+ "cms-db",
+ "cms-entity",
+ "cms-error",
  "serde",
  "serde_json",
  "tokio",
 ]
 
 [[package]]
-name = "nibleaf-api"
+name = "cms-api"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -2613,17 +2613,17 @@ dependencies = [
  "chrono",
  "http 1.5.0",
  "hyper 1.11.0",
- "nibleaf-access-control",
- "nibleaf-auth",
- "nibleaf-biz",
- "nibleaf-config",
- "nibleaf-db",
- "nibleaf-entity",
- "nibleaf-error",
- "nibleaf-middleware",
- "nibleaf-queue",
- "nibleaf-search",
- "nibleaf-storage",
+ "cms-access-control",
+ "cms-auth",
+ "cms-biz",
+ "cms-config",
+ "cms-db",
+ "cms-entity",
+ "cms-error",
+ "cms-middleware",
+ "cms-queue",
+ "cms-search",
+ "cms-storage",
  "schemars",
  "serde",
  "serde_json",
@@ -2641,7 +2641,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "nibleaf-auth"
+name = "cms-auth"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -2651,10 +2651,10 @@ dependencies = [
  "axum-extra",
  "chrono",
  "jsonwebtoken",
- "nibleaf-config",
- "nibleaf-db",
- "nibleaf-entity",
- "nibleaf-error",
+ "cms-config",
+ "cms-db",
+ "cms-entity",
+ "cms-error",
  "serde",
  "serde_json",
  "tokio",
@@ -2664,22 +2664,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "nibleaf-biz"
+name = "cms-biz"
 version = "0.1.0"
 dependencies = [
  "async-trait",
  "bytes",
  "chrono",
  "mockall",
- "nibleaf-access-control",
- "nibleaf-auth",
- "nibleaf-config",
- "nibleaf-db",
- "nibleaf-entity",
- "nibleaf-error",
- "nibleaf-queue",
- "nibleaf-search",
- "nibleaf-storage",
+ "cms-access-control",
+ "cms-auth",
+ "cms-config",
+ "cms-db",
+ "cms-entity",
+ "cms-error",
+ "cms-queue",
+ "cms-search",
+ "cms-storage",
  "serde",
  "serde_json",
  "tokio",
@@ -2687,7 +2687,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "nibleaf-config"
+name = "cms-config"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -2697,12 +2697,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "nibleaf-db"
+name = "cms-db"
 version = "0.1.0"
 dependencies = [
  "chrono",
- "nibleaf-entity",
- "nibleaf-error",
+ "cms-entity",
+ "cms-error",
  "serde",
  "serde_json",
  "sqlx",
@@ -2712,7 +2712,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "nibleaf-entity"
+name = "cms-entity"
 version = "0.1.0"
 dependencies = [
  "chrono",
@@ -2725,7 +2725,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "nibleaf-error"
+name = "cms-error"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -2739,23 +2739,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "nibleaf-mcp"
+name = "cms-mcp"
 version = "0.1.0"
 dependencies = [
  "axum",
  "chrono",
- "nibleaf-access-control",
- "nibleaf-biz",
- "nibleaf-db",
- "nibleaf-entity",
- "nibleaf-error",
+ "cms-access-control",
+ "cms-biz",
+ "cms-db",
+ "cms-entity",
+ "cms-error",
  "serde",
  "serde_json",
  "tokio",
 ]
 
 [[package]]
-name = "nibleaf-middleware"
+name = "cms-middleware"
 version = "0.1.0"
 dependencies = [
  "async-trait",
@@ -2765,15 +2765,15 @@ dependencies = [
  "lazy_static",
  "metrics 0.23.1",
  "metrics-exporter-prometheus",
- "nibleaf-access-control",
- "nibleaf-biz",
- "nibleaf-config",
- "nibleaf-db",
- "nibleaf-entity",
- "nibleaf-error",
- "nibleaf-queue",
- "nibleaf-search",
- "nibleaf-storage",
+ "cms-access-control",
+ "cms-biz",
+ "cms-config",
+ "cms-db",
+ "cms-entity",
+ "cms-error",
+ "cms-queue",
+ "cms-search",
+ "cms-storage",
  "parking_lot",
  "serde",
  "tokio",
@@ -2785,14 +2785,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "nibleaf-queue"
+name = "cms-queue"
 version = "0.1.0"
 dependencies = [
  "async-trait",
  "chrono",
  "deadpool-redis",
- "nibleaf-config",
- "nibleaf-error",
+ "cms-config",
+ "cms-error",
  "redis",
  "serde",
  "serde_json",
@@ -2801,16 +2801,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "nibleaf-search"
+name = "cms-search"
 version = "0.1.0"
 dependencies = [
  "async-trait",
  "chrono",
  "lindera",
- "nibleaf-config",
- "nibleaf-db",
- "nibleaf-entity",
- "nibleaf-error",
+ "cms-config",
+ "cms-db",
+ "cms-entity",
+ "cms-error",
  "pgvector",
  "serde",
  "serde_json",
@@ -2819,19 +2819,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "nibleaf-server"
+name = "cms-server"
 version = "0.1.0"
 dependencies = [
  "axum",
  "config",
  "hyper 1.11.0",
- "nibleaf-api",
- "nibleaf-config",
- "nibleaf-error",
- "nibleaf-middleware",
- "nibleaf-queue",
- "nibleaf-sites",
- "nibleaf-worker",
+ "cms-api",
+ "cms-config",
+ "cms-error",
+ "cms-middleware",
+ "cms-queue",
+ "cms-sites",
+ "cms-worker",
  "tokio",
  "tower 0.4.13",
  "tower-http",
@@ -2840,19 +2840,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "nibleaf-sites"
+name = "cms-sites"
 version = "0.1.0"
 dependencies = [
  "ammonia",
  "axum",
  "chrono",
- "nibleaf-biz",
- "nibleaf-config",
- "nibleaf-db",
- "nibleaf-entity",
- "nibleaf-error",
- "nibleaf-middleware",
- "nibleaf-storage",
+ "cms-biz",
+ "cms-config",
+ "cms-db",
+ "cms-entity",
+ "cms-error",
+ "cms-middleware",
+ "cms-storage",
  "pulldown-cmark",
  "serde",
  "serde_json",
@@ -2865,32 +2865,32 @@ dependencies = [
 ]
 
 [[package]]
-name = "nibleaf-storage"
+name = "cms-storage"
 version = "0.1.0"
 dependencies = [
  "async-trait",
  "aws-config",
  "aws-sdk-s3",
  "bytes",
- "nibleaf-config",
- "nibleaf-error",
+ "cms-config",
+ "cms-error",
  "tempfile",
  "tokio",
 ]
 
 [[package]]
-name = "nibleaf-worker"
+name = "cms-worker"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "nibleaf-analytics",
- "nibleaf-biz",
- "nibleaf-config",
- "nibleaf-db",
- "nibleaf-error",
- "nibleaf-queue",
- "nibleaf-search",
- "nibleaf-storage",
+ "cms-analytics",
+ "cms-biz",
+ "cms-config",
+ "cms-db",
+ "cms-error",
+ "cms-queue",
+ "cms-search",
+ "cms-storage",
  "serde_json",
  "tokio",
  "tracing",

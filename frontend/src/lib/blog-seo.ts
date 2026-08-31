@@ -1,4 +1,4 @@
-import { siteT } from '@nibleaf/i18n/site';
+import { siteT } from '@cms/i18n/site';
 import type { BlogEntry } from './blog';
 import { breadcrumbLd, canonicalHref, faqLd, pageMeta } from './marketing-seo';
 
@@ -9,7 +9,7 @@ export function articleHead(entry: BlogEntry, translation?: BlogEntry) {
   const language = entry.language ?? 'en';
   const arabic = language === 'ar';
   const t = siteT(language);
-  const imagePath = arabic ? '/brand/raster/social/nibleaf-og-card-ar.png' : '/brand/raster/social/nibleaf-og-card.png';
+  const imagePath = arabic ? '/brand/raster/social/cms-og-card-ar.png' : '/brand/raster/social/cms-og-card.png';
   const scripts = [
     {
       type: 'application/ld+json',
@@ -23,11 +23,11 @@ export function articleHead(entry: BlogEntry, translation?: BlogEntry) {
         inLanguage: language,
         mainEntityOfPage: canonicalHref(path),
         image: canonicalHref(imagePath),
-        author: { '@type': 'Organization', name: 'Nibleaf', url: canonicalHref('/about') },
+        author: { '@type': 'Organization', name: 'CMS', url: canonicalHref('/about') },
         publisher: {
           '@type': 'Organization',
-          name: 'Nibleaf',
-          logo: { '@type': 'ImageObject', url: canonicalHref('/brand/raster/logo/nibleaf-logo-horizontal-ltr.png') },
+          name: 'CMS',
+          logo: { '@type': 'ImageObject', url: canonicalHref('/brand/raster/logo/cms-logo-horizontal-ltr.png') },
         },
       }),
     },
@@ -41,26 +41,26 @@ export function articleHead(entry: BlogEntry, translation?: BlogEntry) {
 
   return {
     meta: pageMeta({
-      title: entry.metaTitle ?? `${entry.title} | Nibleaf`,
+      title: entry.metaTitle ?? `${entry.title} | CMS`,
       description: entry.description,
       path,
       type: 'article',
       locale: arabic ? 'ar_AR' : 'en_US',
       imagePath,
-      imageAlt: arabic ? `Nibleaf: ${entry.title}` : undefined,
+      imageAlt: arabic ? `CMS: ${entry.title}` : undefined,
     }),
     links: [
       { rel: 'canonical', href: canonicalHref(path) },
       ...(translation
         ? [
-            { rel: 'alternate', hrefLang: language, href: canonicalHref(path) },
-            { rel: 'alternate', hrefLang: translation.language ?? 'en', href: canonicalHref(`/blog/${translation.slug}`) },
-            {
-              rel: 'alternate',
-              hrefLang: 'x-default',
-              href: canonicalHref(`/blog/${language === 'en' ? entry.slug : translation.slug}`),
-            },
-          ]
+          { rel: 'alternate', hrefLang: language, href: canonicalHref(path) },
+          { rel: 'alternate', hrefLang: translation.language ?? 'en', href: canonicalHref(`/blog/${translation.slug}`) },
+          {
+            rel: 'alternate',
+            hrefLang: 'x-default',
+            href: canonicalHref(`/blog/${language === 'en' ? entry.slug : translation.slug}`),
+          },
+        ]
         : []),
     ],
     scripts,

@@ -50,7 +50,7 @@ describe('MarketingAnalyticsConsent', () => {
     suspendMarketingAnalytics(GTM_TARGET);
     act(() => root.unmount());
     container.remove();
-    document.head.querySelector('#nibleaf-marketing-gtm')?.remove();
+    document.head.querySelector('#cms-marketing-gtm')?.remove();
     window.localStorage.clear();
     Reflect.deleteProperty(window, 'dataLayer');
     Reflect.deleteProperty(window, 'gtag');
@@ -65,13 +65,13 @@ describe('MarketingAnalyticsConsent', () => {
     await act(async () => renderConsent());
 
     expect(container.textContent).toContain('تحليلات اختيارية');
-    expect(document.querySelector('#nibleaf-marketing-gtm')).toBeNull();
+    expect(document.querySelector('#cms-marketing-gtm')).toBeNull();
 
     const accept = [...container.querySelectorAll('button')].find((button) => button.textContent === 'قبول التحليلات');
     await act(async () => accept?.click());
 
     expect(window.localStorage.getItem(MARKETING_ANALYTICS_CONSENT_KEY)).toBe('accepted');
-    expect(document.querySelector('#nibleaf-marketing-gtm')).not.toBeNull();
+    expect(document.querySelector('#cms-marketing-gtm')).not.toBeNull();
 
     await act(async () => renderConsent());
     const pageViews = window.dataLayer?.filter(

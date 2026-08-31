@@ -10,8 +10,8 @@ dashboard/auth chunks or dashboard translation keys.
 
 ```sh
 pnpm build:app
-pnpm --filter @nibleaf/app bundle:report
-pnpm --filter @nibleaf/app bundle:check
+pnpm --filter @cms/app bundle:report
+pnpm --filter @cms/app bundle:check
 ```
 
 The reporter reads TanStack Start's generated server manifest. For each route

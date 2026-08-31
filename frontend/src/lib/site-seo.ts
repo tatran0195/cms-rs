@@ -32,7 +32,7 @@ export interface SiteUrlOptions {
   /** Project slug, for the free `<slug>.<SITE_BASE_DOMAIN>` subdomain. */
   slug?: string | null;
   /** The custom-domain origin the request actually arrived on (stamped by
-   *  src/server.ts as x-nibleaf-site-origin). Used only when neither a primary
+   *  src/server.ts as x-cms-site-origin). Used only when neither a primary
    *  domain nor a subdomain base is known. */
   requestOrigin?: string;
   /** Override the configured base domain (tests). `null` disables it. */

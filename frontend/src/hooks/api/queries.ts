@@ -1,4 +1,4 @@
-import { useT } from '@nibleaf/i18n/react';
+import { useT } from '@cms/i18n/react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from './client-helpers';

@@ -1,15 +1,18 @@
-import { Button } from '@nibleaf/design-system/components/ui/button';
-import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
-import { Switch } from '@nibleaf/design-system/components/ui/switch';
-import { cn } from '@nibleaf/design-system/lib/utils';
-import type { MessageKey } from '@nibleaf/i18n';
-import { translateFn, useT } from '@nibleaf/i18n/react';
-import type { ProjectConfigUpdate } from '@nibleaf/validators';
-import { type ReactNode, useCallback, useEffect, useId, useRef } from 'react';
-import { toast } from 'sonner';
+import { Button } from "@cms/design-system/components/ui/button";
+import { useConfirm } from "@cms/design-system/components/ui/confirm";
+import { Switch } from "@cms/design-system/components/ui/switch";
+import { cn } from "@cms/design-system/lib/utils";
+import type { MessageKey } from "@cms/i18n";
+import { translateFn, useT } from "@cms/i18n/react";
+import type { ProjectConfigUpdate } from "@cms/validators";
+import { type ReactNode, useCallback, useEffect, useId, useRef } from "react";
+import { toast } from "sonner";
 
 type ConfigMutation = {
-  mutate: (vars: { config: ProjectConfigUpdate }, opts?: { onSuccess?: () => void; onError?: (error: unknown) => void }) => void;
+  mutate: (
+    vars: { config: ProjectConfigUpdate },
+    opts?: { onSuccess?: () => void; onError?: (error: unknown) => void },
+  ) => void;
 };
 
 const localizedFn = (key: MessageKey): string => translateFn(key);
@@ -19,17 +22,24 @@ const localizedFn = (key: MessageKey): string => translateFn(key);
  * Form `onSubmit` can `await` it. The server deep-merges section-level config,
  * so callers pass just the one section they own (e.g. `{ footer: {...} }`).
  */
-export function saveConfigSection(update: ConfigMutation, config: ProjectConfigUpdate) {
+export function saveConfigSection(
+  update: ConfigMutation,
+  config: ProjectConfigUpdate,
+) {
   return new Promise<void>((resolve) => {
     update.mutate(
       { config },
       {
         onSuccess: () => {
-          toast.success(localizedFn('common.saved'));
+          toast.success(localizedFn("common.saved"));
           resolve();
         },
         onError: (error) => {
-          toast.error(error instanceof Error ? error.message : localizedFn('settings.saveError'));
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : localizedFn("settings.saveError"),
+          );
           resolve();
         },
       },
@@ -45,14 +55,26 @@ export function saveConfigSection(update: ConfigMutation, config: ProjectConfigU
 
 /** The header at the top of every section pane: a muted glyph + the title, with
  *  an optional one-line description under it. */
-export function SectionHeader({ icon, title, description }: { icon: ReactNode; title: string; description?: string }) {
+export function SectionHeader({
+  icon,
+  title,
+  description,
+}: {
+  icon: ReactNode;
+  title: string;
+  description?: string;
+}) {
   return (
     <div className="mb-6 border-border border-b pb-3">
       <div className="flex items-center gap-2.5">
         <span className="text-base text-muted-foreground">{icon}</span>
         <h2 className="font-semibold text-lg tracking-tight">{title}</h2>
       </div>
-      {description ? <p className="mt-1.5 text-[13px] text-muted-foreground leading-snug">{description}</p> : null}
+      {description ? (
+        <p className="mt-1.5 text-[13px] text-muted-foreground leading-snug">
+          {description}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -72,11 +94,17 @@ export function Field({
   className?: string;
 }) {
   return (
-    <div className={cn('mb-6', className)}>
+    <div className={cn("mb-6", className)}>
       <label className="block font-semibold text-[13px]" htmlFor={htmlFor}>
         {label}
       </label>
-      {hint ? <p className="mt-1 mb-2.5 text-[12.5px] text-muted-foreground leading-snug">{hint}</p> : <div className="mb-2.5" />}
+      {hint ? (
+        <p className="mt-1 mb-2.5 text-[12.5px] text-muted-foreground leading-snug">
+          {hint}
+        </p>
+      ) : (
+        <div className="mb-2.5" />
+      )}
       {children}
     </div>
   );
@@ -87,8 +115,16 @@ export function Field({
  * heads a control group rather than labelling a single input. Rendered as a
  * non-`<label>` element so it isn't expected to associate with one control.
  */
-export function GroupLabel({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn('font-semibold text-[13px]', className)}>{children}</div>;
+export function GroupLabel({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("font-semibold text-[13px]", className)}>{children}</div>
+  );
 }
 
 /** A pill segmented control matching the chip-background design tokens. */
@@ -106,15 +142,25 @@ export function Segmented<T extends string>({
   disabled?: boolean;
 }) {
   return (
-    <div className={cn('inline-flex w-full gap-0.5 rounded-lg bg-muted p-0.5', disabled && 'opacity-60', className)}>
+    <div
+      className={cn(
+        "inline-flex w-full gap-0.5 rounded-lg bg-muted p-0.5",
+        disabled && "opacity-60",
+        className,
+      )}
+    >
       {options.map((option) => {
         const active = option.value === value;
         return (
           <button
             className={cn(
-              'h-8 flex-1 rounded-md px-3 font-medium text-[13px] transition-colors',
-              active ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground',
-              disabled ? 'cursor-not-allowed' : cn('cursor-pointer', !active && 'hover:text-foreground'),
+              "h-8 flex-1 rounded-md px-3 font-medium text-[13px] transition-colors",
+              active
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground",
+              disabled
+                ? "cursor-not-allowed"
+                : cn("cursor-pointer", !active && "hover:text-foreground"),
             )}
             disabled={disabled}
             key={option.value}
@@ -148,13 +194,20 @@ export function ToggleRow({
   const titleId = useId();
   return (
     <div className="flex items-center gap-4 border-border border-t py-3.5">
-      <div className={cn('flex-1 leading-snug', disabled && 'opacity-60')}>
+      <div className={cn("flex-1 leading-snug", disabled && "opacity-60")}>
         <div id={titleId} className="font-medium text-[13.5px]">
           {title}
         </div>
-        {hint ? <div className="mt-0.5 text-[12px] text-muted-foreground">{hint}</div> : null}
+        {hint ? (
+          <div className="mt-0.5 text-[12px] text-muted-foreground">{hint}</div>
+        ) : null}
       </div>
-      <Switch checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} aria-labelledby={titleId} />
+      <Switch
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={onCheckedChange}
+        aria-labelledby={titleId}
+      />
     </div>
   );
 }
@@ -163,13 +216,22 @@ export function ToggleRow({
  * Canonical ordering for every language list in the settings surfaces:
  * the default language first, then the configured position.
  */
-export function sortLanguagesDefaultFirst<T extends { isDefault: boolean; position: number }>(languages: T[]): T[] {
-  return [...languages].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || a.position - b.position);
+export function sortLanguagesDefaultFirst<
+  T extends { isDefault: boolean; position: number },
+>(languages: T[]): T[] {
+  return [...languages].sort(
+    (a, b) =>
+      (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || a.position - b.position,
+  );
 }
 
 /** A language's display label; disabled languages carry the muted "hidden"
  *  suffix so pickers always signal that the scope isn't live on the site. */
-export function LanguageOptionLabel({ language }: { language: { label: string; enabled?: boolean } }) {
+export function LanguageOptionLabel({
+  language,
+}: {
+  language: { label: string; enabled?: boolean };
+}) {
   const t = useT();
   if (language.enabled !== false) {
     return <>{language.label}</>;
@@ -177,7 +239,9 @@ export function LanguageOptionLabel({ language }: { language: { label: string; e
   return (
     <span className="inline-flex items-baseline gap-1.5">
       {language.label}
-      <span className="font-normal text-[10px] text-muted-foreground/80 uppercase tracking-wide">{t('settings.languages.hiddenBadge')}</span>
+      <span className="font-normal text-[10px] text-muted-foreground/80 uppercase tracking-wide">
+        {t("settings.languages.hiddenBadge")}
+      </span>
     </span>
   );
 }
@@ -225,20 +289,24 @@ export function LanguageScopePicker({
   };
   return (
     <div className="mb-6">
-      <GroupLabel>{t('settings.chrome.scope.label')}</GroupLabel>
-      <p className="mt-1 mb-2.5 text-[12.5px] text-muted-foreground leading-snug">{hint}</p>
+      <GroupLabel>{t("settings.chrome.scope.label")}</GroupLabel>
+      <p className="mt-1 mb-2.5 text-[12.5px] text-muted-foreground leading-snug">
+        {hint}
+      </p>
       <Segmented
         onChange={(next) => void handleChange(next)}
         options={[
           {
-            value: 'default',
+            value: "default",
             label: defaultLanguage ? (
               <span className="inline-flex items-baseline gap-1.5">
-                {t('settings.chrome.scope.default')}
-                <span className="font-normal text-[12px] text-muted-foreground">· {defaultLanguage.label}</span>
+                {t("settings.chrome.scope.default")}
+                <span className="font-normal text-[12px] text-muted-foreground">
+                  · {defaultLanguage.label}
+                </span>
               </span>
             ) : (
-              t('settings.chrome.scope.default')
+              t("settings.chrome.scope.default")
             ),
           },
           ...languages.map((language) => ({
@@ -246,7 +314,11 @@ export function LanguageScopePicker({
             label: <LanguageOptionLabel language={language} />,
           })),
         ]}
-        value={languages.some((language) => language.id === value) ? value : 'default'}
+        value={
+          languages.some((language) => language.id === value)
+            ? value
+            : "default"
+        }
       />
     </div>
   );
@@ -258,7 +330,13 @@ export function LanguageScopePicker({
  * flag re-renders; the flag resets to clean when the scope form unmounts
  * (keyed remount on scope switch).
  */
-export function DirtyStateReporter({ dirty, onDirtyChange }: { dirty: boolean; onDirtyChange?: (dirty: boolean) => void }) {
+export function DirtyStateReporter({
+  dirty,
+  onDirtyChange,
+}: {
+  dirty: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   useEffect(() => {
     onDirtyChange?.(dirty);
     return () => onDirtyChange?.(false);
@@ -273,7 +351,10 @@ export function DirtyStateReporter({ dirty, onDirtyChange }: { dirty: boolean; o
  * scope switch while that ref is dirty. A ref keeps per-keystroke dirty
  * updates from re-rendering the section.
  */
-export function useScopeDirtyGuard(): { guard: () => Promise<boolean>; setDirty: (dirty: boolean) => void } {
+export function useScopeDirtyGuard(): {
+  guard: () => Promise<boolean>;
+  setDirty: (dirty: boolean) => void;
+} {
   const t = useT();
   const confirm = useConfirm();
   const dirtyRef = useRef(false);
@@ -285,9 +366,9 @@ export function useScopeDirtyGuard(): { guard: () => Promise<boolean>; setDirty:
       return true;
     }
     return confirm({
-      title: t('settings.chrome.scope.discardTitle'),
-      description: t('settings.chrome.scope.discardDescription'),
-      confirmLabel: t('settings.chrome.scope.discardConfirm'),
+      title: t("settings.chrome.scope.discardTitle"),
+      description: t("settings.chrome.scope.discardDescription"),
+      confirmLabel: t("settings.chrome.scope.discardConfirm"),
       destructive: true,
     });
   }, [confirm, t]);
@@ -295,12 +376,18 @@ export function useScopeDirtyGuard(): { guard: () => Promise<boolean>; setDirty:
 }
 
 /** The right-aligned Save button row used at the bottom of each form section. */
-export function SaveBar({ isSubmitting, disabled = false }: { isSubmitting: boolean; disabled?: boolean }) {
+export function SaveBar({
+  isSubmitting,
+  disabled = false,
+}: {
+  isSubmitting: boolean;
+  disabled?: boolean;
+}) {
   const t = useT();
   return (
     <div className="mt-2 flex justify-end">
       <Button disabled={isSubmitting || disabled} type="submit">
-        {isSubmitting ? t('common.saving') : t('common.save')}
+        {isSubmitting ? t("common.saving") : t("common.save")}
       </Button>
     </div>
   );
@@ -309,12 +396,13 @@ export function SaveBar({ isSubmitting, disabled = false }: { isSubmitting: bool
 /** Shared input styling tokens. These layer on top of the base `Input`/`Textarea`
  *  spec (height 36px / h-9, rounded-md, focus ring) — callers inherit that, so the
  *  tokens only carry the font and, for textareas, the taller min-height. */
-export const FIELD_INPUT = 'text-sm';
-export const FIELD_MONO = 'font-mono text-sm';
-export const FIELD_TEXTAREA = 'min-h-[84px] text-sm';
+export const FIELD_INPUT = "text-sm";
+export const FIELD_MONO = "font-mono text-sm";
+export const FIELD_TEXTAREA = "min-h-[84px] text-sm";
 
 /** Dense list-row inputs (variable/redirect/navbar rows): shorter and tighter.
  *  They always sit inside a bordered list container, so they carry a solid
  *  background and read as wells instead of border-on-border frames. */
-export const FIELD_COMPACT = 'h-8 rounded-md bg-background text-[13px]';
-export const FIELD_COMPACT_MONO = 'h-8 rounded-md bg-background font-mono text-[13px]';
+export const FIELD_COMPACT = "h-8 rounded-md bg-background text-[13px]";
+export const FIELD_COMPACT_MONO =
+  "h-8 rounded-md bg-background font-mono text-[13px]";

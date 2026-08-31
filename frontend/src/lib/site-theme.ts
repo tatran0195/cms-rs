@@ -6,8 +6,8 @@ import {
   THEME_TOKEN_CSS_VARIABLES,
   type ThemeColorTokens,
   type ThemeOwnedProjectConfig,
-} from '@nibleaf/shared/themes';
-import type { ProjectConfig } from '@nibleaf/validators';
+} from '@cms/shared/themes';
+import type { ProjectConfig } from '@cms/validators';
 import type { CSSProperties } from 'react';
 
 const safeTokens = (tokens: ThemeColorTokens, fallback: ThemeColorTokens): ThemeColorTokens =>
@@ -84,7 +84,7 @@ const inlineScriptJson = (value: string): string =>
  * appearance wins before CSS paints. Inputs are JSON-encoded and the default is
  * already constrained by ProjectConfig's appearance enum. */
 export const siteThemeNoFlashScript = (projectId: string, configured: 'light' | 'dark' | 'system' = 'light'): string =>
-  `(function(){try{var k='nibleaf.site.theme.'+${inlineScriptJson(projectId)};var s=localStorage.getItem(k);var c=${inlineScriptJson(configured)};var d=s==='dark'||(s!=='light'&&(c==='dark'||(c==='system'&&matchMedia('(prefers-color-scheme: dark)').matches)));var r=d?'dark':'light';var e=document.documentElement;e.classList.remove('light','dark');e.classList.add(r);e.style.colorScheme=r;}catch(_){}})();`;
+  `(function(){try{var k='cms.site.theme.'+${inlineScriptJson(projectId)};var s=localStorage.getItem(k);var c=${inlineScriptJson(configured)};var d=s==='dark'||(s!=='light'&&(c==='dark'||(c==='system'&&matchMedia('(prefers-color-scheme: dark)').matches)));var r=d?'dark':'light';var e=document.documentElement;e.classList.remove('light','dark');e.classList.add(r);e.style.colorScheme=r;}catch(_){}})();`;
 
 export const projectThemeCss = (config?: ProjectConfig | null): string => {
   const theme = resolveProjectTheme(config);
@@ -97,19 +97,19 @@ export const projectThemeCss = (config?: ProjectConfig | null): string => {
   const legacyDarkAccent = `color-mix(in oklab,${legacyAccent} 72%,white)`;
   const colorRules = config?.theme
     ? [
-        `:root,.nibleaf-site-chrome{${tokenDeclarations(light)};--radius:${radiusValue(theme.layout.radius)}}`,
-        `:root.dark,:root.dark .nibleaf-site-chrome,.nibleaf-site-chrome.dark{${tokenDeclarations(dark)}}`,
-      ]
+      `:root,.cms-site-chrome{${tokenDeclarations(light)};--radius:${radiusValue(theme.layout.radius)}}`,
+      `:root.dark,:root.dark .cms-site-chrome,.cms-site-chrome.dark{${tokenDeclarations(dark)}}`,
+    ]
     : [
-        `:root,.nibleaf-site-chrome{${legacyTokenDeclarations(legacyAccent)};--primary:${legacyAccent};--ring:${legacyAccent};--radius:${radiusValue(theme.layout.radius)}}`,
-        `:root.dark,:root.dark .nibleaf-site-chrome,.nibleaf-site-chrome.dark{--theme-accent:${legacyDarkAccent};--theme-focus:${legacyDarkAccent};--theme-info:${legacyDarkAccent};--primary:${legacyDarkAccent};--ring:${legacyDarkAccent}}`,
-      ];
+      `:root,.cms-site-chrome{${legacyTokenDeclarations(legacyAccent)};--primary:${legacyAccent};--ring:${legacyAccent};--radius:${radiusValue(theme.layout.radius)}}`,
+      `:root.dark,:root.dark .cms-site-chrome,.cms-site-chrome.dark{--theme-accent:${legacyDarkAccent};--theme-focus:${legacyDarkAccent};--theme-info:${legacyDarkAccent};--primary:${legacyDarkAccent};--ring:${legacyDarkAccent}}`,
+    ];
   return [
     ...colorRules,
     headingFont
-      ? `.nibleaf-site-chrome :is(h1,h2,h3,h4,h5,h6){font-family:'${headingFont}','Noto Sans Arabic','Segoe UI',var(--font-sans,sans-serif)}`
+      ? `.cms-site-chrome :is(h1,h2,h3,h4,h5,h6){font-family:'${headingFont}','Noto Sans Arabic','Segoe UI',var(--font-sans,sans-serif)}`
       : '',
-    codeFont ? `.nibleaf-site-chrome :is(code,pre,kbd){font-family:'${codeFont}',var(--font-mono,monospace)}` : '',
+    codeFont ? `.cms-site-chrome :is(code,pre,kbd){font-family:'${codeFont}',var(--font-mono,monospace)}` : '',
   ]
     .filter(Boolean)
     .join('');

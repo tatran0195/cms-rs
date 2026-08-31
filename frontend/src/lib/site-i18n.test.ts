@@ -1,4 +1,4 @@
-import { siteT } from '@nibleaf/i18n/site';
+import { siteT } from '@cms/i18n/site';
 import { describe, expect, it } from 'vitest';
 
 describe('published-site reader localization', () => {

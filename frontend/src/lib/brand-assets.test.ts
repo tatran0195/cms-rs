@@ -12,9 +12,9 @@ function readPublicFile(relativePath: string) {
   return readFileSync(resolve(appRoot, 'public', relativePath), 'utf8');
 }
 
-describe('Nibleaf brand assets', () => {
+describe('CMS brand assets', () => {
   it('keeps one canonical Reversible Source geometry across standalone mark variants', () => {
-    for (const filename of ['nibleaf-icon.svg', 'nibleaf-icon-reverse.svg', 'nibleaf-icon-currentcolor.svg', 'nibleaf-icon-monochrome.svg']) {
+    for (const filename of ['cms-icon.svg', 'cms-icon-reverse.svg', 'cms-icon-currentcolor.svg', 'cms-icon-monochrome.svg']) {
       expect(readFileSync(resolve(brandRoot, filename), 'utf8')).toContain(reversibleSourcePath);
     }
   });

@@ -1,5 +1,5 @@
-import { useT } from '@nibleaf/i18n/react';
-import type { ResolvedTheme, ThemeConfigChange, ThemeTemplateV1 } from '@nibleaf/shared/themes';
+import { useT } from '@cms/i18n/react';
+import type { ResolvedTheme, ThemeConfigChange, ThemeTemplateV1 } from '@cms/shared/themes';
 import type {
   AddDomainBody,
   AiDraftBody,
@@ -23,8 +23,8 @@ import type {
   UpdateProjectBody,
   UpdateWorkspaceSettingsBody,
   UpsertOpenApiBody,
-} from '@nibleaf/validators';
-import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
+} from '@cms/validators';
+import { inferSafeInlineAssetContentType } from '@cms/validators';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { ApiResponseError, getData, mutateData } from './client-helpers';
@@ -589,9 +589,9 @@ export const useUpdateWorkspaceSettings = (projectId?: string) => {
     mutationFn: async (body: UpdateWorkspaceSettingsBody) =>
       projectId
         ? mutateData<WorkspaceSettings>(
-            await api.app.projects[':projectId'].settings.$patch({ param: { projectId }, json: body }),
-            'Could not update settings.',
-          )
+          await api.app.projects[':projectId'].settings.$patch({ param: { projectId }, json: body }),
+          'Could not update settings.',
+        )
         : mutateData<WorkspaceSettings>(await api.app.workspace.$patch({ json: body }), 'Could not update workspace settings.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: projectId ? queryKeys.workspace.projectSettings(projectId) : queryKeys.workspace.settings() }),
   });

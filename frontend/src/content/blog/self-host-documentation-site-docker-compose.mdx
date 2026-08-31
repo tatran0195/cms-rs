@@ -4,7 +4,7 @@ description: 'A practical walkthrough for self-hosting a documentation site with
 datePublished: '2026-07-13'
 dateModified: '2026-08-15'
 tags: ['self-hosting', 'docker', 'guide']
-related: ['introducing-nibleaf-open-source-mintlify-alternative', 'open-source-documentation-tools', 'docs-should-live-in-plain-markdown']
+related: ['introducing-cms-open-source-mintlify-alternative', 'open-source-documentation-tools', 'docs-should-live-in-plain-markdown']
 readingMinutes: 6
 faqs:
   - question: 'How much RAM do I need to self-host a documentation site?'
@@ -19,15 +19,15 @@ faqs:
 
 Self-hosting a documentation platform is not mainly a Docker problem. The containers are the easy part. The work is deciding where state lives, which hostnames must resolve, how upgrades are pinned, and whether a backup can be restored after the original server is gone.
 
-This guide gives you a production checklist for a Compose-based docs stack. It uses Nibleaf's architecture as the concrete example, including its public repository, pinned container release, and guided installer.
+This guide gives you a production checklist for a Compose-based docs stack. It uses CMS's architecture as the concrete example, including its public repository, pinned container release, and guided installer.
 
-<Callout title="Nibleaf installer">
+<Callout title="CMS installer">
 The public repository, pinned GHCR release, and guided installer are anonymously accessible. Start with the [self-hosting guide](/self-hosting), then use this article to plan DNS, backups, upgrades, and recovery before moving production content.
 </Callout>
 
 ## Draw the stack before renting a server
 
-A full documentation platform usually has more state than a static site generator. Nibleaf's Compose design separates six jobs:
+A full documentation platform usually has more state than a static site generator. CMS's Compose design separates six jobs:
 
 | Service | Responsibility | Durable state? |
 | --- | --- | --- |
@@ -130,6 +130,6 @@ Run these checks again after changing the reverse proxy, base domain, or CDN. Th
 
 Compose fits a small team that wants one understandable deployment on one host and accepts responsibility for database, storage, mail, DNS, TLS, monitoring, and restores. It is less attractive when the team has no operator or needs multi-region failover.
 
-If engineers alone maintain a small set of Markdown files, a static generator may be simpler. The [Nibleaf and Docusaurus comparison](/compare/nibleaf-vs-docusaurus) explains that trade-off. If the team needs a visual editor today and does not want to operate the stack, [Nibleaf Cloud is in free beta](/pricing).
+If engineers alone maintain a small set of Markdown files, a static generator may be simpler. The [CMS and Docusaurus comparison](/compare/cms-vs-docusaurus) explains that trade-off. If the team needs a visual editor today and does not want to operate the stack, [CMS Cloud is in free beta](/pricing).
 
-For Nibleaf specifically, run the [guided installer](/self-hosting) on a disposable server first. Complete this checklist there, including a restore rehearsal, before moving real documentation.
+For CMS specifically, run the [guided installer](/self-hosting) on a disposable server first. Complete this checklist there, including a restore rehearsal, before moving real documentation.

@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { publishedSiteLogo } from './site-branding';
 
 describe('publishedSiteLogo', () => {
-  it('uses the mark-only asset for the official Nibleaf documentation wordmark', () => {
-    expect(publishedSiteLogo('https://nibleaf.com/brand/raster/logo/nibleaf-logo-horizontal-ltr.png', 'light')).toEqual({
-      src: 'https://nibleaf.com/brand/nibleaf-icon.svg',
+  it('uses the mark-only asset for the official CMS documentation wordmark', () => {
+    expect(publishedSiteLogo('https://cms.com/brand/raster/logo/cms-logo-horizontal-ltr.png', 'light')).toEqual({
+      src: 'https://cms.com/brand/cms-icon.svg',
       markOnly: true,
     });
-    expect(publishedSiteLogo('https://nibleaf.com/brand/raster/logo/nibleaf-logo-horizontal-ltr-reverse.png', 'dark')).toEqual({
-      src: 'https://nibleaf.com/brand/nibleaf-icon-reverse.svg',
+    expect(publishedSiteLogo('https://cms.com/brand/raster/logo/cms-logo-horizontal-ltr-reverse.png', 'dark')).toEqual({
+      src: 'https://cms.com/brand/cms-icon-reverse.svg',
       markOnly: true,
     });
   });

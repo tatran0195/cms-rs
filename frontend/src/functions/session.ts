@@ -1,4 +1,4 @@
-import { auth } from '@nibleaf/auth/server';
+import { auth } from '@cms/auth/server';
 import { createServerFn } from '@tanstack/react-start';
 import { getRequestHeaders } from '@tanstack/react-start/server';
 

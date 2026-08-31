@@ -16,9 +16,9 @@ describe('marketing sitemap', () => {
       '/contact': '2026-08-15',
       '/developers': '2026-08-24',
       '/tools/rtl-documentation-readiness': '2026-08-19',
-      '/compare/nibleaf-vs-mintlify': '2026-08-17',
-      '/compare/nibleaf-vs-gitbook': '2026-08-17',
-      '/compare/nibleaf-vs-docusaurus': '2026-08-17',
+      '/compare/cms-vs-mintlify': '2026-08-17',
+      '/compare/cms-vs-gitbook': '2026-08-17',
+      '/compare/cms-vs-docusaurus': '2026-08-17',
       '/alternatives/mintlify': '2026-08-17',
       '/alternatives/gitbook': '2026-08-17',
       '/alternatives/readme': '2026-08-17',
@@ -29,11 +29,11 @@ describe('marketing sitemap', () => {
 
   it('renders one canonical XML entry per route with its recorded lastmod', () => {
     const entries = marketingSitemapEntries();
-    const xml = marketingSitemap('https://nibleaf.com');
+    const xml = marketingSitemap('https://cms.com');
 
     expect(xml.match(/<url>/g)).toHaveLength(entries.length);
-    expect(xml).toContain('<loc>https://nibleaf.com/pricing</loc>\n    <lastmod>2026-08-24</lastmod>');
-    expect(xml).toContain('<loc>https://nibleaf.com/cloud</loc>\n    <lastmod>2026-07-13</lastmod>');
+    expect(xml).toContain('<loc>https://cms.com/pricing</loc>\n    <lastmod>2026-08-24</lastmod>');
+    expect(xml).toContain('<loc>https://cms.com/cloud</loc>\n    <lastmod>2026-07-13</lastmod>');
     expect(xml).not.toContain('<priority>');
     expect(xml).not.toContain('<changefreq>');
   });

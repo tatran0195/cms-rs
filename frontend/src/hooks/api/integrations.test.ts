@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(),
 }));
 
-vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
+vi.mock('@cms/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@/services/api', () => ({
   api: {
     app: {
@@ -64,9 +64,9 @@ describe('integration mutation conflict recovery', () => {
       mutate = () =>
         action === 'update'
           ? update.mutateAsync({
-              providerId: 'slack',
-              body: { providerId: 'slack', label: 'Alerts', expectedRevision: 1, idempotencyKey: 'update-key' },
-            })
+            providerId: 'slack',
+            body: { providerId: 'slack', label: 'Alerts', expectedRevision: 1, idempotencyKey: 'update-key' },
+          })
           : activate.mutateAsync({ providerId: 'slack', body: { expectedRevision: 1, idempotencyKey: 'activate-key' } });
       return null;
     }

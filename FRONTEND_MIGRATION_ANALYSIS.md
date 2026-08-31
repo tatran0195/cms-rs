@@ -1,17 +1,17 @@
-# Frontend Migration Analysis - Original Nibleaf Repository
+# Frontend Migration Analysis - Original CMS Repository
 
 ## Date: 2026-08-27
 
 ## 🎯 Objective
 
-Analyze the original Nibleaf repository to understand its frontend architecture and create a migration plan to work with our new Rust backend.
+Analyze the original CMS repository to understand its frontend architecture and create a migration plan to work with our new Rust backend.
 
 ---
 
 ## 📊 Original Repository Structure
 
 ```
-nibleaf-original/
+cms-original/
 ├── apps/
 │   ├── app/                    # Frontend application (Vite + @tanstack/react-start)
 │   │   ├── src/
@@ -63,18 +63,18 @@ nibleaf-original/
 
 ### Current Stack
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Vite** | Latest | Build tool |
-| **@tanstack/react-start** | 1.168.48 | Full-stack React framework |
-| **React** | 18.x | UI library |
-| **TypeScript** | Latest | Type system |
-| **Tailwind CSS** | Latest | Styling |
-| **Nitro** | Latest | Server framework (SSR) |
-| **MDX** | 3.x | Markdown + JSX |
-| **Paraglide** | Latest | i18n |
-| **@tanstack/react-query** | 5.x | Data fetching |
-| **@tanstack/react-router** | 1.x | Routing |
+| Technology                 | Version  | Purpose                    |
+| -------------------------- | -------- | -------------------------- |
+| **Vite**                   | Latest   | Build tool                 |
+| **@tanstack/react-start**  | 1.168.48 | Full-stack React framework |
+| **React**                  | 18.x     | UI library                 |
+| **TypeScript**             | Latest   | Type system                |
+| **Tailwind CSS**           | Latest   | Styling                    |
+| **Nitro**                  | Latest   | Server framework (SSR)     |
+| **MDX**                    | 3.x      | Markdown + JSX             |
+| **Paraglide**              | Latest   | i18n                       |
+| **@tanstack/react-query**  | 5.x      | Data fetching              |
+| **@tanstack/react-router** | 1.x      | Routing                    |
 
 ### Key Features
 
@@ -89,6 +89,7 @@ nibleaf-original/
 ### Build Configuration
 
 **vite.config.ts** highlights:
+
 - Uses `@tanstack/react-start/plugin/vite` for SSR
 - Uses `nitro/vite` for server framework
 - Proxies `/api/**` to `VITE_API_URL` (default: http://localhost:4311)
@@ -140,6 +141,7 @@ apps/app/src/
 ### Dependencies Summary
 
 **Core Dependencies:**
+
 - `@tanstack/react-start`: Full-stack framework
 - `@tanstack/react-query`: Data fetching
 - `@tanstack/react-router`: Routing
@@ -152,6 +154,7 @@ apps/app/src/
 - `paraglide`: i18n
 
 **UI Libraries:**
+
 - `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`: Drag and drop
 - `@tiptap/core`, `@tiptap/extension-*`: Rich text editor
 - `@radix-ui/*`: Accessible UI components
@@ -163,15 +166,15 @@ apps/app/src/
 
 ### Current Stack
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Hono** | 2.x | Web framework |
-| **@hono/node-server** | 2.x | Node.js server adapter |
-| **Prisma** | Latest | ORM |
-| **Better Auth** | Latest | Authentication |
-| **BullMQ** | Latest | Job queue (Redis) |
-| **ClickHouse** | Latest | Analytics |
-| **PostgreSQL** | 14+ | Primary database |
+| Technology            | Version | Purpose                |
+| --------------------- | ------- | ---------------------- |
+| **Hono**              | 2.x     | Web framework          |
+| **@hono/node-server** | 2.x     | Node.js server adapter |
+| **Prisma**            | Latest  | ORM                    |
+| **Better Auth**       | Latest  | Authentication         |
+| **BullMQ**            | Latest  | Job queue (Redis)      |
+| **ClickHouse**        | Latest  | Analytics              |
+| **PostgreSQL**        | 14+     | Primary database       |
 
 ### API Structure
 
@@ -219,6 +222,7 @@ apps/server/src/
 **Base URL**: `/api`
 
 **Modules:**
+
 - `/auth/*` - Authentication (Better Auth)
 - `/mcp` - MCP protocol
 - `/app/*` - Main application API (25+ submodules)
@@ -226,6 +230,7 @@ apps/server/src/
 - `/public/*` - Public API
 
 **Key Endpoints:**
+
 - `GET /health` - Health check
 - `GET /docs` - API documentation (Scalar)
 - `GET /openapi.json` - OpenAPI spec
@@ -239,6 +244,7 @@ apps/server/src/
 **Prisma Schema**: `packages/database/prisma/schema.prisma`
 
 **Tables** (40+ tables):
+
 - User
 - Organization
 - Project
@@ -267,20 +273,20 @@ apps/server/src/
 
 ### Current State
 
-| Aspect | Original | Our Rust Implementation |
-|--------|----------|------------------------|
-| **Backend** | Node.js + Hono | Rust + Axum |
-| **Frontend** | Vite + @tanstack/react-start | Need to migrate |
-| **Database** | PostgreSQL + Prisma | PostgreSQL + SQLx |
-| **Auth** | Better Auth | Custom (in-process) |
-| **API Routes** | `/api/*` | `/api/*` (matching) |
-| **Port** | 4311 | 3000 (configurable) |
+| Aspect         | Original                     | Our Rust Implementation |
+| -------------- | ---------------------------- | ----------------------- |
+| **Backend**    | Node.js + Hono               | Rust + Axum             |
+| **Frontend**   | Vite + @tanstack/react-start | Need to migrate         |
+| **Database**   | PostgreSQL + Prisma          | PostgreSQL + SQLx       |
+| **Auth**       | Better Auth                  | Custom (in-process)     |
+| **API Routes** | `/api/*`                     | `/api/*` (matching)     |
+| **Port**       | 4311                         | 3000 (configurable)     |
 
 ### Key Insight
 
 **The original frontend already uses Vite!** We don't need to migrate the build system - we need to:
 
-1. **Copy** the frontend from `nibleaf-original/apps/app/`
+1. **Copy** the frontend from `cms-original/apps/app/`
 2. **Update** API endpoints to match Rust backend
 3. **Update** authentication to work with Rust JWT/sessions
 4. **Update** environment configuration
@@ -294,13 +300,14 @@ apps/server/src/
 ### Phase 1: Setup (1-2 hours)
 
 1. **Copy frontend to our workspace**
+
    ```bash
-   cp -r /home/user/nibleaf-original/apps/app /home/user/nibleaf-rs/frontend-app
+   cp -r /home/user/cms-original/apps/app /home/user/cms-rs/frontend-app
    ```
 
 2. **Update package.json**
-   - Change name from `@nibleaf/app` to `nibleaf-app`
-   - Update dependencies (remove workspace:* references)
+   - Change name from `@cms/app` to `cms-app`
+   - Update dependencies (remove workspace:\* references)
    - Add our Rust backend as API dependency
 
 3. **Update Vite configuration**
@@ -311,12 +318,14 @@ apps/server/src/
 ### Phase 2: API Endpoint Mapping (2-4 hours)
 
 **Original API** (Hono):
+
 - `/api/auth/*` → Better Auth
 - `/api/app/*` → Main app API
 - `/api/admin/*` → Admin API
 - `/api/public/*` → Public API
 
 **Our Rust API** (Axum):
+
 - `/api/auth/*` → Our auth handlers ✅
 - `/api/orgs/*` → Organizations (was `/api/app/orgs/*`)
 - `/api/projects/*` → Projects (was `/api/app/projects/*`)
@@ -326,24 +335,25 @@ apps/server/src/
 
 **Mapping Strategy:**
 
-| Original Endpoint | Rust Endpoint | Action |
-|-------------------|---------------|--------|
-| `/api/auth/*` | `/api/auth/*` | ✅ Direct match |
-| `/api/app/orgs/*` | `/api/orgs/*` | Update frontend |
-| `/api/app/projects/*` | `/api/projects/*` | Update frontend |
-| `/api/app/pages/*` | `/api/pages/*` | Update frontend |
-| `/api/app/branches/*` | `/api/branches/*` | Update frontend |
-| `/api/app/languages/*` | `/api/languages/*` | Update frontend |
-| `/api/app/git/*` | `/api/git/*` | Update frontend |
+| Original Endpoint         | Rust Endpoint         | Action          |
+| ------------------------- | --------------------- | --------------- |
+| `/api/auth/*`             | `/api/auth/*`         | ✅ Direct match |
+| `/api/app/orgs/*`         | `/api/orgs/*`         | Update frontend |
+| `/api/app/projects/*`     | `/api/projects/*`     | Update frontend |
+| `/api/app/pages/*`        | `/api/pages/*`        | Update frontend |
+| `/api/app/branches/*`     | `/api/branches/*`     | Update frontend |
+| `/api/app/languages/*`    | `/api/languages/*`    | Update frontend |
+| `/api/app/git/*`          | `/api/git/*`          | Update frontend |
 | `/api/app/integrations/*` | `/api/integrations/*` | Update frontend |
-| `/api/app/deployments/*` | `/api/deployments/*` | Update frontend |
-| `/api/app/domains/*` | `/api/domains/*` | Update frontend |
-| `/api/app/comments/*` | `/api/comments/*` | Update frontend |
-| `/api/app/assets/*` | `/api/assets/*` | Update frontend |
-| `/api/admin/*` | `/api/admin/*` | ✅ Direct match |
-| `/api/public/*` | `/api/public/*` | ✅ Direct match |
+| `/api/app/deployments/*`  | `/api/deployments/*`  | Update frontend |
+| `/api/app/domains/*`      | `/api/domains/*`      | Update frontend |
+| `/api/app/comments/*`     | `/api/comments/*`     | Update frontend |
+| `/api/app/assets/*`       | `/api/assets/*`       | Update frontend |
+| `/api/admin/*`            | `/api/admin/*`        | ✅ Direct match |
+| `/api/public/*`           | `/api/public/*`       | ✅ Direct match |
 
 **Implementation:**
+
 - Create a mapping utility in frontend
 - Update all API calls to use new endpoints
 - Search and replace `/api/app/` with `/api/`
@@ -371,33 +381,35 @@ apps/server/src/
 
 **Endpoint Mapping:**
 
-| Action | Original | Rust | Status |
-|--------|----------|------|--------|
-| Login | `POST /api/auth/sign-in/email` | `POST /api/auth/login` | ⚠️ Update |
-| Register | `POST /api/auth/sign-up/email` | `POST /api/auth/register` | ⚠️ Update |
-| Logout | `POST /api/auth/sign-out` | `POST /api/auth/logout` | ⚠️ Update |
-| Get Session | `GET /api/auth/session` | `GET /api/auth/me` | ⚠️ Update |
-| Refresh | `POST /api/auth/refresh` | `POST /api/auth/refresh` | ✅ Match |
+| Action      | Original                       | Rust                      | Status    |
+| ----------- | ------------------------------ | ------------------------- | --------- |
+| Login       | `POST /api/auth/sign-in/email` | `POST /api/auth/login`    | ⚠️ Update |
+| Register    | `POST /api/auth/sign-up/email` | `POST /api/auth/register` | ⚠️ Update |
+| Logout      | `POST /api/auth/sign-out`      | `POST /api/auth/logout`   | ⚠️ Update |
+| Get Session | `GET /api/auth/session`        | `GET /api/auth/me`        | ⚠️ Update |
+| Refresh     | `POST /api/auth/refresh`       | `POST /api/auth/refresh`  | ✅ Match  |
 
 ### Phase 4: Environment Configuration (1 hour)
 
 **Update environment variables:**
 
-| Variable | Original | Rust | Action |
-|----------|----------|------|--------|
+| Variable       | Original              | Rust                  | Action |
+| -------------- | --------------------- | --------------------- | ------ |
 | `VITE_API_URL` | http://localhost:4311 | http://localhost:3000 | Update |
-| `VITE_APP_URL` | https://nibleaf.com | Configurable | Keep |
-| Auth-related | Better Auth | Our auth | Update |
+| `VITE_APP_URL` | https://cms.com       | Configurable          | Keep   |
+| Auth-related   | Better Auth           | Our auth              | Update |
 
 ### Phase 5: Build and Integration (1-2 hours)
 
 1. **Install frontend dependencies**
+
    ```bash
    cd frontend-app
    npm install
    ```
 
 2. **Build frontend**
+
    ```bash
    npm run build
    ```
@@ -432,15 +444,15 @@ apps/server/src/
 
 ## 📊 Estimated Timeline
 
-| Phase | Tasks | Estimated Time | Priority |
-|-------|-------|---------------|----------|
-| 1 | Setup | 1-2 hours | High |
-| 2 | API Endpoint Mapping | 2-4 hours | High |
-| 3 | Authentication Migration | 2-3 hours | High |
-| 4 | Environment Configuration | 1 hour | Medium |
-| 5 | Build and Integration | 1-2 hours | High |
-| 6 | Testing and Validation | 2-4 hours | High |
-| **Total** | | **9-16 hours** | |
+| Phase     | Tasks                     | Estimated Time | Priority |
+| --------- | ------------------------- | -------------- | -------- |
+| 1         | Setup                     | 1-2 hours      | High     |
+| 2         | API Endpoint Mapping      | 2-4 hours      | High     |
+| 3         | Authentication Migration  | 2-3 hours      | High     |
+| 4         | Environment Configuration | 1 hour         | Medium   |
+| 5         | Build and Integration     | 1-2 hours      | High     |
+| 6         | Testing and Validation    | 2-4 hours      | High     |
+| **Total** |                           | **9-16 hours** |          |
 
 ---
 
@@ -449,7 +461,8 @@ apps/server/src/
 ### Option A: Direct Migration (Recommended)
 
 **Steps:**
-1. Copy `nibleaf-original/apps/app/` to `nibleaf-rs/frontend-app/`
+
+1. Copy `cms-original/apps/app/` to `cms-rs/frontend-app/`
 2. Update all API endpoints from `/api/app/*` to `/api/*`
 3. Update authentication to use Rust endpoints
 4. Update environment configuration
@@ -458,18 +471,21 @@ apps/server/src/
 7. Test thoroughly
 
 **Pros:**
+
 - ✅ Preserves all existing UI/UX
 - ✅ Minimal changes to frontend code
 - ✅ Maintains user familiarity
 - ✅ Faster migration
 
 **Cons:**
+
 - ⚠️ Need to remove Better Auth dependencies
 - ⚠️ Need to update server functions (SSR won't work with Rust)
 
 ### Option B: Incremental Migration
 
 **Steps:**
+
 1. Copy frontend to workspace
 2. Migrate one page/module at a time
 3. Update API endpoints incrementally
@@ -477,17 +493,20 @@ apps/server/src/
 5. Wire to Rust backend gradually
 
 **Pros:**
+
 - ✅ Lower risk (incremental changes)
 - ✅ Can validate each step
 - ✅ Easier to debug
 
 **Cons:**
+
 - ❌ Takes longer
 - ❌ Need to maintain both old and new endpoints temporarily
 
 ### Option C: Hybrid (Recommended for Production)
 
 **Steps:**
+
 1. Copy frontend to workspace
 2. **Remove SSR** (server functions, Nitro) - use client-side only
 3. Update all API endpoints
@@ -496,12 +515,14 @@ apps/server/src/
 6. Serve from Rust in production
 
 **Pros:**
+
 - ✅ Simplest approach
 - ✅ No need to maintain SSR with Rust
 - ✅ Clean separation
 - ✅ Easier to maintain
 
 **Cons:**
+
 - ⚠️ Loses SSR benefits (SEO, performance)
 - ⚠️ Need to handle more on client side
 
@@ -512,6 +533,7 @@ apps/server/src/
 **Option C: Hybrid (Client-side only)**
 
 **Rationale:**
+
 1. **Simpler**: No need to integrate SSR with Rust
 2. **Faster**: Can be done in 1-2 days
 3. **Cleaner**: Clear separation between frontend and backend
@@ -521,8 +543,9 @@ apps/server/src/
 **Implementation Steps:**
 
 1. **Copy frontend**
+
    ```bash
-   cp -r /home/user/nibleaf-original/apps/app /home/user/nibleaf-rs/frontend-app
+   cp -r /home/user/cms-original/apps/app /home/user/cms-rs/frontend-app
    ```
 
 2. **Simplify frontend**

@@ -1,4 +1,4 @@
-import type { ProjectConfig } from '@nibleaf/validators';
+import type { ProjectConfig } from '@cms/validators';
 import type { CSSProperties } from 'react';
 
 /** Charset-guard a configured font name before it is interpolated into CSS

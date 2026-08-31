@@ -7,7 +7,7 @@ import { ENTITY_SENTENCE } from '@/lib/marketing-seo';
  * read from the vendor's official pricing page and carries `asOf` + a
  * `sourceUrl`. Where an official page renders a price dynamically (so we could
  * not verify the number), we link to the page instead of quoting a figure.
- * Nibleaf's own gaps are stated plainly and point at the public roadmap.
+ * CMS's own gaps are stated plainly and point at the public roadmap.
  */
 
 /** Date the competitor pricing pages were last checked. */
@@ -22,7 +22,7 @@ export interface FeatureCell {
 
 export interface FeatureRow {
   feature: string;
-  nibleaf: FeatureCell;
+  cms: FeatureCell;
   competitor: FeatureCell;
 }
 
@@ -65,7 +65,7 @@ export interface Comparison {
   competitorPricing: PricingTable;
   features: FeatureRow[];
   pickCompetitor: PickReasons;
-  pickNibleaf: PickReasons;
+  pickCMS: PickReasons;
   verdict: string[];
   faqs: FaqEntry[];
 }
@@ -75,7 +75,7 @@ export interface AlternativeEntry {
   url: string;
   description: string;
   bestFor: string;
-  isNibleaf?: boolean;
+  isCMS?: boolean;
 }
 
 export interface AlternativesRoundup {
@@ -98,11 +98,11 @@ const no = (note?: string): FeatureCell => ({ value: 'no', note });
 const partial = (note: string): FeatureCell => ({ value: 'partial', note });
 const planned = (note?: string): FeatureCell => ({ value: 'planned', note });
 
-/** Nibleaf's own two "plans", shown next to every competitor table. */
-export const nibleafPricing: PricingTable = {
-  productName: 'Nibleaf',
+/** CMS's own two "plans", shown next to every competitor table. */
+export const cmsPricing: PricingTable = {
+  productName: 'CMS',
   sourceUrl: '/pricing',
-  sourceLabel: 'nibleaf.com/pricing',
+  sourceLabel: 'cms.com/pricing',
   asOf: AS_OF,
   rows: [
     {
@@ -120,7 +120,7 @@ export const nibleafPricing: PricingTable = {
 };
 
 /** Product gaps that must stay consistent across comparison and machine-readable marketing surfaces. */
-export const nibleafProductLimitations = [
+export const cmsProductLimitations = [
   'Live multi-user co-editing is not currently available.',
   'SAML/SCIM is not currently available.',
   'Adaptive content is not currently available.',
@@ -223,94 +223,94 @@ const docusaurusPricing: PricingTable = {
   ],
 };
 
-export const nibleafVsMintlify: Comparison = {
-  slug: 'nibleaf-vs-mintlify',
-  path: '/compare/nibleaf-vs-mintlify',
+export const cmsVsMintlify: Comparison = {
+  slug: 'cms-vs-mintlify',
+  path: '/compare/cms-vs-mintlify',
   competitorName: 'Mintlify',
   competitorUrl: 'https://www.mintlify.com',
-  metaTitle: 'Nibleaf vs Mintlify: editor, pricing, RTL, and API docs',
+  metaTitle: 'CMS vs Mintlify: editor, pricing, RTL, and API docs',
   metaDescription:
-    'Compare Nibleaf and Mintlify on pricing, editors, Markdown portability, Arabic/RTL, API tooling, and current self-hosting availability.',
-  heading: 'Nibleaf vs Mintlify',
-  breadcrumbName: 'Nibleaf vs Mintlify',
+    'Compare CMS and Mintlify on pricing, editors, Markdown portability, Arabic/RTL, API tooling, and current self-hosting availability.',
+  heading: 'CMS vs Mintlify',
+  breadcrumbName: 'CMS vs Mintlify',
   directAnswer: [
-    'Mintlify is a polished managed platform with strong API tooling and an Enterprise option for a self-hosted custom frontend. Nibleaf offers a visual editor over Markdown, a free cloud beta, Arabic/RTL support, and a public AGPL-3.0 full-stack self-hosted release.',
+    'Mintlify is a polished managed platform with strong API tooling and an Enterprise option for a self-hosted custom frontend. CMS offers a visual editor over Markdown, a free cloud beta, Arabic/RTL support, and a public AGPL-3.0 full-stack self-hosted release.',
     ENTITY_SENTENCE,
   ],
   competitorPricing: mintlifyPricing,
   features: [
     {
       feature: 'Public self-hosting',
-      nibleaf: yes('AGPL-3.0 repository, pinned GHCR image, and Docker Compose installer'),
+      cms: yes('AGPL-3.0 repository, pinned GHCR image, and Docker Compose installer'),
       competitor: partial('Enterprise custom frontend; content engine, editor, search, and AI remain managed services'),
     },
     {
       feature: 'WYSIWYG editor over plain Markdown',
-      nibleaf: yes('Notion-style blocks; content stays Markdown'),
+      cms: yes('Notion-style blocks; content stays Markdown'),
       competitor: yes('Web editor over MDX files'),
     },
     {
       feature: 'Free plan',
-      nibleaf: yes('Cloud free during beta'),
+      cms: yes('Cloud free during beta'),
       competitor: yes('Free Starter plan'),
     },
-    { feature: 'Custom domains', nibleaf: yes(), competitor: yes('Included on free Starter') },
+    { feature: 'Custom domains', cms: yes(), competitor: yes('Included on free Starter') },
     {
       feature: 'Arabic & RTL with per-language page trees',
-      nibleaf: yes('Built in from day one'),
+      cms: yes('Built in from day one'),
       competitor: yes('Arabic and Hebrew layouts switch to RTL automatically'),
     },
     {
       feature: 'Built-in privacy-friendly analytics',
-      nibleaf: yes('Product analytics; Cloudflare also processes hosted traffic'),
+      cms: yes('Product analytics; Cloudflare also processes hosted traffic'),
       competitor: partial('“Advanced insights” is listed under Enterprise'),
     },
     {
       feature: 'Markdown export & portability',
-      nibleaf: yes('Plain Markdown, take it anywhere'),
+      cms: yes('Plain Markdown, take it anywhere'),
       competitor: yes('Content lives as MDX files'),
     },
-    { feature: 'llms.txt for AI assistants', nibleaf: yes('Generated per published site'), competitor: yes() },
+    { feature: 'llms.txt for AI assistants', cms: yes('Generated per published site'), competitor: yes() },
     {
       feature: 'OpenAPI playground / API try-it',
-      nibleaf: yes('OpenAPI 3.x references powered by Scalar'),
+      cms: yes('OpenAPI 3.x references powered by Scalar'),
       competitor: yes('Included on free Starter'),
     },
-    { feature: 'Preview deployments', nibleaf: yes('Immutable previews for GitHub draft pull requests'), competitor: yes('Pro plan') },
-    { feature: 'Changelog RSS', nibleaf: yes('RSS 2.0 feed for every published changelog'), competitor: yes('Subscribable changelog feed') },
+    { feature: 'Preview deployments', cms: yes('Immutable previews for GitHub draft pull requests'), competitor: yes('Pro plan') },
+    { feature: 'Changelog RSS', cms: yes('RSS 2.0 feed for every published changelog'), competitor: yes('Subscribable changelog feed') },
     {
       feature: 'Real-time multi-user editing',
-      nibleaf: no('Comments and Git review are available; live co-editing and presence are not'),
+      cms: no('Comments and Git review are available; live co-editing and presence are not'),
       competitor: yes('Real-time collaboration in the web editor'),
     },
     {
       feature: 'Git providers and multi-repository projects',
-      nibleaf: partial('Two-way GitHub workflow; public GitLab and generic Git imports are one-way'),
+      cms: partial('Two-way GitHub workflow; public GitLab and generic Git imports are one-way'),
       competitor: yes('GitHub, GitLab, Bitbucket, and Enterprise multi-repo workflows'),
     },
     {
       feature: 'Custom components, CSS, and JavaScript',
-      nibleaf: partial('Curated portable MDX components and branding controls; arbitrary runtime code is not accepted'),
+      cms: partial('Curated portable MDX components and branding controls; arbitrary runtime code is not accepted'),
       competitor: yes('Custom components plus CSS and JavaScript customization'),
     },
     {
       feature: 'Reader personalization and adaptive content',
-      nibleaf: partial('Private readers, audiences, page grants, and JWT group mapping without adaptive content'),
+      cms: partial('Private readers, audiences, page grants, and JWT group mapping without adaptive content'),
       competitor: yes('Authentication, personalization, and adaptive content options'),
     },
     {
       feature: 'Third-party integrations and platform webhooks',
-      nibleaf: partial('GA4, Plausible, Git webhooks, and API access'),
+      cms: partial('GA4, Plausible, Git webhooks, and API access'),
       competitor: yes('Broad analytics, support, webhook, and websocket integrations'),
     },
     {
       feature: 'AI assistant & agent',
-      nibleaf: partial(
+      cms: partial(
         'Grounded answers and read-only MCP are in source main; provider setup is optional and the v0.1.2 artifact does not include them',
       ),
       competitor: yes('Pro plan, metered by credits'),
     },
-    { feature: 'SSO / SCIM / organization audit logs', nibleaf: planned(), competitor: yes('Enterprise plan') },
+    { feature: 'SSO / SCIM / organization audit logs', cms: planned(), competitor: yes('Enterprise plan') },
   ],
   pickCompetitor: {
     title: 'When to pick Mintlify instead',
@@ -321,8 +321,8 @@ export const nibleafVsMintlify: Comparison = {
       'You need SSO, SCIM, and enterprise compliance guarantees today.',
     ],
   },
-  pickNibleaf: {
-    title: 'When to pick Nibleaf',
+  pickCMS: {
+    title: 'When to pick CMS',
     reasons: [
       'You want a browser editor over exportable Markdown and prefer either a managed beta or a public full-stack Compose deployment.',
       'Your writers prefer a Notion-style WYSIWYG editor over editing MDX files — while the content stays plain Markdown.',
@@ -333,114 +333,114 @@ export const nibleafVsMintlify: Comparison = {
   },
   verdict: [
     'Mintlify is the more mature product today. Its free Starter plan is genuinely generous — custom domain, web editor, and an API playground — and its AI tooling is ahead of most of the market. It also supports Arabic/RTL and offers Enterprise teams a self-hosted custom frontend while retaining its managed content and AI services.',
-    'Nibleaf is strongest on full-stack self-hosting, browser-based Markdown editing, multilingual and RTL authoring, a focused bidirectional GitHub workflow, and self-hostable OpenAPI references powered by Scalar. Mintlify remains ahead on real-time collaboration, provider breadth, custom runtime components, integrations, personalization, and enterprise identity governance.',
+    'CMS is strongest on full-stack self-hosting, browser-based Markdown editing, multilingual and RTL authoring, a focused bidirectional GitHub workflow, and self-hostable OpenAPI references powered by Scalar. Mintlify remains ahead on real-time collaboration, provider breadth, custom runtime components, integrations, personalization, and enterprise identity governance.',
   ],
   faqs: [
     {
-      q: 'Is Nibleaf a good alternative to Mintlify?',
-      a: 'It can be, if you value browser-based Markdown editing and Arabic/RTL support. Nibleaf Cloud covers editing, versioned publishing, search, custom domains, and analytics during its free beta, and the AGPL-3.0 release can be self-hosted. Mintlify remains ahead on API tooling.',
+      q: 'Is CMS a good alternative to Mintlify?',
+      a: 'It can be, if you value browser-based Markdown editing and Arabic/RTL support. CMS Cloud covers editing, versioned publishing, search, custom domains, and analytics during its free beta, and the AGPL-3.0 release can be self-hosted. Mintlify remains ahead on API tooling.',
     },
     {
       q: 'Is Mintlify open source?',
-      a: 'The Mintlify platform is a closed-source hosted product, although some components are open source. Nibleaf’s public repository and container release are licensed under AGPL-3.0 and can be installed with Docker Compose.',
+      a: 'The Mintlify platform is a closed-source hosted product, although some components are open source. CMS’s public repository and container release are licensed under AGPL-3.0 and can be installed with Docker Compose.',
     },
     {
       q: 'How much does Mintlify cost?',
       a: 'As of August 17, 2026, Mintlify has a free Starter plan, Pro at $450/month, and custom-priced Enterprise. AI features are metered with credits — 10,000/month included, then $0.01 per credit. See mintlify.com/pricing for current numbers.',
     },
     {
-      q: 'Can I migrate docs from Mintlify to Nibleaf?',
-      a: 'Yes. Nibleaf imports public GitHub repositories that contain docs.json or mint.json and maps navigation, pages, and site branding. The 500-node limit counts both groups and pages, and any remaining entries are skipped. Unsupported components stay in the imported MDX for manual review because Nibleaf cannot guarantee that Mintlify-specific rendering will carry over.',
+      q: 'Can I migrate docs from Mintlify to CMS?',
+      a: 'Yes. CMS imports public GitHub repositories that contain docs.json or mint.json and maps navigation, pages, and site branding. The 500-node limit counts both groups and pages, and any remaining entries are skipped. Unsupported components stay in the imported MDX for manual review because CMS cannot guarantee that Mintlify-specific rendering will carry over.',
     },
     {
-      q: 'What does Nibleaf not have yet compared to Mintlify?',
-      a: 'Excluding AI, Nibleaf does not yet provide live multi-user co-editing, two-way GitLab or Bitbucket and multi-repository workflows, arbitrary runtime components or JavaScript, adaptive content, Mintlify’s breadth of integrations, or Enterprise SAML SSO and SCIM. Nibleaf does provide audiences, JWT reader handoff, GitHub draft-PR previews, exports, and changelog RSS.',
+      q: 'What does CMS not have yet compared to Mintlify?',
+      a: 'Excluding AI, CMS does not yet provide live multi-user co-editing, two-way GitLab or Bitbucket and multi-repository workflows, arbitrary runtime components or JavaScript, adaptive content, Mintlify’s breadth of integrations, or Enterprise SAML SSO and SCIM. CMS does provide audiences, JWT reader handoff, GitHub draft-PR previews, exports, and changelog RSS.',
     },
   ],
 };
 
-export const nibleafVsGitbook: Comparison = {
-  slug: 'nibleaf-vs-gitbook',
-  path: '/compare/nibleaf-vs-gitbook',
+export const cmsVsGitbook: Comparison = {
+  slug: 'cms-vs-gitbook',
+  path: '/compare/cms-vs-gitbook',
   competitorName: 'GitBook',
   competitorUrl: 'https://www.gitbook.com',
-  metaTitle: 'Nibleaf vs GitBook — pricing and features, honestly compared',
+  metaTitle: 'CMS vs GitBook — pricing and features, honestly compared',
   metaDescription:
-    'Nibleaf vs GitBook: current pricing, editors, git workflow, Arabic/RTL, Markdown portability, and verified self-hosting availability.',
-  heading: 'Nibleaf vs GitBook',
-  breadcrumbName: 'Nibleaf vs GitBook',
+    'CMS vs GitBook: current pricing, editors, git workflow, Arabic/RTL, Markdown portability, and verified self-hosting availability.',
+  heading: 'CMS vs GitBook',
+  breadcrumbName: 'CMS vs GitBook',
   directAnswer: [
-    'GitBook is a polished hosted docs platform priced per site plus per user. Nibleaf is a documentation platform with a free cloud beta, Markdown export, and Arabic/RTL support. GitBook also publishes its reader renderer under GPLv3, but its workspace and editor remain part of the hosted service.',
+    'GitBook is a polished hosted docs platform priced per site plus per user. CMS is a documentation platform with a free cloud beta, Markdown export, and Arabic/RTL support. GitBook also publishes its reader renderer under GPLv3, but its workspace and editor remain part of the hosted service.',
     ENTITY_SENTENCE,
   ],
   competitorPricing: gitbookPricing,
   features: [
     {
       feature: 'Public self-hosting',
-      nibleaf: yes('AGPL-3.0 repository, pinned GHCR image, and Docker Compose installer'),
+      cms: yes('AGPL-3.0 repository, pinned GHCR image, and Docker Compose installer'),
       competitor: partial('GPLv3 published-site renderer; not the full workspace'),
     },
     {
       feature: 'WYSIWYG block editor',
-      nibleaf: yes('Notion-style; persists plain Markdown'),
+      cms: yes('Notion-style; persists plain Markdown'),
       competitor: yes('Block-based editor'),
     },
     {
       feature: 'Custom domain on the free plan',
-      nibleaf: yes('Included in the free beta'),
+      cms: yes('Included in the free beta'),
       competitor: no('From Premium — $65 per site/month'),
     },
     {
       feature: 'No per-seat fees',
-      nibleaf: yes('Cloud is free during beta'),
+      cms: yes('Cloud is free during beta'),
       competitor: no('$12 per user/month on paid plans'),
     },
     {
       feature: 'Arabic & RTL with per-language page trees',
-      nibleaf: yes('Built in from day one'),
+      cms: yes('Built in from day one'),
       competitor: partial('Paragraphs and headings auto-align; GitBook says other RTL contribution blocks are not fully supported'),
     },
-    { feature: 'Built-in analytics', nibleaf: yes('Included, privacy-friendly'), competitor: partial('From Premium') },
+    { feature: 'Built-in analytics', cms: yes('Included, privacy-friendly'), competitor: partial('From Premium') },
     {
       feature: 'Markdown export & portability',
-      nibleaf: yes('Plain Markdown, take it anywhere'),
+      cms: yes('Plain Markdown, take it anywhere'),
       competitor: yes('Via GitHub/GitLab sync'),
     },
     {
       feature: 'llms.txt for AI assistants',
-      nibleaf: yes('Generated per published site'),
+      cms: yes('Generated per published site'),
       competitor: yes('Also provides llms-full.txt, per-page Markdown, and MCP'),
     },
     {
       feature: 'Two-way git sync',
-      nibleaf: partial('GitHub authoring with draft pull requests; GitLab remains one-way'),
+      cms: partial('GitHub authoring with draft pull requests; GitLab remains one-way'),
       competitor: yes('GitHub & GitLab, on the free plan'),
     },
-    { feature: 'API playground', nibleaf: yes('OpenAPI 3.x references powered by Scalar'), competitor: yes('On the free plan') },
-    { feature: 'Preview deployments', nibleaf: yes('Immutable previews for GitHub draft pull requests'), competitor: yes('On the free plan') },
+    { feature: 'API playground', cms: yes('OpenAPI 3.x references powered by Scalar'), competitor: yes('On the free plan') },
+    { feature: 'Preview deployments', cms: yes('Immutable previews for GitHub draft pull requests'), competitor: yes('On the free plan') },
     {
       feature: 'Reader authentication & adaptive content',
-      nibleaf: partial('Invitations, JWT handoff, and page-scoped access; no adaptive personalization'),
+      cms: partial('Invitations, JWT handoff, and page-scoped access; no adaptive personalization'),
       competitor: yes('Ultimate plan'),
     },
     {
       feature: 'AI search & assistant',
-      nibleaf: partial('Optional hybrid retrieval and grounded answers are in source main; they require operator configuration and project opt-in'),
+      cms: partial('Optional hybrid retrieval and grounded answers are in source main; they require operator configuration and project opt-in'),
       competitor: yes('Search from Premium; assistant from Ultimate'),
     },
-    { feature: 'SAML SSO', nibleaf: planned(), competitor: yes('Enterprise plan') },
+    { feature: 'SAML SSO', cms: planned(), competitor: yes('Enterprise plan') },
   ],
   pickCompetitor: {
     title: 'When to pick GitBook instead',
     reasons: [
-      'You need two-way GitLab sync today — Nibleaf’s two-way workflow currently targets GitHub.',
+      'You need two-way GitLab sync today — CMS’s two-way workflow currently targets GitHub.',
       'You need adaptive reader personalization rather than invitations, JWT handoff, and page-scoped access.',
       'You want a hosted AI assistant that is already operated for you, without configuring and evaluating optional retrieval and answer providers.',
       'You need SAML SSO or GitBook’s mature enterprise governance today.',
     ],
   },
-  pickNibleaf: {
-    title: 'When to pick Nibleaf',
+  pickCMS: {
+    title: 'When to pick CMS',
     reasons: [
       'You want a custom domain without paying $65 per site/month plus $12 per user/month (GitBook Premium pricing as of August 17, 2026).',
       'You need the full editor, publishing pipeline, and reader to be deployable together. GitBook self-hosts only its published-site renderer.',
@@ -451,12 +451,12 @@ export const nibleafVsGitbook: Comparison = {
   },
   verdict: [
     'GitBook is a capable hosted product with git sync, API playgrounds, and preview deployments on the free plan, plus reader authentication and AI features on higher tiers. Its published-site renderer is open source and can be self-hosted, but GitBook says that path is not recommended or supported and it does not include the hosted workspace and editor.',
-    'Nibleaf Cloud covers WYSIWYG editing over Markdown, versioned publishing, search, custom domains, analytics, Arabic/RTL, GitHub pull-request previews, private readers, and Scalar OpenAPI references. Source main also includes optional hybrid retrieval, grounded answers, and read-only MCP, but the published v0.1.2 self-hosted artifact does not. If you need two-way GitLab sync, adaptive content, a fully operated hosted assistant, or SAML today, GitBook is the safer fit.',
+    'CMS Cloud covers WYSIWYG editing over Markdown, versioned publishing, search, custom domains, analytics, Arabic/RTL, GitHub pull-request previews, private readers, and Scalar OpenAPI references. Source main also includes optional hybrid retrieval, grounded answers, and read-only MCP, but the published v0.1.2 self-hosted artifact does not. If you need two-way GitLab sync, adaptive content, a fully operated hosted assistant, or SAML today, GitBook is the safer fit.',
   ],
   faqs: [
     {
-      q: 'Is Nibleaf a good alternative to GitBook?',
-      a: 'It can be for teams that want a block-style editor over Markdown, Arabic/RTL support, full-stack self-hosting, GitHub pull-request previews, and private readers. Nibleaf includes custom domains and analytics in its free cloud beta, while GitBook gates custom domains behind Premium at $65 per site/month plus $12 per user/month as of August 17, 2026. GitBook is ahead on GitLab sync, adaptive content, AI features, and enterprise SSO.',
+      q: 'Is CMS a good alternative to GitBook?',
+      a: 'It can be for teams that want a block-style editor over Markdown, Arabic/RTL support, full-stack self-hosting, GitHub pull-request previews, and private readers. CMS includes custom domains and analytics in its free cloud beta, while GitBook gates custom domains behind Premium at $65 per site/month plus $12 per user/month as of August 17, 2026. GitBook is ahead on GitLab sync, adaptive content, AI features, and enterprise SSO.',
     },
     {
       q: 'How much does GitBook cost?',
@@ -464,81 +464,81 @@ export const nibleafVsGitbook: Comparison = {
     },
     {
       q: 'Can I self-host GitBook?',
-      a: 'GitBook’s GPLv3 published-site renderer can be self-hosted, but GitBook says this is not its recommended or supported path. The hosted workspace and editor are not included. Nibleaf publishes its full AGPL-3.0 stack, a pinned GHCR image, and a Docker Compose installer for self-hosting.',
+      a: 'GitBook’s GPLv3 published-site renderer can be self-hosted, but GitBook says this is not its recommended or supported path. The hosted workspace and editor are not included. CMS publishes its full AGPL-3.0 stack, a pinned GHCR image, and a Docker Compose installer for self-hosting.',
     },
     {
-      q: 'Does Nibleaf have git sync like GitBook?',
-      a: 'Yes for GitHub. Nibleaf can commit browser edits to a dedicated branch, create or update a draft pull request, reconcile upstream changes, and publish an immutable noindex preview. Existing GitLab connections remain one-way today.',
+      q: 'Does CMS have git sync like GitBook?',
+      a: 'Yes for GitHub. CMS can commit browser edits to a dedicated branch, create or update a draft pull request, reconcile upstream changes, and publish an immutable noindex preview. Existing GitLab connections remain one-way today.',
     },
     {
       q: 'Which is better for Arabic or RTL documentation?',
-      a: 'Nibleaf treats Arabic/RTL as a first-class feature: per-language page trees, RTL-aware editor and reader UI, and bilingual search. GitBook’s help center says paragraphs and headings can auto-align for RTL text, but lists and other blocks may not align correctly.',
+      a: 'CMS treats Arabic/RTL as a first-class feature: per-language page trees, RTL-aware editor and reader UI, and bilingual search. GitBook’s help center says paragraphs and headings can auto-align for RTL text, but lists and other blocks may not align correctly.',
     },
   ],
 };
 
-export const nibleafVsDocusaurus: Comparison = {
-  slug: 'nibleaf-vs-docusaurus',
-  path: '/compare/nibleaf-vs-docusaurus',
+export const cmsVsDocusaurus: Comparison = {
+  slug: 'cms-vs-docusaurus',
+  path: '/compare/cms-vs-docusaurus',
   competitorName: 'Docusaurus',
   competitorUrl: 'https://docusaurus.io',
-  metaTitle: 'Nibleaf vs Docusaurus: docs platform vs static site',
+  metaTitle: 'CMS vs Docusaurus: docs platform vs static site',
   metaDescription:
-    'Nibleaf vs Docusaurus: browser-based docs platform versus static docs-as-code, compared on editing, search, hosting, Arabic/RTL, and ownership.',
-  heading: 'Nibleaf vs Docusaurus',
-  breadcrumbName: 'Nibleaf vs Docusaurus',
+    'CMS vs Docusaurus: browser-based docs platform versus static docs-as-code, compared on editing, search, hosting, Arabic/RTL, and ownership.',
+  heading: 'CMS vs Docusaurus',
+  breadcrumbName: 'CMS vs Docusaurus',
   directAnswer: [
-    'Docusaurus is a free, MIT-licensed static site generator whose MDX source lives in Git. Nibleaf is a documentation platform with a WYSIWYG editor, publishing, search, analytics, a free cloud beta, and a public AGPL-3.0 self-hosted release.',
+    'Docusaurus is a free, MIT-licensed static site generator whose MDX source lives in Git. CMS is a documentation platform with a WYSIWYG editor, publishing, search, analytics, a free cloud beta, and a public AGPL-3.0 self-hosted release.',
     ENTITY_SENTENCE,
   ],
   competitorPricing: docusaurusPricing,
   features: [
-    { feature: 'Open source', nibleaf: yes('AGPL-3.0'), competitor: yes('MIT') },
+    { feature: 'Open source', cms: yes('AGPL-3.0'), competitor: yes('MIT') },
     {
       feature: 'WYSIWYG editor for non-developers',
-      nibleaf: yes('Notion-style blocks over plain Markdown'),
+      cms: yes('Notion-style blocks over plain Markdown'),
       competitor: no('MDX edited in your code editor'),
     },
     {
       feature: 'Hosted option',
-      nibleaf: yes('Free cloud beta at nibleaf.com'),
+      cms: yes('Free cloud beta at cms.com'),
       competitor: no('You build and deploy the static output yourself'),
     },
     {
       feature: 'Publish without a build pipeline',
-      nibleaf: yes('Publish straight from the editor'),
+      cms: yes('Publish straight from the editor'),
       competitor: no('Node.js build on every deploy'),
     },
     {
       feature: 'Built-in search',
-      nibleaf: partial('Built-in Orama path; optional Qdrant hybrid path is in source main but not the v0.1.2 artifact'),
+      cms: partial('Built-in Orama path; optional Qdrant hybrid path is in source main but not the v0.1.2 artifact'),
       competitor: partial('Typically the Algolia integration or community plugins'),
     },
     {
       feature: 'i18n incl. RTL',
-      nibleaf: yes('Per-language page trees, Arabic-first'),
+      cms: yes('Per-language page trees, Arabic-first'),
       competitor: yes('i18n out of the box; RTL locales supported'),
     },
     {
       feature: 'Versioning',
-      nibleaf: yes('Every publish is a snapshot'),
+      cms: yes('Every publish is a snapshot'),
       competitor: yes('Docs versioning built in'),
     },
-    { feature: 'Custom domains', nibleaf: yes(), competitor: yes('Via whatever host you deploy to') },
-    { feature: 'Built-in reader analytics', nibleaf: yes('Privacy-friendly, no tracker'), competitor: no('Bring your own') },
+    { feature: 'Custom domains', cms: yes(), competitor: yes('Via whatever host you deploy to') },
+    { feature: 'Built-in reader analytics', cms: yes('Privacy-friendly, no tracker'), competitor: no('Bring your own') },
     {
       feature: 'Full code-level theme control (React)',
-      nibleaf: partial('Theming, branding, and MDX components — not arbitrary code'),
+      cms: partial('Theming, branding, and MDX components — not arbitrary code'),
       competitor: yes('It is a React codebase you own'),
     },
     {
       feature: 'OpenAPI playground / API try-it',
-      nibleaf: yes('OpenAPI 3.x references powered by Scalar'),
+      cms: yes('OpenAPI 3.x references powered by Scalar'),
       competitor: partial('Via community plugins'),
     },
     {
       feature: 'Docs-as-code with git and PR reviews',
-      nibleaf: partial('Two-way GitHub authoring with draft pull requests and immutable previews'),
+      cms: partial('Two-way GitHub authoring with draft pull requests and immutable previews'),
       competitor: yes('Your repo is the source of truth'),
     },
   ],
@@ -551,10 +551,10 @@ export const nibleafVsDocusaurus: Comparison = {
       'You rely on its plugin ecosystem — Algolia search, OpenAPI plugins, blogs, and more.',
     ],
   },
-  pickNibleaf: {
-    title: 'When to pick Nibleaf',
+  pickCMS: {
+    title: 'When to pick CMS',
     reasons: [
-      'Non-developers write your docs: Nibleaf gives them a Notion-style WYSIWYG editor, no git or Node.js required.',
+      'Non-developers write your docs: CMS gives them a Notion-style WYSIWYG editor, no git or Node.js required.',
       'You want instant publishing with versioned snapshots instead of a build-and-deploy pipeline.',
       'You want search and reader analytics built in, without wiring up Algolia or an analytics service.',
       'You want a managed option in free beta with custom domains and do not require immediate self-hosting.',
@@ -563,7 +563,7 @@ export const nibleafVsDocusaurus: Comparison = {
   },
   verdict: [
     'Docusaurus is excellent at what it does. If engineers are happy in Git and want control of a React codebase, it costs nothing and has a mature public distribution.',
-    'Nibleaf trades some of that code-level control for a platform normal humans can operate: a real editor, one-click publishing, built-in search and analytics, and a hosted option. Teams often outgrow docs-as-code in the other direction — when product managers, support, and technical writers need to contribute without a pull request. That is the case Nibleaf is built for.',
+    'CMS trades some of that code-level control for a platform normal humans can operate: a real editor, one-click publishing, built-in search and analytics, and a hosted option. Teams often outgrow docs-as-code in the other direction — when product managers, support, and technical writers need to contribute without a pull request. That is the case CMS is built for.',
   ],
   faqs: [
     {
@@ -571,30 +571,30 @@ export const nibleafVsDocusaurus: Comparison = {
       a: 'Yes. Docusaurus is open source under the MIT license (its documentation is CC-BY-4.0). You pay only for hosting the static output, which can be free on services like GitHub Pages.',
     },
     {
-      q: 'What is the difference between Nibleaf and Docusaurus?',
-      a: 'Docusaurus is a static site generator: content is MDX in Git, and developers build and deploy the site. Nibleaf is a documentation platform with a WYSIWYG editor over Markdown, versioned publishing, built-in search and analytics, a free cloud beta, and a public AGPL-3.0 self-hosted release.',
+      q: 'What is the difference between CMS and Docusaurus?',
+      a: 'Docusaurus is a static site generator: content is MDX in Git, and developers build and deploy the site. CMS is a documentation platform with a WYSIWYG editor over Markdown, versioned publishing, built-in search and analytics, a free cloud beta, and a public AGPL-3.0 self-hosted release.',
     },
     {
       q: 'Does Docusaurus support Arabic and RTL?',
-      a: 'Yes — the Docusaurus i18n docs state that right-to-left locales such as Arabic and Hebrew are supported. Nibleaf additionally makes the authoring experience RTL-aware: per-language page trees and an editor that handles RTL text natively.',
+      a: 'Yes — the Docusaurus i18n docs state that right-to-left locales such as Arabic and Hebrew are supported. CMS additionally makes the authoring experience RTL-aware: per-language page trees and an editor that handles RTL text natively.',
     },
     {
-      q: 'Can I self-host Nibleaf and Docusaurus?',
-      a: 'A Docusaurus site is static files you can serve from any web server or CDN. Nibleaf is a full-stack application with public source, a pinned container release, and a guided Docker Compose installer.',
+      q: 'Can I self-host CMS and Docusaurus?',
+      a: 'A Docusaurus site is static files you can serve from any web server or CDN. CMS is a full-stack application with public source, a pinned container release, and a guided Docker Compose installer.',
     },
     {
       q: 'Which is better for non-developers?',
-      a: 'Nibleaf. Contributors write in a Notion-style WYSIWYG editor and publish from the browser. With Docusaurus, contributors edit MDX files and changes go through git and a build pipeline.',
+      a: 'CMS. Contributors write in a Notion-style WYSIWYG editor and publish from the browser. With Docusaurus, contributors edit MDX files and changes go through git and a build pipeline.',
     },
   ],
 };
 
 /** One-line, fair descriptions reused across the /alternatives roundups. */
-const nibleafAlternativeEntry = (_vs: string): AlternativeEntry => ({
-  name: 'Nibleaf',
+const cmsAlternativeEntry = (_vs: string): AlternativeEntry => ({
+  name: 'CMS',
   url: '/',
-  isNibleaf: true,
-  description: `${ENTITY_SENTENCE} Full disclosure: Nibleaf is our product. Source main includes two-way GitHub authoring, pull-request previews, private reader access, Scalar-powered OpenAPI references, optional hybrid retrieval and grounded answers, and read-only MCP. It still lacks SAML/SCIM and adaptive content; the published v0.1.2 self-hosted artifact predates the latest capability set.`,
+  isCMS: true,
+  description: `${ENTITY_SENTENCE} Full disclosure: CMS is our product. Source main includes two-way GitHub authoring, pull-request previews, private reader access, Scalar-powered OpenAPI references, optional hybrid retrieval and grounded answers, and read-only MCP. It still lacks SAML/SCIM and adaptive content; the published v0.1.2 self-hosted artifact predates the latest capability set.`,
   bestFor: 'Teams that want a managed browser editor, Markdown export, and first-class Arabic/RTL during the free cloud beta.',
 });
 
@@ -648,27 +648,27 @@ export const mintlifyAlternatives: AlternativesRoundup = {
   heading: 'Mintlify alternatives',
   breadcrumbName: 'Mintlify alternatives',
   directAnswer: [
-    'The best Mintlify alternative depends on the workflow. Nibleaf offers a WYSIWYG Markdown editor, Arabic/RTL support, a free cloud beta, and a public self-hosted release. Docusaurus and Starlight are static generators, Scalar is API-first, and GitBook is another hosted editor.',
+    'The best Mintlify alternative depends on the workflow. CMS offers a WYSIWYG Markdown editor, Arabic/RTL support, a free cloud beta, and a public self-hosted release. Docusaurus and Starlight are static generators, Scalar is API-first, and GitBook is another hosted editor.',
     ENTITY_SENTENCE,
   ],
   competitorPricing: mintlifyPricing,
-  alternatives: [nibleafAlternativeEntry('Mintlify'), docusaurusEntry, starlightEntry, scalarEntry, gitbookEntry],
+  alternatives: [cmsAlternativeEntry('Mintlify'), docusaurusEntry, starlightEntry, scalarEntry, gitbookEntry],
   faqs: [
     {
       q: 'What is the best open-source alternative to Mintlify?',
-      a: 'Docusaurus or Starlight are strong open-source choices if you prefer a static generator and docs-as-code. Nibleaf is the full-stack option: its public AGPL-3.0 repository and pinned container release install with Docker Compose.',
+      a: 'Docusaurus or Starlight are strong open-source choices if you prefer a static generator and docs-as-code. CMS is the full-stack option: its public AGPL-3.0 repository and pinned container release install with Docker Compose.',
     },
     {
       q: 'What is the best free alternative to Mintlify?',
-      a: 'Docusaurus and Starlight are free software, with hosting costs determined by where you deploy the static output. Nibleaf Cloud is free while in beta. Mintlify itself has a free Starter plan, so compare workflows and limits rather than price alone.',
+      a: 'Docusaurus and Starlight are free software, with hosting costs determined by where you deploy the static output. CMS Cloud is free while in beta. Mintlify itself has a free Starter plan, so compare workflows and limits rather than price alone.',
     },
     {
       q: 'Why would I switch away from Mintlify?',
       a: 'Common reasons are wanting a different ownership model, a static docs-as-code workflow, exportable Markdown in a browser editor, or stronger Arabic/RTL support. If none apply, Mintlify remains a strong product.',
     },
     {
-      q: 'Is Nibleaf really free?',
-      a: 'Nibleaf Cloud is free while in beta, with fair-use limits and no credit card. No paid cloud plan is currently offered. The self-hosted release is free under AGPL-3.0; operators pay only for their own infrastructure and services.',
+      q: 'Is CMS really free?',
+      a: 'CMS Cloud is free while in beta, with fair-use limits and no credit card. No paid cloud plan is currently offered. The self-hosted release is free under AGPL-3.0; operators pay only for their own infrastructure and services.',
     },
   ],
 };
@@ -683,27 +683,27 @@ export const gitbookAlternatives: AlternativesRoundup = {
   heading: 'GitBook alternatives',
   breadcrumbName: 'GitBook alternatives',
   directAnswer: [
-    'If you like GitBook’s block editor but want a different ownership or pricing model, compare the authoring workflow first. Nibleaf provides a browser editor and Markdown export, Docusaurus and Starlight are static docs-as-code options, Scalar is API-first, and Mintlify is the closest hosted developer-docs platform. GitBook itself also offers a self-hostable GPLv3 reader renderer, though not its full workspace.',
+    'If you like GitBook’s block editor but want a different ownership or pricing model, compare the authoring workflow first. CMS provides a browser editor and Markdown export, Docusaurus and Starlight are static docs-as-code options, Scalar is API-first, and Mintlify is the closest hosted developer-docs platform. GitBook itself also offers a self-hostable GPLv3 reader renderer, though not its full workspace.',
     ENTITY_SENTENCE,
   ],
   competitorPricing: gitbookPricing,
-  alternatives: [nibleafAlternativeEntry('GitBook'), docusaurusEntry, starlightEntry, scalarEntry, mintlifyEntry],
+  alternatives: [cmsAlternativeEntry('GitBook'), docusaurusEntry, starlightEntry, scalarEntry, mintlifyEntry],
   faqs: [
     {
       q: 'What is the best open-source alternative to GitBook?',
-      a: 'Docusaurus and Starlight are strong open-source choices if you prefer a static generator. Nibleaf is closer to GitBook’s browser-editor workflow and provides both a free cloud beta and a public AGPL-3.0 self-hosted release.',
+      a: 'Docusaurus and Starlight are strong open-source choices if you prefer a static generator. CMS is closer to GitBook’s browser-editor workflow and provides both a free cloud beta and a public AGPL-3.0 self-hosted release.',
     },
     {
       q: 'What is the cheapest GitBook alternative with a custom domain?',
-      a: 'GitBook gates custom domains behind Premium at $65 per site/month plus $12 per user/month as of August 17, 2026. Nibleaf includes custom domains in its free cloud beta, and Mintlify’s free Starter plan includes one. Static generators support custom domains through the host you choose.',
+      a: 'GitBook gates custom domains behind Premium at $65 per site/month plus $12 per user/month as of August 17, 2026. CMS includes custom domains in its free cloud beta, and Mintlify’s free Starter plan includes one. Static generators support custom domains through the host you choose.',
     },
     {
       q: 'Can I self-host a GitBook alternative?',
-      a: 'Yes. Docusaurus and Starlight produce static files you can host anywhere. GitBook’s GPLv3 renderer can publish a self-hosted reader, but not the complete hosted workspace. Nibleaf publishes its full AGPL-3.0 stack, a pinned GHCR image, and a Docker Compose installer.',
+      a: 'Yes. Docusaurus and Starlight produce static files you can host anywhere. GitBook’s GPLv3 renderer can publish a self-hosted reader, but not the complete hosted workspace. CMS publishes its full AGPL-3.0 stack, a pinned GHCR image, and a Docker Compose installer.',
     },
     {
-      q: 'What does Nibleaf lack compared to GitBook?',
-      a: 'As of August 2026, Nibleaf’s remaining gaps include two-way GitLab authoring, adaptive content, SAML SSO, and a published self-host image for the capabilities currently merged in source main. The source tree includes optional hybrid retrieval and grounded answers plus read-only MCP; providers and project opt-in remain explicit.',
+      q: 'What does CMS lack compared to GitBook?',
+      a: 'As of August 2026, CMS’s remaining gaps include two-way GitLab authoring, adaptive content, SAML SSO, and a published self-host image for the capabilities currently merged in source main. The source tree includes optional hybrid retrieval and grounded answers plus read-only MCP; providers and project opt-in remain explicit.',
     },
   ],
 };
@@ -718,30 +718,30 @@ export const readmeAlternatives: AlternativesRoundup = {
   heading: 'ReadMe alternatives',
   breadcrumbName: 'ReadMe alternatives',
   directAnswer: [
-    'ReadMe is strongest as a hosted API-reference hub. Nibleaf combines guides, product docs, browser editing, Arabic/RTL, and Scalar-powered OpenAPI references across Cloud and self-hosted deployment.',
+    'ReadMe is strongest as a hosted API-reference hub. CMS combines guides, product docs, browser editing, Arabic/RTL, and Scalar-powered OpenAPI references across Cloud and self-hosted deployment.',
     ENTITY_SENTENCE,
   ],
   competitorPricing: readmePricing,
-  alternatives: [nibleafAlternativeEntry('ReadMe'), scalarEntry, mintlifyEntry, docusaurusEntry, starlightEntry],
+  alternatives: [cmsAlternativeEntry('ReadMe'), scalarEntry, mintlifyEntry, docusaurusEntry, starlightEntry],
   faqs: [
     {
       q: 'What is the best open-source alternative to ReadMe?',
-      a: 'For API references, Scalar has an open-source client and generates references from OpenAPI documents; Docusaurus covers this through community plugins. Nibleaf’s public AGPL-3.0 release includes Scalar-powered OpenAPI references alongside its guide editor.',
+      a: 'For API references, Scalar has an open-source client and generates references from OpenAPI documents; Docusaurus covers this through community plugins. CMS’s public AGPL-3.0 release includes Scalar-powered OpenAPI references alongside its guide editor.',
     },
     {
       q: 'How much does ReadMe cost?',
       a: 'As of August 17, 2026: a free Starter plan (1 project, API reference, custom domain), Pro at $250/month billed annually, and custom-priced Enterprise. The “Ask AI” add-on is $150/month. See readme.com/pricing for current numbers.',
     },
     {
-      q: 'Does Nibleaf have an interactive API reference like ReadMe?',
-      a: 'Yes. Nibleaf validates OpenAPI 3.x documents, publishes generated endpoint and schema pages with Scalar, and includes browser-based API try-it alongside guides and bilingual Arabic/English documentation.',
+      q: 'Does CMS have an interactive API reference like ReadMe?',
+      a: 'Yes. CMS validates OpenAPI 3.x documents, publishes generated endpoint and schema pages with Scalar, and includes browser-based API try-it alongside guides and bilingual Arabic/English documentation.',
     },
     {
-      q: 'Is Nibleaf really free?',
-      a: 'Nibleaf Cloud is free while in beta, with fair-use limits and no credit card. No paid cloud plan is currently offered. The self-hosted release is free under AGPL-3.0; operators pay for their own infrastructure and services.',
+      q: 'Is CMS really free?',
+      a: 'CMS Cloud is free while in beta, with fair-use limits and no credit card. No paid cloud plan is currently offered. The self-hosted release is free under AGPL-3.0; operators pay for their own infrastructure and services.',
     },
   ],
 };
 
-export const comparisons = [nibleafVsMintlify, nibleafVsGitbook, nibleafVsDocusaurus];
+export const comparisons = [cmsVsMintlify, cmsVsGitbook, cmsVsDocusaurus];
 export const roundups = [mintlifyAlternatives, gitbookAlternatives, readmeAlternatives];

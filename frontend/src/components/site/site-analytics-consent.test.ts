@@ -70,18 +70,18 @@ describe('SiteAnalyticsConsent', () => {
     expect(decline?.className).toBe(accept?.className);
 
     await act(async () => decline?.click());
-    expect(window.localStorage.getItem(`nibleaf.analytics.consent.project-${lang}`)).toBe('declined');
+    expect(window.localStorage.getItem(`cms.analytics.consent.project-${lang}`)).toBe('declined');
 
     const manage = [...container.querySelectorAll('button')].find((button) => button.textContent === manageLabel);
     await act(async () => manage?.click());
     const acceptAfterReopen = [...container.querySelectorAll('button')].find((button) => button.textContent === acceptLabel);
     await act(async () => acceptAfterReopen?.click());
-    expect(window.localStorage.getItem(`nibleaf.analytics.consent.project-${lang}`)).toBe('accepted');
+    expect(window.localStorage.getItem(`cms.analytics.consent.project-${lang}`)).toBe('accepted');
   });
 
   it('reloads after an accepted visitor reopens privacy choices and withdraws consent', async () => {
     const reloadPage = vi.fn();
-    window.localStorage.setItem('nibleaf.analytics.consent.project-withdraw', 'accepted');
+    window.localStorage.setItem('cms.analytics.consent.project-withdraw', 'accepted');
 
     await act(async () =>
       root.render(createElement(SiteAnalyticsConsent, { projectId: 'project-withdraw', config: consentConfig, lang: 'en', reloadPage })),
@@ -93,7 +93,7 @@ describe('SiteAnalyticsConsent', () => {
     const decline = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Decline');
     await act(async () => decline?.click());
 
-    expect(window.localStorage.getItem('nibleaf.analytics.consent.project-withdraw')).toBe('declined');
+    expect(window.localStorage.getItem('cms.analytics.consent.project-withdraw')).toBe('declined');
     expect(reloadPage).toHaveBeenCalledOnce();
   });
 });

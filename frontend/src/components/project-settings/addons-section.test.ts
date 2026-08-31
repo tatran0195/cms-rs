@@ -67,7 +67,7 @@ const addons = [
   },
 ] satisfies ProjectAddon[];
 
-vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => translations[key] ?? key }));
+vi.mock('@cms/i18n/react', () => ({ useT: () => (key: string) => translations[key] ?? key }));
 vi.mock('@/hooks/api', () => ({
   useProjectAddons: () => ({ data: addons, isLoading: false, isError: false, refetch: vi.fn() }),
   useUpdateProjectAddon: () => mutation,

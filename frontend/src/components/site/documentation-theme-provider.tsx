@@ -1,9 +1,21 @@
-import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
-import { cn } from '@nibleaf/design-system/lib/utils';
-import { type ResolvedTheme, THEME_SCHEMA_VERSION, type ThemeLayout } from '@nibleaf/shared/themes';
-import { type CSSProperties, createContext, type ReactNode, useContext } from 'react';
+import { ScrollArea } from "@cms/design-system/components/ui/scroll-area";
+import { cn } from "@cms/design-system/lib/utils";
+import {
+  type ResolvedTheme,
+  THEME_SCHEMA_VERSION,
+  type ThemeLayout,
+} from "@cms/shared/themes";
+import {
+  type CSSProperties,
+  createContext,
+  type ReactNode,
+  useContext,
+} from "react";
 
-export type DocumentationThemeContextName = 'reader' | 'project-preview' | 'studio-preview';
+export type DocumentationThemeContextName =
+  | "reader"
+  | "project-preview"
+  | "studio-preview";
 
 interface ReaderSlots {
   banner?: ReactNode;
@@ -32,8 +44,8 @@ interface PageSlots {
 }
 
 export interface DocumentationThemeTemplate {
-  id: 'harbor' | 'manuscript' | 'signal';
-  shell: ThemeLayout['shell'];
+  id: "harbor" | "manuscript" | "signal";
+  shell: ThemeLayout["shell"];
   ReaderLayout: (slots: ReaderSlots) => ReactNode;
   ProjectPreviewLayout: (slots: ProjectPreviewSlots) => ReactNode;
   StudioPreviewLayout: (slots: StudioPreviewSlots) => ReactNode;
@@ -51,8 +63,8 @@ const readerFrame = (slots: ReaderSlots, body: ReactNode) => (
 );
 
 const HarborTemplate: DocumentationThemeTemplate = {
-  id: 'harbor',
-  shell: 'reference',
+  id: "harbor",
+  shell: "reference",
   ReaderLayout: (slots) =>
     readerFrame(
       slots,
@@ -66,7 +78,10 @@ const HarborTemplate: DocumentationThemeTemplate = {
           data-theme-region="sidebar"
         >
           <ScrollArea className="h-full">
-            <div className="pt-7 pb-12 pe-5" data-theme-region="sidebar-content">
+            <div
+              className="pt-7 pb-12 pe-5"
+              data-theme-region="sidebar-content"
+            >
               {slots.navigation}
             </div>
           </ScrollArea>
@@ -82,7 +97,10 @@ const HarborTemplate: DocumentationThemeTemplate = {
         data-documentation-layout="harbor-reference-preview"
         data-theme-region="preview-shell"
       >
-        <aside className="hidden min-h-0 flex-col border-border border-e bg-card/40 md:flex" data-theme-region="sidebar">
+        <aside
+          className="hidden min-h-0 flex-col border-border border-e bg-card/40 md:flex"
+          data-theme-region="sidebar"
+        >
           {navigation}
         </aside>
         {content}
@@ -97,7 +115,10 @@ const HarborTemplate: DocumentationThemeTemplate = {
         data-documentation-layout="harbor-reference-studio"
         data-theme-region="preview-shell"
       >
-        <div className="border-border border-e bg-card/45 p-2 text-xs" data-theme-region="sidebar">
+        <div
+          className="border-border border-e bg-card/45 p-2 text-xs"
+          data-theme-region="sidebar"
+        >
           {navigation}
         </div>
         {content}
@@ -119,8 +140,8 @@ const HarborTemplate: DocumentationThemeTemplate = {
 };
 
 const ManuscriptTemplate: DocumentationThemeTemplate = {
-  id: 'manuscript',
-  shell: 'editorial',
+  id: "manuscript",
+  shell: "editorial",
   ReaderLayout: (slots) => (
     <>
       {slots.banner}
@@ -129,13 +150,19 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
         data-documentation-layout="manuscript-editorial"
       >
         {slots.header}
-        <div className="mx-auto flex w-full max-w-[82rem] flex-1 flex-col px-4 pb-8 sm:px-6" data-theme-region="content-shell">
+        <div
+          className="mx-auto flex w-full max-w-[82rem] flex-1 flex-col px-4 pb-8 sm:px-6"
+          data-theme-region="content-shell"
+        >
           <aside
             className="documentation-manuscript-reader-navigation hidden border-border/70 border-y bg-(--theme-canvas) lg:block"
             data-theme-region="sidebar"
           >
             <ScrollArea className="h-full">
-              <div className="documentation-manuscript-navigation py-4" data-theme-region="sidebar-content">
+              <div
+                className="documentation-manuscript-navigation py-4"
+                data-theme-region="sidebar-content"
+              >
                 {slots.navigation}
               </div>
             </ScrollArea>
@@ -170,10 +197,17 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
     </>
   ),
   StudioPreviewLayout: ({ header, navigation, content }) => (
-    <div className="bg-(--theme-muted)/60 p-3" data-documentation-layout="manuscript-editorial-studio" data-theme-region="preview-shell">
+    <div
+      className="bg-(--theme-muted)/60 p-3"
+      data-documentation-layout="manuscript-editorial-studio"
+      data-theme-region="preview-shell"
+    >
       <div className="mx-auto max-w-[44rem] border border-border bg-(--theme-canvas) shadow-lg">
         {header}
-        <div className="documentation-manuscript-studio-navigation border-border border-y px-3 py-2 text-xs" data-theme-region="sidebar">
+        <div
+          className="documentation-manuscript-studio-navigation border-border border-y px-3 py-2 text-xs"
+          data-theme-region="sidebar"
+        >
           {navigation}
         </div>
         <div className="min-h-[20rem]">{content}</div>
@@ -195,12 +229,15 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
 };
 
 const SignalTemplate: DocumentationThemeTemplate = {
-  id: 'signal',
-  shell: 'console',
+  id: "signal",
+  shell: "console",
   ReaderLayout: (slots) => (
     <>
       {slots.banner}
-      <section className="documentation-signal-reader flex flex-1 flex-col bg-(--theme-code) p-0 lg:p-3" data-documentation-layout="signal-console">
+      <section
+        className="documentation-signal-reader flex flex-1 flex-col bg-(--theme-code) p-0 lg:p-3"
+        data-documentation-layout="signal-console"
+      >
         {slots.header}
         <div
           className="mx-auto grid w-full max-w-[100rem] flex-1 grid-cols-1 overflow-hidden bg-(--theme-canvas) lg:grid-cols-[14.5rem_minmax(0,1fr)]"
@@ -216,7 +253,9 @@ const SignalTemplate: DocumentationThemeTemplate = {
               </div>
             </ScrollArea>
           </aside>
-          <div className="min-w-0 border-(--theme-border) lg:border-y lg:border-e">{slots.content}</div>
+          <div className="min-w-0 border-(--theme-border) lg:border-y lg:border-e">
+            {slots.content}
+          </div>
         </div>
       </section>
       {slots.footer}
@@ -237,15 +276,24 @@ const SignalTemplate: DocumentationThemeTemplate = {
         >
           {navigation}
         </aside>
-        <div className="min-h-0 overflow-y-auto border border-border bg-(--theme-canvas)">{content}</div>
+        <div className="min-h-0 overflow-y-auto border border-border bg-(--theme-canvas)">
+          {content}
+        </div>
       </div>
     </>
   ),
   StudioPreviewLayout: ({ header, navigation, content }) => (
-    <div className="bg-(--theme-code) p-2" data-documentation-layout="signal-console-studio" data-theme-region="preview-shell">
+    <div
+      className="bg-(--theme-code) p-2"
+      data-documentation-layout="signal-console-studio"
+      data-theme-region="preview-shell"
+    >
       {header}
       <div className="grid min-h-[22rem] grid-cols-[6.5rem_minmax(0,1fr)] border border-border border-t-0 bg-(--theme-canvas)">
-        <div className="border-border border-e bg-(--theme-code) p-2 text-(--theme-code-foreground) text-xs" data-theme-region="sidebar">
+        <div
+          className="border-border border-e bg-(--theme-code) p-2 text-(--theme-code-foreground) text-xs"
+          data-theme-region="sidebar"
+        >
           {navigation}
         </div>
         {content}
@@ -253,11 +301,20 @@ const SignalTemplate: DocumentationThemeTemplate = {
     </div>
   ),
   PageLayout: ({ article, tableOfContents }) => (
-    <div className="flex min-w-0 flex-col gap-6 p-4 sm:p-6 lg:p-8" data-documentation-layout="signal-console-page" data-theme-region="page-shell">
-      <aside className="documentation-signal-command-index hidden border border-border bg-(--theme-surface) p-3 xl:block" data-theme-region="toc">
+    <div
+      className="flex min-w-0 flex-col gap-6 p-4 sm:p-6 lg:p-8"
+      data-documentation-layout="signal-console-page"
+      data-theme-region="page-shell"
+    >
+      <aside
+        className="documentation-signal-command-index hidden border border-border bg-(--theme-surface) p-3 xl:block"
+        data-theme-region="toc"
+      >
         {tableOfContents}
       </aside>
-      <div className="min-w-0 border border-border bg-(--theme-canvas) p-4 sm:p-6">{article}</div>
+      <div className="min-w-0 border border-border bg-(--theme-canvas) p-4 sm:p-6">
+        {article}
+      </div>
     </div>
   ),
 };
@@ -266,9 +323,10 @@ export const DOCUMENTATION_THEME_TEMPLATES = {
   reference: HarborTemplate,
   editorial: ManuscriptTemplate,
   console: SignalTemplate,
-} as const satisfies Record<ThemeLayout['shell'], DocumentationThemeTemplate>;
+} as const satisfies Record<ThemeLayout["shell"], DocumentationThemeTemplate>;
 
-const DocumentationTemplateContext = createContext<ThemeLayout['shell']>('reference');
+const DocumentationTemplateContext =
+  createContext<ThemeLayout["shell"]>("reference");
 
 export function DocumentationThemeProvider({
   theme,
@@ -282,8 +340,8 @@ export function DocumentationThemeProvider({
 }: {
   theme: ResolvedTheme;
   context: DocumentationThemeContextName;
-  direction: 'ltr' | 'rtl';
-  appearance?: 'light' | 'dark';
+  direction: "ltr" | "rtl";
+  appearance?: "light" | "dark";
   className?: string;
   style?: CSSProperties;
   css?: string;
@@ -293,7 +351,11 @@ export function DocumentationThemeProvider({
   return (
     <DocumentationTemplateContext.Provider value={theme.layout.shell}>
       <div
-        className={cn('nibleaf-site-chrome', className, appearance === 'dark' && 'dark')}
+        className={cn(
+          "cms-site-chrome",
+          className,
+          appearance === "dark" && "dark",
+        )}
         data-documentation-template={template.id}
         data-theme-callouts={theme.components.callouts}
         data-theme-context={context}
@@ -322,7 +384,8 @@ export function DocumentationThemeProvider({
   );
 }
 
-const useDocumentationThemeTemplate = (): DocumentationThemeTemplate => DOCUMENTATION_THEME_TEMPLATES[useContext(DocumentationTemplateContext)];
+const useDocumentationThemeTemplate = (): DocumentationThemeTemplate =>
+  DOCUMENTATION_THEME_TEMPLATES[useContext(DocumentationTemplateContext)];
 
 export function DocumentationReaderLayout(slots: ReaderSlots) {
   return useDocumentationThemeTemplate().ReaderLayout(slots);

@@ -27,5 +27,5 @@ export function rewriteCustomDomainOutput(url: URL, projectId: string): URL {
 export function hydratedCustomDomainProjectId(): string | undefined {
   if (typeof document === 'undefined' || typeof window === 'undefined') return undefined;
   if (window.location.pathname.startsWith('/sites/')) return undefined;
-  return document.querySelector<HTMLMetaElement>('meta[name="nibleaf-site-project"]')?.content || undefined;
+  return document.querySelector<HTMLMetaElement>('meta[name="cms-site-project"]')?.content || undefined;
 }

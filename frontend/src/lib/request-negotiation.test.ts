@@ -43,7 +43,7 @@ it('merges Vary fields without duplicates', () => {
 });
 
 it.each(['GET', 'HEAD'])('creates an HTML renderer request from %s Markdown negotiation', (method) => {
-  const request = new Request('https://nibleaf.com/developers', {
+  const request = new Request('https://cms.com/developers', {
     method,
     headers: { Accept: 'text/markdown', 'X-Request-ID': 'agent-test' },
   });
@@ -57,7 +57,7 @@ it('accepts a Fetch-compatible framework request without cloning private runtime
   const frameworkRequest = {
     headers: new Headers({ Accept: 'text/markdown' }),
     method: 'GET',
-    url: 'https://nibleaf.com/',
+    url: 'https://cms.com/',
   } as Request;
   expect(asHtmlRenderRequest(frameworkRequest).headers.get('accept')).toBe('text/html');
 });

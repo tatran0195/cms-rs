@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { NIBLEAF_ORGANIZATION } from '@/lib/marketing-organization';
+import { CMS_ORGANIZATION } from '@/lib/marketing-organization';
 import { marketingLd } from '@/lib/marketing-seo';
 
 describe('marketingLd', () => {
@@ -11,13 +11,13 @@ describe('marketingLd', () => {
     const organization = json['@graph'].find((entry) => entry['@type'] === 'Organization');
     const application = json['@graph'].find((entry) => entry['@type'] === 'WebApplication');
 
-    expect(organization?.sameAs).toEqual(['https://github.com/lord007tn/nibleaf']);
+    expect(organization?.sameAs).toEqual(['https://github.com/lord007tn/cms']);
     expect(organization?.contactPoint).toMatchObject({
       '@type': 'ContactPoint',
       contactType: 'Product support',
-      email: 'support@nibleaf.com',
+      email: 'support@cms.com',
     });
-    expect(organization?.address).toEqual(NIBLEAF_ORGANIZATION.address);
+    expect(organization?.address).toEqual(CMS_ORGANIZATION.address);
     const offer = application?.offers as Record<string, unknown>;
     expect(offer).toMatchObject({
       '@type': 'Offer',
@@ -29,14 +29,14 @@ describe('marketingLd', () => {
   });
 
   it('keeps public organization facts in the shared constant', () => {
-    expect(NIBLEAF_ORGANIZATION).toMatchObject({
-      name: 'Nibleaf',
+    expect(CMS_ORGANIZATION).toMatchObject({
+      name: 'CMS',
       address: {
         '@type': 'PostalAddress',
         addressCountry: 'TN',
       },
       supportContact: {
-        email: 'support@nibleaf.com',
+        email: 'support@cms.com',
       },
     });
   });
