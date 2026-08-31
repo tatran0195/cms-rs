@@ -33,7 +33,7 @@ cms-rs/
 │   ├── cms-entity/        # Wire-shape DTOs (24 files)
 │   ├── cms-db/            # SQLx queries by domain (23 files)
 │   ├── cms-auth/           # Sessions, API keys, JWT (3 files)
-│   ├── cms-access-control/ # Authorization traits (1 file)
+│   ├── cms-authz/          # Authorization traits (1 file)
 │   ├── cms-storage/        # Storage trait + implementations (1 file)
 │   ├── cms-search/         # SearchEngine trait + backends (1 file)
 │   ├── cms-queue/          # JobQueue trait + backends (1 file)
@@ -183,7 +183,7 @@ cms-rs/
 - **cms-config**: Typed configuration loading
 - **cms-error**: AppError enum with IntoResponse
 - **cms-auth**: Authentication service with JWT and sessions
-- **cms-access-control**: Access control traits and implementations
+- **cms-authz**: Authorization traits and implementations
 - **cms-storage**: Storage trait with LocalFs and S3 backends
 - **cms-search**: SearchEngine trait with pgvector and Qdrant backends
 - **cms-queue**: JobQueue trait with Memory and Redis backends
@@ -201,7 +201,7 @@ cms-server (binary)
     │   │   ├── cms-entity (DTOs)
     │   │   ├── cms-storage (storage)
     │   │   ├── cms-search (search)
-    │   │   ├── cms-access-control (authz)
+    │   │   ├── cms-authz (authz)
     │   │   └── cms-error (errors)
     │   ├── cms-middleware (Tower layers)
     │   │   └── cms-config (configuration)

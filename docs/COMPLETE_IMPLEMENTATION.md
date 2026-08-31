@@ -366,7 +366,6 @@ The CMS Rust migration is **100% complete** and **production-ready**:
 
 From architecture design to production deployment, every aspect has been implemented with:
 
-- ✅ **Best practices** from AppFlowy and Rust ecosystem
 - ✅ **Production reliability** with tested infrastructure crates
 - ✅ **Developer experience** with modern tooling
 - ✅ **Maintainability** with comprehensive documentation
@@ -389,7 +388,6 @@ The project is ready for:
 
 ## 🙏 **Acknowledgments**
 
-- **AppFlowy Team** - For the inspiration and architecture patterns
 - **Rust Community** - For the amazing ecosystem (Axum, SQLx, Governor, Metrics)
 - **React Community** - For the modern frontend tooling (Vite, Tailwind, Radix)
 - **All Contributors** - For the hard work and dedication

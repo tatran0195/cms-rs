@@ -141,7 +141,7 @@ cms-rs/
 │   ├── cms-entity/            # Entity types (24 files)
 │   ├── cms-db/                # Database queries (23 files)
 │   ├── cms-auth/              # Authentication
-│   ├── cms-access-control/   # Access control
+│   ├── cms-authz/             # Authorization
 │   ├── cms-storage/           # Storage (Local/S3)
 │   ├── cms-search/            # Search (pgvector/Qdrant)
 │   ├── cms-queue/             # Job queue (Memory/Redis)
