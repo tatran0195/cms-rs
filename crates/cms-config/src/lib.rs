@@ -6,7 +6,9 @@
 //!
 //! Configuration is loaded from:
 //! - Environment variables (prefixed with CMS_)
-//! - A config file (default: config/dev.env for development, config/deploy.env for production)
+//! - Base config file (`config.toml` or `config/config.toml`)
+//! - Environment profile config (`config/dev.toml`, `config/deploy.toml`, etc.)
+//! - Custom config path (`CMS_CONFIG_PATH`)
 
 use config::{Config as ConfigLib, Environment, File};
 use serde::Deserialize;
@@ -750,28 +752,45 @@ impl Default for AdminOriginConfig {
 }
 
 impl Config {
-    /// Load configuration from the environment
+    /// Load configuration from the environment and files
     ///
-    /// Configuration is loaded in the following order (later sources override earlier ones):
-    /// 1. Default values from struct defaults
-    /// 2. Configuration file (dev.env or deploy.env based on environment)
-    /// 3. Environment variables (CMS_ prefix)
+    /// Configuration is loaded in the following cascading order (later sources override earlier ones):
+    /// 1. Default values from struct defaults (implicit via serde defaults)
+    /// 2. Base configuration file: `config.toml` (or `config/config.toml` if found)
+    /// 3. Environment-specific configuration file based on `CMS_ENV`:
+    ///    - `config/{CMS_ENV}.toml` (e.g. `config/dev.toml`, `config/deploy.toml`)
+    ///    - Fallback: `config/{CMS_ENV}.env`
+    /// 4. Explicit configuration file path from `CMS_CONFIG_PATH` env var (if set)
+    /// 5. Environment variables prefixed with `CMS_` (using `__` for nested keys)
     pub fn load() -> Result<Self, anyhow::Error> {
-        let env = std::env::var("CMS_ENV").unwrap_or_else(|_| "dev".to_string());
-        let config_file = match env.as_str() {
-            "dev" => "config/dev.env",
-            "deploy" => "config/deploy.env",
-            _ => "config/dev.env",
-        };
-
         let mut builder = ConfigLib::builder();
 
-        // Load from config file if it exists
-        if std::path::Path::new(config_file).exists() {
-            builder = builder.add_source(File::with_name(config_file));
+        // 1. Base config file (config.toml in root or config/)
+        if std::path::Path::new("config.toml").exists() {
+            builder = builder.add_source(File::with_name("config.toml"));
+        } else if std::path::Path::new("config/config.toml").exists() {
+            builder = builder.add_source(File::with_name("config/config.toml"));
         }
 
-        // Load from environment variables with CMS_ prefix
+        // 2. Environment profile config
+        let env = std::env::var("CMS_ENV").unwrap_or_else(|_| "dev".to_string());
+        let env_toml = format!("config/{}.toml", env);
+        let env_file = format!("config/{}.env", env);
+
+        if std::path::Path::new(&env_toml).exists() {
+            builder = builder.add_source(File::with_name(&env_toml));
+        } else if std::path::Path::new(&env_file).exists() {
+            builder = builder.add_source(File::with_name(&env_file));
+        }
+
+        // 3. Explicit config path override via env var
+        if let Ok(custom_path) = std::env::var("CMS_CONFIG_PATH") {
+            if std::path::Path::new(&custom_path).exists() {
+                builder = builder.add_source(File::with_name(&custom_path));
+            }
+        }
+
+        // 4. Environment variables with CMS_ prefix
         builder = builder.add_source(
             Environment::with_prefix("CMS")
                 .prefix_separator("_")
@@ -783,7 +802,7 @@ impl Config {
         Ok(settings.try_deserialize()?)
     }
 
-    /// Load configuration from a specific path
+    /// Load configuration from a specific path, with environment variable overrides
     pub fn load_from_path(path: &str) -> Result<Self, anyhow::Error> {
         let mut builder = ConfigLib::builder();
 
@@ -813,12 +832,21 @@ mod tests {
     fn test_default_config() {
         // Temporarily clear environment
         env::remove_var("CMS_ENV");
+        env::remove_var("CMS_CONFIG_PATH");
 
-        // This will use defaults since no config file exists
-        let config = Config::load();
-
-        // Should have defaults
-        assert_eq!(config.unwrap().server.port, 3000);
+        let config = Config::default();
+        assert_eq!(config.server.port, 3000);
+        assert_eq!(config.server.host, "0.0.0.0");
+        assert_eq!(config.database.url, "postgres://postgres:postgres@localhost:5432/cms");
+        assert_eq!(config.storage.backend, "local");
+        assert_eq!(config.search.backend, "pgvector");
+        assert_eq!(config.queue.backend, "memory");
+        assert_eq!(config.analytics.backend, "postgres");
+        assert_eq!(config.auth.session_secret, "dev_session_secret_change_in_production");
+        assert!(!config.mcp.enabled);
+        assert!(config.rate_limit.enabled);
+        assert!(config.security_headers.enable_hsts);
+        assert!(config.admin_origin.enforce);
     }
 
     #[test]
@@ -834,6 +862,8 @@ mod tests {
     fn test_storage_config_defaults() {
         let storage = StorageConfig::default();
         assert_eq!(storage.backend, "local");
+        assert_eq!(storage.local_root, None);
+        assert_eq!(storage.s3_endpoint, None);
     }
 
     #[test]
@@ -850,5 +880,82 @@ mod tests {
         assert_eq!(queue.backend, "memory");
         assert_eq!(queue.workers, 4);
         assert_eq!(queue.max_retries, 3);
+    }
+
+    #[test]
+    fn test_analytics_config_defaults() {
+        let analytics = AnalyticsConfig::default();
+        assert_eq!(analytics.backend, "postgres");
+        assert_eq!(analytics.clickhouse_port, 8123);
+    }
+
+    #[test]
+    fn test_rate_limit_config_defaults() {
+        let rate_limit = RateLimitConfig::default();
+        assert!(rate_limit.enabled);
+        assert_eq!(rate_limit.requests_per_second, 100);
+        assert_eq!(rate_limit.burst_size, 200);
+        assert_eq!(rate_limit.max_tracked_clients, 10_000);
+        assert_eq!(rate_limit.client_ttl_secs, 300);
+    }
+
+    #[test]
+    fn test_security_headers_defaults() {
+        let headers = SecurityHeadersConfig::default();
+        assert!(headers.enable_hsts);
+        assert_eq!(headers.hsts_max_age, 31536000);
+        assert!(headers.enable_x_content_type_options);
+        assert!(headers.enable_x_frame_options);
+        assert_eq!(headers.x_frame_options, "DENY");
+    }
+
+    #[test]
+    fn test_admin_origin_defaults() {
+        let admin_origin = AdminOriginConfig::default();
+        assert!(admin_origin.enforce);
+        assert!(admin_origin.allow_localhost);
+        assert!(admin_origin.allowed_origins.contains(&"https://admin.cms.com".to_string()));
+    }
+
+    #[test]
+    fn test_load_from_toml_content() {
+        let toml_data = r#"
+            [server]
+            port = 8080
+            host = "127.0.0.1"
+
+            [database]
+            url = "postgres://custom:custom@localhost:5432/custom_db"
+            max_pool_size = 50
+
+            [storage]
+            backend = "s3"
+            s3_bucket = "my-bucket"
+            s3_region = "us-west-2"
+
+            [rate_limit]
+            enabled = false
+            requests_per_second = 500
+        "#;
+
+        let builder = ConfigLib::builder().add_source(config::File::from_str(
+            toml_data,
+            config::FileFormat::Toml,
+        ));
+        let settings = builder.build().expect("should parse toml data");
+        let config: Config = settings.try_deserialize().expect("should deserialize Config");
+
+        assert_eq!(config.server.port, 8080);
+        assert_eq!(config.server.host, "127.0.0.1");
+        assert_eq!(config.database.url, "postgres://custom:custom@localhost:5432/custom_db");
+        assert_eq!(config.database.max_pool_size, 50);
+        assert_eq!(config.storage.backend, "s3");
+        assert_eq!(config.storage.s3_bucket.as_deref(), Some("my-bucket"));
+        assert_eq!(config.storage.s3_region.as_deref(), Some("us-west-2"));
+        assert!(!config.rate_limit.enabled);
+        assert_eq!(config.rate_limit.requests_per_second, 500);
+        // Untouched sections retain default values
+        assert_eq!(config.queue.backend, "memory");
+        assert_eq!(config.search.backend, "pgvector");
     }
 }
