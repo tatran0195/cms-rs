@@ -988,4 +988,12 @@ mod tests {
         env::remove_var("CMS_SERVER__PORT");
         env::remove_var("CMS_DATABASE__MAX_POOL_SIZE");
     }
+
+    #[test]
+    fn test_load_cascading() {
+        let config = Config::load().expect("Config::load should succeed");
+        assert_eq!(config.server.port, 3000);
+        assert_eq!(config.database.url, "postgres://postgres:postgres@localhost:5432/cms");
+        assert_eq!(config.storage.backend, "local");
+    }
 }
