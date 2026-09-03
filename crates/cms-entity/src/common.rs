@@ -142,12 +142,10 @@ impl SuccessResponse {
     Eq,
     PartialOrd,
     Ord,
-    sqlx::Type,
     Default,
     utoipa::ToSchema,
 )]
 #[serde(rename_all = "lowercase")]
-#[sqlx(type_name = "member_role", rename_all = "lowercase")]
 pub enum MemberRole {
     Guest,
     /// Viewer = read-only access (alias for Guest level in access checks)
@@ -158,6 +156,44 @@ pub enum MemberRole {
     Member,
     Admin,
     Owner,
+}
+
+impl sqlx::Type<sqlx::Postgres> for MemberRole {
+    fn type_info() -> sqlx::postgres::PgTypeInfo {
+        sqlx::postgres::PgTypeInfo::with_name("MemberRole")
+    }
+}
+
+impl<'r> sqlx::Decode<'r, sqlx::Postgres> for MemberRole {
+    fn decode(
+        value: sqlx::postgres::PgValueRef<'r>,
+    ) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
+        let s = <&str as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
+        match s {
+            "OWNER" | "owner" => Ok(MemberRole::Owner),
+            "ADMIN" | "admin" => Ok(MemberRole::Admin),
+            "MEMBER" | "member" => Ok(MemberRole::Member),
+            "GUEST" | "guest" => Ok(MemberRole::Guest),
+            "VIEWER" | "viewer" => Ok(MemberRole::Viewer),
+            "EDITOR" | "editor" => Ok(MemberRole::Editor),
+            other => Err(format!("unknown MemberRole: {}", other).into()),
+        }
+    }
+}
+
+impl<'q> sqlx::Encode<'q, sqlx::Postgres> for MemberRole {
+    fn encode_by_ref(
+        &self,
+        buf: &mut sqlx::postgres::PgArgumentBuffer,
+    ) -> Result<sqlx::encode::IsNull, Box<dyn std::error::Error + 'static + Send + Sync>> {
+        let s = match self {
+            MemberRole::Owner => "OWNER",
+            MemberRole::Admin => "ADMIN",
+            MemberRole::Member | MemberRole::Editor => "MEMBER",
+            MemberRole::Guest | MemberRole::Viewer => "GUEST",
+        };
+        <&str as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(&s, buf)
+    }
 }
 
 /// Project role

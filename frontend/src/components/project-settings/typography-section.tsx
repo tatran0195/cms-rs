@@ -261,7 +261,7 @@ export function TypographySection({ project }: { project: Project }) {
       >
         <Segmented
           className="max-w-[240px]"
-          onChange={setBaseSize}
+          onChange={(val) => setBaseSize(val as any)}
           options={[
             { value: "14", label: "14" },
             { value: "15", label: "15" },
@@ -279,7 +279,7 @@ export function TypographySection({ project }: { project: Project }) {
       >
         <Segmented
           className="max-w-[300px]"
-          onChange={setLeading}
+          onChange={(val) => setLeading(val as any)}
           options={[
             { value: "1.5", label: "1.5" },
             { value: "1.6", label: "1.6" },
@@ -297,7 +297,7 @@ export function TypographySection({ project }: { project: Project }) {
       >
         <Segmented
           className="max-w-[420px]"
-          onChange={setFlow}
+          onChange={(val) => setFlow(val as any)}
           options={[
             { value: "0.75", label: t("settings.typography.flow.tight") },
             { value: "1", label: t("settings.typography.flow.snug") },

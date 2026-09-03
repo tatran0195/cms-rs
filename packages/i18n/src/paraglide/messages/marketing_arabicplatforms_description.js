@@ -1,0 +1,10 @@
+import { getLocale } from '../runtime.js';
+
+const translations = {"ar":"مقارنة موثقة بين Nibleaf وMintlify وGitBook وDocusaurus وMkDocs وApidog للعربية وRTL وMarkdown والاستضافة.","bn":"A source-backed comparison of Nibleaf, Mintlify, GitBook, Docusaurus, MkDocs, and Apidog for Arabic, RTL, Markdown, and hosting.","de":"A source-backed comparison of Nibleaf, Mintlify, GitBook, Docusaurus, MkDocs, and Apidog for Arabic, RTL, Markdown, and hosting.","en":"A source-backed comparison of Nibleaf, Mintlify, GitBook, Docusaurus, MkDocs, and Apidog for Arabic, RTL, Markdown, and hosting.","es":"A source-backed comparison of Nibleaf, Mintlify, GitBook, Docusaurus, MkDocs, and Apidog for Arabic, RTL, Markdown, and hosting.","fr":"A source-backed comparison of Nibleaf, Mintlify, GitBook, Docusaurus, MkDocs, and Apidog for Arabic, RTL, Markdown, and hosting.","hi":"A source-backed comparison of Nibleaf, Mintlify, GitBook, Docusaurus, MkDocs, and Apidog for Arabic, RTL, Markdown, and hosting.","id":"A source-backed comparison of Nibleaf, Mintlify, GitBook, Docusaurus, MkDocs, and Apidog for Arabic, RTL, Markdown, and hosting.","pt-BR":"A source-backed comparison of Nibleaf, Mintlify, GitBook, Docusaurus, MkDocs, and Apidog for Arabic, RTL, Markdown, and hosting.","ru":"A source-backed comparison of Nibleaf, Mintlify, GitBook, Docusaurus, MkDocs, and Apidog for Arabic, RTL, Markdown, and hosting.","ur":"A source-backed comparison of Nibleaf, Mintlify, GitBook, Docusaurus, MkDocs, and Apidog for Arabic, RTL, Markdown, and hosting.","zh-CN":"A source-backed comparison of Nibleaf, Mintlify, GitBook, Docusaurus, MkDocs, and Apidog for Arabic, RTL, Markdown, and hosting."};
+
+export function marketing_arabicplatforms_description(params, options) {
+  const locale = options?.locale || getLocale();
+  const template = translations[locale] ?? translations["en"] ?? "";
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, k) => params[k] !== undefined ? String(params[k]) : `{${k}}`);
+}

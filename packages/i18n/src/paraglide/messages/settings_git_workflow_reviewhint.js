@@ -1,0 +1,10 @@
+import { getLocale } from '../runtime.js';
+
+const translations = {"ar":"يتحقّق الاتصال من الوصول إلى المستودع ويحفظ بيانات الاعتماد. يبقى الاستيراد والمزامنة إجراءين منفصلين بعد الاتصال.","bn":"সংযোগ সংগ্রহস্থলের অ্যাক্সেস যাচাই করে এবং শংসাপত্র সংরক্ষণ করে। সংযোগের পরে আমদানি এবং সিঙ্ক পৃথক ক্রিয়া থাকে।","de":"Durch die Verbindung wird der Repository-Zugriff überprüft und die Anmeldeinformationen gespeichert. Importieren und Synchronisieren bleiben nach der Verbindung getrennte Aktionen.","en":"Connecting verifies repository access and stores the credential. Import and sync remain separate actions after connection.","es":"La conexión verifica el acceso al repositorio y almacena la credencial. La importación y la sincronización siguen siendo acciones separadas después de la conexión.","fr":"La connexion vérifie l'accès au référentiel et stocke les informations d'identification. L'importation et la synchronisation restent des actions distinctes après la connexion.","hi":"कनेक्टिंग रिपॉजिटरी एक्सेस की पुष्टि करता है और क्रेडेंशियल संग्रहीत करता है। कनेक्शन के बाद आयात और सिंक अलग-अलग क्रियाएं रहती हैं।","id":"Menghubungkan memverifikasi akses repositori dan menyimpan kredensial. Impor dan sinkronisasi tetap merupakan tindakan terpisah setelah koneksi.","pt-BR":"A conexão verifica o acesso ao repositório e armazena a credencial. A importação e a sincronização permanecem ações separadas após a conexão.","ru":"При подключении проверяется доступ к хранилищу и сохраняются учетные данные. После подключения импорт и синхронизация остаются отдельными действиями.","ur":"کنیکٹنگ ریپوزٹری تک رسائی کی تصدیق کرتا ہے اور اسناد کو اسٹور کرتا ہے۔ درآمد اور مطابقت پذیری کنکشن کے بعد الگ الگ کارروائیاں رہتی ہیں۔","zh-CN":"连接验证存储库访问并存储凭据。连接后，导入和同步仍然是单独的操作。"};
+
+export function settings_git_workflow_reviewhint(params, options) {
+  const locale = options?.locale || getLocale();
+  const template = translations[locale] ?? translations["en"] ?? "";
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, k) => params[k] !== undefined ? String(params[k]) : `{${k}}`);
+}

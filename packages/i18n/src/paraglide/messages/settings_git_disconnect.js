@@ -1,0 +1,10 @@
+import { getLocale } from '../runtime.js';
+
+const translations = {"ar":"قطع الاتصال","bn":"সংযোগ বিচ্ছিন্ন করুন","de":"Trennen","en":"Disconnect","es":"Desconectar","fr":"Déconnecter","hi":"डिस्कनेक्ट करें","id":"Putuskan sambungan","pt-BR":"Desconectar","ru":"Отключить","ur":"منقطع کرنا","zh-CN":"断开连接"};
+
+export function settings_git_disconnect(params, options) {
+  const locale = options?.locale || getLocale();
+  const template = translations[locale] ?? translations["en"] ?? "";
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, k) => params[k] !== undefined ? String(params[k]) : `{${k}}`);
+}

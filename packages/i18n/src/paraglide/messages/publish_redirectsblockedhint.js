@@ -1,0 +1,10 @@
+import { getLocale } from '../runtime.js';
+
+const translations = {"ar":"لن يتم نشر أي تغييرات حتى تشير كل عملية إعادة توجيه مباشرةً إلى صفحة منشورة صالحة أو رابط خارجي مسموح.","bn":"প্রতিটি পুনঃনির্দেশ সরাসরি একটি বৈধ প্রকাশিত পৃষ্ঠা বা অনুমোদিত বহিরাগত URL-এ নির্দেশ না দেওয়া পর্যন্ত কোনো পরিবর্তন লাইভ হবে না।","de":"Es werden keine Änderungen wirksam, bis jede Weiterleitung direkt auf eine gültige veröffentlichte Seite oder eine zulässige externe URL verweist.","en":"No changes will go live until every redirect points directly to a valid published page or permitted external URL.","es":"No se aplicarán cambios hasta que cada redireccionamiento apunte directamente a una página publicada válida o una URL externa permitida.","fr":"Aucune modification ne sera mise en ligne tant que chaque redirection ne pointera directement vers une page publiée valide ou une URL externe autorisée.","hi":"कोई भी परिवर्तन तब तक लाइव नहीं होगा जब तक कि प्रत्येक रीडायरेक्ट सीधे एक वैध प्रकाशित पृष्ठ या अनुमत बाहरी यूआरएल पर इंगित न हो।","id":"Tidak ada perubahan yang akan diterapkan sampai setiap pengalihan mengarah langsung ke halaman publikasi yang valid atau URL eksternal yang diizinkan.","pt-BR":"Nenhuma alteração entrará em vigor até que cada redirecionamento aponte diretamente para uma página publicada válida ou URL externo permitido.","ru":"Никакие изменения не вступят в силу до тех пор, пока каждое перенаправление не будет указывать непосредственно на действительную опубликованную страницу или разрешенный внешний URL-адрес.","ur":"کوئی تبدیلی لائیو نہیں ہوگی جب تک کہ ہر ری ڈائریکٹ کسی درست شائع شدہ صفحہ یا اجازت یافتہ بیرونی URL کی طرف اشارہ نہ کرے۔","zh-CN":"在每个重定向直接指向有效的已发布页面或允许的外部 URL 之前，任何更改都不会生效。"};
+
+export function publish_redirectsblockedhint(params, options) {
+  const locale = options?.locale || getLocale();
+  const template = translations[locale] ?? translations["en"] ?? "";
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, k) => params[k] !== undefined ? String(params[k]) : `{${k}}`);
+}

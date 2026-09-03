@@ -1,0 +1,10 @@
+import { getLocale } from '../runtime.js';
+
+const translations = {"ar":"تظهر التغييرات فورًا في المعاينة. يبقى القرّاء على آخر سمة منشورة حتى تنشر إصدارًا جديدًا.","bn":"এই পরিবর্তন অবিলম্বে পূর্বরূপ প্রদর্শিত হবে. আপনি একটি নতুন স্থাপনা প্রকাশ না করা পর্যন্ত পাঠকরা সর্বশেষ প্রকাশিত থিমটি রাখেন।","de":"Diese Änderungen werden sofort in der Vorschau angezeigt. Leser behalten das zuletzt veröffentlichte Design, bis Sie eine neue Bereitstellung veröffentlichen.","en":"These changes appear in preview immediately. Readers keep the latest published theme until you publish a new deployment.","es":"Estos cambios aparecen en la vista previa inmediatamente. Los lectores conservan el último tema publicado hasta que publique una nueva implementación.","fr":"Ces modifications apparaissent immédiatement en aperçu. Les lecteurs conservent le dernier thème publié jusqu'à ce que vous publiiez un nouveau déploiement.","hi":"ये परिवर्तन तुरंत पूर्वावलोकन में दिखाई देते हैं. पाठक नवीनतम प्रकाशित विषयवस्तु को तब तक बनाए रखते हैं जब तक आप कोई नई तैनाती प्रकाशित नहीं करते।","id":"Perubahan ini segera muncul di pratinjau. Pembaca menyimpan tema terbaru yang diterbitkan hingga Anda menerbitkan penerapan baru.","pt-BR":"Essas alterações aparecem imediatamente na visualização. Os leitores mantêm o último tema publicado até você publicar uma nova implantação.","ru":"Эти изменения немедленно появятся в предварительном просмотре. Читатели сохраняют последнюю опубликованную тему до тех пор, пока вы не опубликуете новое развертывание.","ur":"یہ تبدیلیاں فوری طور پر پیش نظارہ میں ظاہر ہوتی ہیں۔ قارئین تازہ ترین شائع شدہ تھیم کو اپنے پاس رکھتے ہیں جب تک کہ آپ ایک نئی تعیناتی شائع نہیں کرتے ہیں۔","zh-CN":"这些更改会立即显示在预览中。读者将保留最新发布的主题，直到您发布新的部署。"};
+
+export function settings_theme_drafthint(params, options) {
+  const locale = options?.locale || getLocale();
+  const template = translations[locale] ?? translations["en"] ?? "";
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, k) => params[k] !== undefined ? String(params[k]) : `{${k}}`);
+}

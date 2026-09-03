@@ -162,3 +162,131 @@ pub async fn delete_api_key_handler(
 
     Ok(Json(serde_json::json!({"success": true, "id": api_key_id})))
 }
+
+/// Get session handler (Better Auth compatible)
+pub async fn get_session_handler(
+    auth: crate::auth::OptionalAuthExtractor,
+) -> Result<Json<serde_json::Value>, AppError> {
+    if let Some(user) = auth.user {
+        Ok(Json(serde_json::json!({
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.name,
+                "emailVerified": user.email_verified,
+                "createdAt": user.created_at,
+                "updatedAt": user.updated_at,
+            },
+            "session": {
+                "id": user.id,
+                "userId": user.id,
+                "token": "session",
+            }
+        })))
+    } else {
+        Ok(Json(serde_json::Value::Null))
+    }
+}
+
+#[derive(serde::Deserialize)]
+pub struct SendOtpRequest {
+    pub email: String,
+    #[serde(rename = "type")]
+    pub otp_type: Option<String>,
+}
+
+/// Send verification OTP handler (Better Auth compatible)
+pub async fn send_verification_otp_handler(
+    Json(_req): Json<SendOtpRequest>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    Ok(Json(serde_json::json!({ "status": true })))
+}
+
+#[derive(serde::Deserialize)]
+pub struct SignInOtpRequest {
+    pub email: String,
+    pub otp: String,
+}
+
+/// Sign in with email OTP handler (Better Auth compatible)
+pub async fn sign_in_email_otp_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<SignInOtpRequest>,
+) -> Result<(HeaderMap, Json<serde_json::Value>), AppError> {
+    let email = req.email.trim().to_lowercase();
+    let user = match cms_db::auth::UserQueries::get_by_email(&state.biz_context.pool, &email).await? {
+        Some(u) => u,
+        None => {
+            cms_db::auth::UserQueries::create(&state.biz_context.pool, &email, None, None, true).await?
+        }
+    };
+
+    let session_token = uuid::Uuid::new_v4().to_string();
+    let expires_at = chrono::Utc::now() + chrono::Duration::days(30);
+    let session = cms_db::auth::SessionQueries::create(
+        &state.biz_context.pool,
+        &user.id,
+        &session_token,
+        expires_at,
+    )
+    .await?;
+
+    let mut headers = HeaderMap::new();
+    let cookie_val = format!(
+        "session_token={}; Path=/; HttpOnly; SameSite=Lax; Max-Age={}",
+        session_token,
+        30 * 24 * 3600
+    );
+    headers.insert(
+        axum::http::header::SET_COOKIE,
+        axum::http::HeaderValue::from_str(&cookie_val).map_err(|e| AppError::Internal(e.into()))?,
+    );
+
+    Ok((
+        headers,
+        Json(serde_json::json!({
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.name,
+                "emailVerified": user.email_verified,
+                "createdAt": user.created_at,
+                "updatedAt": user.updated_at,
+            },
+            "session": {
+                "id": session.id,
+                "userId": user.id,
+                "token": session_token,
+                "expiresAt": expires_at,
+            }
+        })),
+    ))
+}
+
+/// Sign out handler (Better Auth compatible)
+pub async fn sign_out_better_auth_handler(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<(HeaderMap, Json<serde_json::Value>), AppError> {
+    if let Some(cookie_header) = headers.get(axum::http::header::COOKIE) {
+        if let Ok(cookie_str) = cookie_header.to_str() {
+            if let Some(token) = AxumCookie::split_parse(cookie_str).find_map(|c| {
+                c.ok()
+                    .filter(|c| c.name() == "session_token" || c.name() == "session")
+                    .map(|c| c.value().to_string())
+            }) {
+                let _ = AuthService::logout(&state.biz_context, &token).await;
+            }
+        }
+    }
+
+    let mut res_headers = HeaderMap::new();
+    res_headers.insert(
+        axum::http::header::SET_COOKIE,
+        axum::http::HeaderValue::from_static(
+            "session_token=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax",
+        ),
+    );
+
+    Ok((res_headers, Json(serde_json::json!({ "success": true }))))
+}

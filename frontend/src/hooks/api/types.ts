@@ -354,6 +354,17 @@ interface SearchCitation {
   direction: 'ltr' | 'rtl';
 }
 
+export interface SearchResultHit {
+  id: string;
+  title: string;
+  path: string;
+  snippet: string;
+  heading?: string;
+  icon?: string | null;
+  direction?: 'ltr' | 'rtl';
+  score?: number;
+}
+
 export interface SearchAnswer {
   status: 'answered' | 'no_answer';
   answer: string;

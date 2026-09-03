@@ -63,7 +63,8 @@ pub fn init_observability() {
                     .with_thread_ids(true)
                     .with_thread_names(true),
             )
-            .init();
+            .try_init()
+            .ok();
 
         info!("Observability initialized");
 
@@ -420,7 +421,8 @@ pub fn init_tracing() {
         .with_env_filter("cms=debug,tower_http=debug,axum=debug")
         .with_target(true)
         .with_line_number(true)
-        .init();
+        .try_init()
+        .ok();
 }
 
 /// Initialize tracing with JSON output
@@ -428,7 +430,8 @@ pub fn init_tracing_json() {
     tracing_subscriber::fmt()
         .json()
         .with_env_filter("cms=debug")
-        .init();
+        .try_init()
+        .ok();
 }
 
 /// Add request ID to error response

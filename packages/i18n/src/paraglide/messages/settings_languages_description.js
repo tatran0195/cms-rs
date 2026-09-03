@@ -1,0 +1,10 @@
+import { getLocale } from '../runtime.js';
+
+const translations = {"ar":"اللغات التي يُكتب بها هذا الموقع. تبقى اللغات المعطَّلة قابلة للتحرير في لوحة التحكّم لكنها تُخفى من الموقع المنشور.","bn":"এই সাইটটি যে ভাষায় লেখা হয়েছে৷ অক্ষম ভাষাগুলি ড্যাশবোর্ডে সম্পাদনাযোগ্য থাকে তবে প্রকাশিত সাইট থেকে লুকানো থাকে৷","de":"Die Sprachen, in denen diese Website geschrieben ist. Deaktivierte Sprachen bleiben im Dashboard bearbeitbar, werden jedoch auf der veröffentlichten Website ausgeblendet.","en":"The languages this site is written in. Disabled languages stay editable in the dashboard but are hidden from the published site.","es":"Los idiomas en los que está escrito este sitio. Los idiomas deshabilitados permanecen editables en el panel, pero están ocultos en el sitio publicado.","fr":"Les langues dans lesquelles ce site est écrit. Les langues désactivées restent modifiables dans le tableau de bord mais sont masquées du site publié.","hi":"यह साइट जिन भाषाओं में लिखी गई है। अक्षम भाषाएँ डैशबोर्ड में संपादन योग्य रहती हैं लेकिन प्रकाशित साइट से छिपी रहती हैं।","id":"Bahasa yang digunakan dalam situs ini. Bahasa yang dinonaktifkan tetap dapat diedit di dasbor namun disembunyikan dari situs yang dipublikasikan.","pt-BR":"Os idiomas em que este site está escrito. Os idiomas desativados permanecem editáveis no painel, mas ficam ocultos no site publicado.","ru":"Языки, на которых написан этот сайт. Отключенные языки остаются доступными для редактирования на панели управления, но они скрыты от опубликованного сайта.","ur":"یہ سائٹ جن زبانوں میں لکھی گئی ہے۔ غیر فعال زبانیں ڈیش بورڈ میں قابل تدوین رہتی ہیں لیکن شائع شدہ سائٹ سے پوشیدہ رہتی ہیں۔","zh-CN":"此网站所使用的语言。禁用的语言在仪表板中保持可编辑状态，但在已发布的网站中隐藏。"};
+
+export function settings_languages_description(params, options) {
+  const locale = options?.locale || getLocale();
+  const template = translations[locale] ?? translations["en"] ?? "";
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, k) => params[k] !== undefined ? String(params[k]) : `{${k}}`);
+}

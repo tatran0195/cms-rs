@@ -1,0 +1,10 @@
+import { getLocale } from '../runtime.js';
+
+const translations = {"ar":"سيتوقف عرض الموقع ولن يتمكن المالك من النشر حتى استعادته. يُحفظ السبب في سجل التدقيق.","bn":"The published site stops being served and the owner cannot publish until it is restored. The reason is stored for the audit trail.","de":"The published site stops being served and the owner cannot publish until it is restored. The reason is stored for the audit trail.","en":"The published site stops being served and the owner cannot publish until it is restored. The reason is stored for the audit trail.","es":"The published site stops being served and the owner cannot publish until it is restored. The reason is stored for the audit trail.","fr":"The published site stops being served and the owner cannot publish until it is restored. The reason is stored for the audit trail.","hi":"The published site stops being served and the owner cannot publish until it is restored. The reason is stored for the audit trail.","id":"The published site stops being served and the owner cannot publish until it is restored. The reason is stored for the audit trail.","pt-BR":"The published site stops being served and the owner cannot publish until it is restored. The reason is stored for the audit trail.","ru":"The published site stops being served and the owner cannot publish until it is restored. The reason is stored for the audit trail.","ur":"The published site stops being served and the owner cannot publish until it is restored. The reason is stored for the audit trail.","zh-CN":"The published site stops being served and the owner cannot publish until it is restored. The reason is stored for the audit trail."};
+
+export function admin_sites_takedownbody(params, options) {
+  const locale = options?.locale || getLocale();
+  const template = translations[locale] ?? translations["en"] ?? "";
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, k) => params[k] !== undefined ? String(params[k]) : `{${k}}`);
+}

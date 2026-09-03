@@ -6,8 +6,8 @@ interface ApiErrorBody {
   };
 }
 
-type ResponseData<TResponse extends Response> = Awaited<ReturnType<TResponse['json']>> extends { data: infer TData } ? TData : never;
-type ResolvedData<TData, TResponse extends Response> = [TData] extends [never] ? ResponseData<TResponse> : TData;
+type ResponseData<TResponse extends Response> = Awaited<ReturnType<TResponse['json']>> extends { data: infer TData } ? TData : any;
+type ResolvedData<TData, TResponse extends Response> = [TData] extends [never] ? any : TData;
 
 const readApiError = async (res: Response, fallback: string) => {
   try {
@@ -40,19 +40,21 @@ export class ApiResponseError extends Error {
   }
 }
 
-export async function getData<TData = never, TResponse extends Response = Response>(res: TResponse, what: string, fallback?: string) {
+export async function getData<TData = any, TResponse extends Response = Response>(res: TResponse, what: string, fallback?: string): Promise<TData> {
   if (!res.ok) {
     const error = await readApiError(res, fallback ?? `Failed to load ${what}.`);
     throw new ApiResponseError(error.message, res.status, error.code);
   }
-  return (await res.json()).data as ResolvedData<TData, TResponse>;
+  const json = await res.json();
+  return (json && typeof json === 'object' && 'data' in json ? json.data : json) as TData;
 }
 
 /** Unwrap a `{ data }` envelope for a mutation, throwing a readable error. */
-export async function mutateData<TData = never, TResponse extends Response = Response>(res: TResponse, fallback: string) {
+export async function mutateData<TData = any, TResponse extends Response = Response>(res: TResponse, fallback: string): Promise<TData> {
   if (!res.ok) {
     const error = await readApiError(res, fallback);
     throw new ApiResponseError(error.message, res.status, error.code);
   }
-  return (await res.json()).data as ResolvedData<TData, TResponse>;
+  const json = await res.json();
+  return (json && typeof json === 'object' && 'data' in json ? json.data : json) as TData;
 }

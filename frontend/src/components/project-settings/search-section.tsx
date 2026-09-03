@@ -151,7 +151,7 @@ function ProjectSearchConfigurationForm({
     versionFilterEnabled: boolean;
     aiAnswers: boolean;
     hotkey: Hotkey;
-    placeholder: string | null;
+    placeholder?: string | null;
   };
   maxResultsConstraint: { default: number; min: number; max: number };
   onDirtyChange?: (dirty: boolean) => void;
@@ -250,7 +250,7 @@ function ProjectSearchConfigurationForm({
       >
         <Segmented
           className="max-w-[200px] font-mono"
-          onChange={setHotkey}
+          onChange={(val) => setHotkey(val as Hotkey)}
           options={[
             { value: "cmdk", label: "⌘K" },
             { value: "slash", label: "/" },

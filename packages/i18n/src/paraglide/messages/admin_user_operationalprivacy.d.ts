@@ -1,0 +1,1 @@
+export declare function admin_user_operationalprivacy(params?: Record<string, string | number>, options?: { locale?: string }): string;

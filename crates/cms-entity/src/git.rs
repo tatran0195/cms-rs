@@ -8,7 +8,8 @@ use crate::common::{Id, Timestamp};
 
 /// Git provider types
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
-#[sqlx(type_name = "GitProvider", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+#[sqlx(type_name = "GitProvider", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum GitProvider {
     Github,
     Gitlab,
@@ -17,24 +18,56 @@ pub enum GitProvider {
 }
 
 /// Git sync operation type
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
-#[sqlx(type_name = "GitSyncOperationType", rename_all = "lowercase")]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, utoipa::ToSchema)]
+#[serde(rename_all = "lowercase")]
 pub enum GitSyncOperationType {
     Full,
     Incremental,
     Manual,
     // Uppercase aliases
-    #[sqlx(rename = "full")]
     FULL,
-    #[sqlx(rename = "incremental")]
     INCREMENTAL,
-    #[sqlx(rename = "manual")]
     MANUAL,
+}
+
+impl sqlx::Type<sqlx::Postgres> for GitSyncOperationType {
+    fn type_info() -> sqlx::postgres::PgTypeInfo {
+        sqlx::postgres::PgTypeInfo::with_name("GitSyncOperationType")
+    }
+}
+
+impl<'r> sqlx::Decode<'r, sqlx::Postgres> for GitSyncOperationType {
+    fn decode(
+        value: sqlx::postgres::PgValueRef<'r>,
+    ) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
+        let s = <&str as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
+        match s {
+            "FULL" | "full" => Ok(GitSyncOperationType::Full),
+            "INCREMENTAL" | "incremental" => Ok(GitSyncOperationType::Incremental),
+            "MANUAL" | "manual" => Ok(GitSyncOperationType::Manual),
+            other => Err(format!("unknown GitSyncOperationType: {}", other).into()),
+        }
+    }
+}
+
+impl<'q> sqlx::Encode<'q, sqlx::Postgres> for GitSyncOperationType {
+    fn encode_by_ref(
+        &self,
+        buf: &mut sqlx::postgres::PgArgumentBuffer,
+    ) -> Result<sqlx::encode::IsNull, Box<dyn std::error::Error + 'static + Send + Sync>> {
+        let s = match self {
+            GitSyncOperationType::Full | GitSyncOperationType::FULL => "FULL",
+            GitSyncOperationType::Incremental | GitSyncOperationType::INCREMENTAL => "INCREMENTAL",
+            GitSyncOperationType::Manual | GitSyncOperationType::MANUAL => "MANUAL",
+        };
+        <&str as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(&s, buf)
+    }
 }
 
 /// Git sync operation status
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
-#[sqlx(type_name = "GitSyncOperationStatus", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+#[sqlx(type_name = "GitSyncOperationStatus", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum GitSyncOperationStatus {
     Pending,
     Processing,

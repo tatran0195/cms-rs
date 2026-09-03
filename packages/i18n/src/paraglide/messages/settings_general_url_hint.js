@@ -1,0 +1,10 @@
+import { getLocale } from '../runtime.js';
+
+const translations = {"ar":"نطاقك الفرعي المجاني على Nibleaf. استخدم من 1 إلى 63 حرفًا لاتينيًا صغيرًا أو رقمًا أو شرطة. أضف نطاقًا مخصصًا أدناه لتجاوزه.","bn":"আপনার বিনামূল্যের Nibleaf সাবডোমেন। 1-63 ছোট হাতের অক্ষর, সংখ্যা এবং হাইফেন ব্যবহার করুন। এটিকে ওভাররাইড করতে নীচে একটি কাস্টম ডোমেন যুক্ত করুন৷","de":"Ihre kostenlose Nibleaf Subdomain. Verwenden Sie 1-63 Kleinbuchstaben, Zahlen und Bindestriche. Fügen Sie unten eine benutzerdefinierte Domäne hinzu, um sie zu überschreiben.","en":"Your free Nibleaf subdomain. Use 1-63 lowercase letters, numbers, and hyphens. Add a custom domain below to override it.","es":"Tu subdominio Nibleaf gratuito. Utilice entre 1 y 63 letras minúsculas, números y guiones. Agregue un dominio personalizado a continuación para anularlo.","fr":"Votre sous-domaine Nibleaf gratuit. Utilisez 1 à 63 lettres minuscules, chiffres et traits d’union. Ajoutez un domaine personnalisé ci-dessous pour le remplacer.","hi":"आपका निःशुल्क Nibleaf उपडोमेन। 1-63 छोटे अक्षरों, संख्याओं और हाइफ़न का उपयोग करें। इसे ओवरराइड करने के लिए नीचे एक कस्टम डोमेन जोड़ें।","id":"Subdomain Nibleaf gratis Anda. Gunakan 1-63 huruf kecil, angka, dan tanda hubung. Tambahkan domain khusus di bawah untuk menggantinya.","pt-BR":"Seu subdomínio Nibleaf gratuito. Use de 1 a 63 letras minúsculas, números e hifens. Adicione um domínio personalizado abaixo para substituí-lo.","ru":"Ваш бесплатный субдомен Nibleaf. Используйте от 1 до 63 строчных букв, цифр и дефисов. Добавьте персональный домен ниже, чтобы переопределить его.","ur":"آپ کا مفت Nibleaf ذیلی ڈومین۔ 1-63 چھوٹے حروف، اعداد اور ہائفن استعمال کریں۔ اسے اوور رائڈ کرنے کے لیے نیچے ایک حسب ضرورت ڈومین شامل کریں۔","zh-CN":"您的免费 Nibleaf 子域。使用 1-63 个小写字母、数字和连字符。在下面添加一个自定义域来覆盖它。"};
+
+export function settings_general_url_hint(params, options) {
+  const locale = options?.locale || getLocale();
+  const template = translations[locale] ?? translations["en"] ?? "";
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, k) => params[k] !== undefined ? String(params[k]) : `{${k}}`);
+}

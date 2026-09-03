@@ -16,9 +16,10 @@ pub mod static_files;
 use std::sync::Arc;
 
 use axum::{
+    body::Body,
     extract::{Path, State},
-    http::{HeaderMap, StatusCode},
-    response::{Html, Response},
+    http::{header, HeaderMap, StatusCode},
+    response::{Html, IntoResponse, Response},
     Router,
 };
 use cms_db::{page::PageQueries, project::ProjectQueries};
@@ -43,6 +44,94 @@ pub fn sites_router(state: Arc<SitesAppState>) -> Router {
     create_sites_router(state)
 }
 
+/// Helper to get MIME type by file extension
+fn get_mime_type(ext: &str) -> &'static str {
+    match ext {
+        "html" => "text/html; charset=utf-8",
+        "css" => "text/css; charset=utf-8",
+        "js" | "mjs" => "application/javascript; charset=utf-8",
+        "json" | "webmanifest" => "application/json; charset=utf-8",
+        "svg" => "image/svg+xml",
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "ico" => "image/x-icon",
+        "woff2" => "font/woff2",
+        "woff" => "font/woff",
+        "ttf" => "font/ttf",
+        "map" => "application/json",
+        _ => "application/octet-stream",
+    }
+}
+
+/// Serve static file or SPA index.html fallback from dist/frontend
+pub fn serve_spa_file(path: &str) -> Response {
+    let sanitized = path.trim_start_matches('/').replace('\\', "/");
+    if sanitized.starts_with("api/") || sanitized == "api" {
+        let json = serde_json::json!({
+            "error": {
+                "code": "not_found",
+                "message": "API endpoint not found"
+            }
+        });
+        let mut res = Response::new(Body::from(serde_json::to_vec(&json).unwrap()));
+        *res.status_mut() = StatusCode::NOT_FOUND;
+        res.headers_mut().insert(
+            header::CONTENT_TYPE,
+            header::HeaderValue::from_static("application/json"),
+        );
+        return res;
+    }
+    let candidate_dirs = ["dist/frontend", "frontend/dist", "../dist/frontend", "../frontend/dist"];
+
+    // 1. If path is a specific static file, try to serve it
+    if !sanitized.is_empty() {
+        for dir in &candidate_dirs {
+            let file_path = std::path::Path::new(dir).join(&sanitized);
+            if file_path.is_file() {
+                if let Ok(bytes) = std::fs::read(&file_path) {
+                    let ext = file_path.extension().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
+                    let mime = get_mime_type(&ext);
+                    let mut res = Response::new(Body::from(bytes));
+                    if let Ok(val) = header::HeaderValue::from_str(mime) {
+                        res.headers_mut().insert(header::CONTENT_TYPE, val);
+                    }
+                    if ext != "html" {
+                        res.headers_mut().insert(
+                            header::CACHE_CONTROL,
+                            header::HeaderValue::from_static("public, max-age=31536000, immutable"),
+                        );
+                    }
+                    return res;
+                }
+            }
+        }
+    }
+
+    // 2. SPA fallback: serve index.html for client-side routing
+    for dir in &candidate_dirs {
+        let index_path = std::path::Path::new(dir).join("index.html");
+        if index_path.is_file() {
+            if let Ok(bytes) = std::fs::read(&index_path) {
+                let mut res = Response::new(Body::from(bytes));
+                res.headers_mut().insert(
+                    header::CONTENT_TYPE,
+                    header::HeaderValue::from_static("text/html; charset=utf-8"),
+                );
+                res.headers_mut().insert(
+                    header::CACHE_CONTROL,
+                    header::HeaderValue::from_static("no-cache"),
+                );
+                return res;
+            }
+        }
+    }
+
+    // 3. Fallback HTML if build artifacts are missing
+    Html(r#"<!DOCTYPE html><html><head><meta charset="utf-8"><title>CMS</title></head><body><div id="root"><h1>CMS App</h1><p>Frontend assets not found in dist/frontend.</p></div></body></html>"#.to_string()).into_response()
+}
+
 /// Create the full router with all site routes
 fn create_router(state: Arc<SitesAppState>) -> Router {
     use axum::routing::get;
@@ -56,7 +145,7 @@ fn create_router(state: Arc<SitesAppState>) -> Router {
         .route("/sitemap.xml", get(sitemap_xml_handler))
         .route("/.well-known/security.txt", get(security_txt_handler))
         .route("/.well-known/pgp-key.txt", get(pgp_key_handler))
-        // Static assets for published sites
+        // Static assets for published sites / SPA
         .route("/assets/{*path}", get(asset_handler))
         .route("/css/{*path}", get(css_handler))
         .route("/js/{*path}", get(js_handler))
@@ -107,15 +196,15 @@ fn get_sitemap_generator(_state: &Arc<SitesAppState>) -> SitemapGenerator {
 async fn root_handler(
     State(state): State<Arc<SitesAppState>>,
     headers: HeaderMap,
-) -> Result<Html<String>, AppError> {
+) -> Result<Response, AppError> {
     let host_resolver = get_host_resolver(&state);
 
     // Resolve host to project
     let resolution = host_resolver.resolve(&headers).await?;
 
     match resolution {
-        Some(result) => serve_project_index(&state, &result).await,
-        None => serve_not_found(),
+        Some(result) => serve_project_index(&state, &result).await.map(|html| html.into_response()),
+        None => Ok(serve_spa_file("index.html")),
     }
 }
 
@@ -124,15 +213,15 @@ async fn wildcard_handler(
     State(state): State<Arc<SitesAppState>>,
     headers: HeaderMap,
     Path(path): Path<String>,
-) -> Result<Html<String>, AppError> {
+) -> Result<Response, AppError> {
     let host_resolver = get_host_resolver(&state);
 
     // Resolve host to project
     let resolution = host_resolver.resolve(&headers).await?;
 
     match resolution {
-        Some(result) => serve_page(&state, &result, &path).await,
-        None => serve_not_found(),
+        Some(result) => serve_page(&state, &result, &path).await.map(|html| html.into_response()),
+        None => Ok(serve_spa_file(&path)),
     }
 }
 
@@ -437,8 +526,19 @@ async fn asset_handler(
     State(state): State<Arc<SitesAppState>>,
     Path(path): Path<String>,
 ) -> Result<Response, StatusCode> {
+    let candidate = format!("assets/{}", path);
+    let spa_res = serve_spa_file(&candidate);
+    if spa_res.status() == StatusCode::OK
+        && spa_res
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .map(|v| v != "text/html; charset=utf-8")
+            .unwrap_or(false)
+    {
+        return Ok(spa_res);
+    }
     let static_server = StaticFileServer::new(state.storage.clone());
-    static_server.serve_file(&format!("assets/{}", path)).await
+    static_server.serve_file(&candidate).await
 }
 
 /// CSS handler
@@ -446,8 +546,19 @@ async fn css_handler(
     State(state): State<Arc<SitesAppState>>,
     Path(path): Path<String>,
 ) -> Result<Response, StatusCode> {
+    let candidate = format!("css/{}", path);
+    let spa_res = serve_spa_file(&candidate);
+    if spa_res.status() == StatusCode::OK
+        && spa_res
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .map(|v| v != "text/html; charset=utf-8")
+            .unwrap_or(false)
+    {
+        return Ok(spa_res);
+    }
     let static_server = StaticFileServer::new(state.storage.clone());
-    static_server.serve_file(&format!("css/{}", path)).await
+    static_server.serve_file(&candidate).await
 }
 
 /// JavaScript handler
@@ -455,8 +566,19 @@ async fn js_handler(
     State(state): State<Arc<SitesAppState>>,
     Path(path): Path<String>,
 ) -> Result<Response, StatusCode> {
+    let candidate = format!("js/{}", path);
+    let spa_res = serve_spa_file(&candidate);
+    if spa_res.status() == StatusCode::OK
+        && spa_res
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .map(|v| v != "text/html; charset=utf-8")
+            .unwrap_or(false)
+    {
+        return Ok(spa_res);
+    }
     let static_server = StaticFileServer::new(state.storage.clone());
-    static_server.serve_file(&format!("js/{}", path)).await
+    static_server.serve_file(&candidate).await
 }
 
 /// Font handler
@@ -464,8 +586,19 @@ async fn font_handler(
     State(state): State<Arc<SitesAppState>>,
     Path(path): Path<String>,
 ) -> Result<Response, StatusCode> {
+    let candidate = format!("fonts/{}", path);
+    let spa_res = serve_spa_file(&candidate);
+    if spa_res.status() == StatusCode::OK
+        && spa_res
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .map(|v| v != "text/html; charset=utf-8")
+            .unwrap_or(false)
+    {
+        return Ok(spa_res);
+    }
     let static_server = StaticFileServer::new(state.storage.clone());
-    static_server.serve_file(&format!("fonts/{}", path)).await
+    static_server.serve_file(&candidate).await
 }
 
 /// Image handler
@@ -473,12 +606,33 @@ async fn image_handler(
     State(state): State<Arc<SitesAppState>>,
     Path(path): Path<String>,
 ) -> Result<Response, StatusCode> {
+    let candidate = format!("images/{}", path);
+    let spa_res = serve_spa_file(&candidate);
+    if spa_res.status() == StatusCode::OK
+        && spa_res
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .map(|v| v != "text/html; charset=utf-8")
+            .unwrap_or(false)
+    {
+        return Ok(spa_res);
+    }
     let static_server = StaticFileServer::new(state.storage.clone());
-    static_server.serve_file(&format!("images/{}", path)).await
+    static_server.serve_file(&candidate).await
 }
 
 /// Favicon handler
 async fn favicon_handler(State(state): State<Arc<SitesAppState>>) -> Result<Response, StatusCode> {
+    let spa_res = serve_spa_file("favicon.ico");
+    if spa_res.status() == StatusCode::OK
+        && spa_res
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .map(|v| v != "text/html; charset=utf-8")
+            .unwrap_or(false)
+    {
+        return Ok(spa_res);
+    }
     let static_server = StaticFileServer::new(state.storage.clone());
     static_server.serve_file("favicon.ico").await
 }
@@ -487,6 +641,16 @@ async fn favicon_handler(State(state): State<Arc<SitesAppState>>) -> Result<Resp
 async fn favicon_32_handler(
     State(state): State<Arc<SitesAppState>>,
 ) -> Result<Response, StatusCode> {
+    let spa_res = serve_spa_file("favicon-32x32.png");
+    if spa_res.status() == StatusCode::OK
+        && spa_res
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .map(|v| v != "text/html; charset=utf-8")
+            .unwrap_or(false)
+    {
+        return Ok(spa_res);
+    }
     let static_server = StaticFileServer::new(state.storage.clone());
     static_server.serve_file("favicon-32x32.png").await
 }
@@ -495,6 +659,16 @@ async fn favicon_32_handler(
 async fn favicon_16_handler(
     State(state): State<Arc<SitesAppState>>,
 ) -> Result<Response, StatusCode> {
+    let spa_res = serve_spa_file("favicon-16x16.png");
+    if spa_res.status() == StatusCode::OK
+        && spa_res
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .map(|v| v != "text/html; charset=utf-8")
+            .unwrap_or(false)
+    {
+        return Ok(spa_res);
+    }
     let static_server = StaticFileServer::new(state.storage.clone());
     static_server.serve_file("favicon-16x16.png").await
 }
@@ -503,6 +677,16 @@ async fn favicon_16_handler(
 async fn apple_touch_icon_handler(
     State(state): State<Arc<SitesAppState>>,
 ) -> Result<Response, StatusCode> {
+    let spa_res = serve_spa_file("apple-touch-icon.png");
+    if spa_res.status() == StatusCode::OK
+        && spa_res
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .map(|v| v != "text/html; charset=utf-8")
+            .unwrap_or(false)
+    {
+        return Ok(spa_res);
+    }
     let static_server = StaticFileServer::new(state.storage.clone());
     static_server.serve_file("apple-touch-icon.png").await
 }
@@ -511,7 +695,7 @@ async fn apple_touch_icon_handler(
 async fn manifest_handler(
     State(state): State<Arc<SitesAppState>>,
     headers: HeaderMap,
-) -> Result<String, AppError> {
+) -> Result<Response, AppError> {
     let host_resolver = get_host_resolver(&state);
 
     // Resolve host to project
@@ -556,10 +740,13 @@ async fn manifest_handler(
                     .description
                     .as_deref()
                     .unwrap_or("Documentation powered by CMS")
-            ))
+            ).into_response())
         }
         None => {
-            // Default manifest
+            let spa_res = serve_spa_file("site.webmanifest");
+            if spa_res.status() == StatusCode::OK {
+                return Ok(spa_res);
+            }
             Ok(r##"{
     "name": "CMS",
     "short_name": "CMS",
@@ -586,7 +773,7 @@ async fn manifest_handler(
         }
     ]
 }"##
-            .to_string())
+            .to_string().into_response())
         }
     }
 }

@@ -1,0 +1,10 @@
+import { getLocale } from '../runtime.js';
+
+const translations = {"ar":"تُقلَّل بيانات البحث والذكاء الاصطناعي افتراضيًا. لا تُعرض الاستعلامات أو الإجابات الخاصة، وتبقى المقاييس غير المتاحة غير معروفة.","bn":"Search and AI content is minimized by default. Private queries and answers are never shown; unavailable metrics remain unknown.","de":"Search and AI content is minimized by default. Private queries and answers are never shown; unavailable metrics remain unknown.","en":"Search and AI content is minimized by default. Private queries and answers are never shown; unavailable metrics remain unknown.","es":"Search and AI content is minimized by default. Private queries and answers are never shown; unavailable metrics remain unknown.","fr":"Search and AI content is minimized by default. Private queries and answers are never shown; unavailable metrics remain unknown.","hi":"Search and AI content is minimized by default. Private queries and answers are never shown; unavailable metrics remain unknown.","id":"Search and AI content is minimized by default. Private queries and answers are never shown; unavailable metrics remain unknown.","pt-BR":"Search and AI content is minimized by default. Private queries and answers are never shown; unavailable metrics remain unknown.","ru":"Search and AI content is minimized by default. Private queries and answers are never shown; unavailable metrics remain unknown.","ur":"Search and AI content is minimized by default. Private queries and answers are never shown; unavailable metrics remain unknown.","zh-CN":"Search and AI content is minimized by default. Private queries and answers are never shown; unavailable metrics remain unknown."};
+
+export function analytics_privacy_queryterms(params, options) {
+  const locale = options?.locale || getLocale();
+  const template = translations[locale] ?? translations["en"] ?? "";
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, k) => params[k] !== undefined ? String(params[k]) : `{${k}}`);
+}

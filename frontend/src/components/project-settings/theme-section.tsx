@@ -750,7 +750,7 @@ export function ThemeSection({ project }: { project: Project }) {
       >
         <Segmented
           className="mb-4 max-w-[220px]"
-          onChange={setColorMode}
+          onChange={(val) => setColorMode(val as any)}
           options={[
             { value: "light", label: t("settings.styling.theme.light") },
             { value: "dark", label: t("settings.styling.theme.dark") },
@@ -806,7 +806,7 @@ export function ThemeSection({ project }: { project: Project }) {
         <div className="mb-3 flex flex-wrap gap-2">
           <Segmented
             className="max-w-[220px]"
-            onChange={setPreviewMode}
+            onChange={(val) => setPreviewMode(val as any)}
             options={[
               { value: "light", label: t("settings.styling.theme.light") },
               { value: "dark", label: t("settings.styling.theme.dark") },

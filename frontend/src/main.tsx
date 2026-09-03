@@ -1,10 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from '@tanstack/react-router';
+import { RouterProvider } from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { startRouter } from './router';
+import { getRouter } from './router';
+import './styles.css';
 
-// Create a client
+// Create query client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -15,17 +16,15 @@ const queryClient = new QueryClient({
   },
 });
 
-// Start the router
-const router = startRouter();
+// Create the router instance
+const router = getRouter();
 
-// Render the app
+// Render the SPA
 const rootElement = document.getElementById('root')!;
-if (!rootElement.innerHTML) {
-  ReactDOM.createRoot(rootElement).render(
-    <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter router={router} />
-      </QueryClientProvider>
-    </React.StrictMode>
-  );
-}
+ReactDOM.createRoot(rootElement).render(
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  </React.StrictMode>,
+);

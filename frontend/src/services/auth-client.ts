@@ -1,10 +1,11 @@
-import { createCMSAuthClientFn } from '@cms/auth/client';
+import { createNibleafAuthClientFn } from '@cms/auth/client';
 import { getLocale } from '@cms/i18n';
 
-// Same-origin: auth requests hit the dashboard origin and are proxied to the API
-// (vite.config nitro routeRules), so the session cookie is first-party.
-const API_URL = typeof window === 'undefined' ? 'http://localhost:4310' : window.location.origin;
+// Same-origin SPA: auth requests go to /api/auth (proxied to Rust in dev,
+// served directly in production).
+export const authClient = createNibleafAuthClientFn({
+  baseURL: window.location.origin,
+  locale: getLocale,
+});
 
-export const authClient = createCMSAuthClientFn({ baseURL: API_URL, locale: getLocale });
-
-export const { signIn, useSession } = authClient;
+export const { signIn, signOut, signUp, useSession, getSession } = authClient;

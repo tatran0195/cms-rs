@@ -1,0 +1,1 @@
+export declare function settings_theme_option_system(params?: Record<string, string | number>, options?: { locale?: string }): string;

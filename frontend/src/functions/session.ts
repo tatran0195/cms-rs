@@ -1,11 +1,9 @@
-import { auth } from '@cms/auth/server';
-import { createServerFn } from '@tanstack/react-start';
-import { getRequestHeaders } from '@tanstack/react-start/server';
+import { kyClient } from '@/services/api-client';
 
-export const getSessionFn = createServerFn({ method: 'GET' }).handler(async () => {
+export const getSessionFn = async () => {
   try {
-    return await auth.api.getSession({ headers: getRequestHeaders() });
+    return await kyClient.get('auth/me').json<any>();
   } catch {
     return null;
   }
-});
+};

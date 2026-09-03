@@ -1,0 +1,10 @@
+import { getLocale } from '../runtime.js';
+
+const translations = {"ar":"الوصول العام هو الافتراضي المتوافق مع الإصدارات السابقة. تتطلب مساحة العمل حساب مؤلف، ويستخدم القرّاء هويات وجماهير مخصصة.","bn":"পাবলিক হল ব্যাকওয়ার্ড-কম্প্যাটিবল ডিফল্ট। ওয়ার্কস্পেস একটি লেখক অ্যাকাউন্ট প্রয়োজন. পাঠকরা নিবেদিত পরিচয় এবং শ্রোতা ব্যবহার করে।","de":"Öffentlich ist die abwärtskompatible Standardeinstellung. Workspace erfordert ein Autorenkonto. Readers verwendet dedizierte Identitäten und Zielgruppen.","en":"Public is the backward-compatible default. Workspace requires an author account. Readers uses dedicated identities and audiences.","es":"Público es el valor predeterminado compatible con versiones anteriores. El espacio de trabajo requiere una cuenta de autor. Los lectores utilizan identidades y audiencias dedicadas.","fr":"Public est la valeur par défaut rétrocompatible. Workspace nécessite un compte auteur. Les lecteurs utilisent des identités et des publics dédiés.","hi":"पब्लिक बैकवर्ड-संगत डिफॉल्ट है। कार्यक्षेत्र के लिए एक लेखक खाते की आवश्यकता होती है। पाठक समर्पित पहचान और दर्शकों का उपयोग करते हैं।","id":"Publik adalah default yang kompatibel dengan versi sebelumnya. Ruang kerja memerlukan akun penulis. Pembaca menggunakan identitas dan audiens khusus.","pt-BR":"Público é o padrão compatível com versões anteriores. O Workspace requer uma conta de autor. Os leitores usam identidades e públicos dedicados.","ru":"Public — это обратно совместимое значение по умолчанию. Для Workspace требуется учетная запись автора. Читатели используют выделенные личности и аудитории.","ur":"عوامی پسماندہ مطابقت پذیر ڈیفالٹ ہے۔ ورک اسپیس کے لیے مصنف کا اکاؤنٹ درکار ہے۔ قارئین مخصوص شناخت اور سامعین کا استعمال کرتے ہیں۔","zh-CN":"Public 是向后兼容的默认值。工作区需要作者帐户。读者使用专门的身份和受众。"};
+
+export function settings_authentication_reader_modehint(params, options) {
+  const locale = options?.locale || getLocale();
+  const template = translations[locale] ?? translations["en"] ?? "";
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, k) => params[k] !== undefined ? String(params[k]) : `{${k}}`);
+}

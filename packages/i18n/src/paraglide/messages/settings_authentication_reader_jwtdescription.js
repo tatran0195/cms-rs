@@ -1,0 +1,10 @@
+import { getLocale } from '../runtime.js';
+
+const translations = {"ar":"اقبل رموز JWT قصيرة العمر وغير متماثلة. يتم التحقّق من المُصدر والجمهور والانتهاء والتوقيع وعمر الرمز ومنع إعادة jti والمطالبات.","bn":"স্বল্পস্থায়ী অপ্রতিসম JWT গ্রহণ করুন। ইস্যুকারী, দর্শক, মেয়াদ, স্বাক্ষর, টোকেন বয়স, জেটিআই রিপ্লে এবং দাবিগুলি যাচাই করা হয়।","de":"Akzeptieren Sie kurzlebige asymmetrische JWTs. Emittent, Zielgruppe, Ablauf, Signatur, Token-Alter, JTI-Wiedergabe und Ansprüche werden überprüft.","en":"Accept short-lived asymmetric JWTs. Issuer, audience, expiry, signature, token age, jti replay, and claims are verified.","es":"Acepte JWT asimétricos de corta duración. Se verifican el emisor, la audiencia, el vencimiento, la firma, la antigüedad del token, la reproducción de jti y las reclamaciones.","fr":"Acceptez les JWT asymétriques de courte durée. L'émetteur, l'audience, l'expiration, la signature, l'âge du jeton, la relecture jti et les réclamations sont vérifiés.","hi":"अल्पकालिक असममित जेडब्ल्यूटी स्वीकार करें। जारीकर्ता, दर्शक, समाप्ति, हस्ताक्षर, टोकन आयु, जेटीआई रीप्ले और दावों को सत्यापित किया जाता है।","id":"Terima JWT asimetris yang berumur pendek. Penerbit, audiens, kedaluwarsa, tanda tangan, usia token, pemutaran ulang jti, dan klaim diverifikasi.","pt-BR":"Aceite JWTs assimétricos de curta duração. O emissor, o público, o vencimento, a assinatura, a idade do token, a reprodução jti e as reivindicações são verificados.","ru":"Принимайте кратковременные асимметричные JWT. Проверяются эмитент, аудитория, срок действия, подпись, возраст токена, воспроизведение jti и претензии.","ur":"قلیل المدت غیر متناسب JWTs کو قبول کریں۔ جاری کنندہ، سامعین، ایکسپائری، دستخط، ٹوکن ایج، جے ٹی آئی ری پلے، اور دعووں کی تصدیق کی جاتی ہے۔","zh-CN":"接受短暂的非对称 JWT。发行者、受众、到期日、签名、令牌年龄、jti 重播和声明均经过验证。"};
+
+export function settings_authentication_reader_jwtdescription(params, options) {
+  const locale = options?.locale || getLocale();
+  const template = translations[locale] ?? translations["en"] ?? "";
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, k) => params[k] !== undefined ? String(params[k]) : `{${k}}`);
+}

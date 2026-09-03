@@ -31,10 +31,34 @@ impl ProjectService {
         org_id: &str,
         request: CreateProjectRequest,
     ) -> Result<ProjectWithOrgResponse, AppError> {
-        // Check if user is a member of the organization
-        ctx.authz
-            .require_org_member(user_id, org_id)
-            .await?;
+        let effective_org_id = if org_id.trim().is_empty() {
+            // Check if user already belongs to an organization
+            let user_memberships = cms_db::org::MemberQueries::get_by_user(&ctx.pool, user_id).await?;
+            if let Some(first_membership) = user_memberships.first() {
+                first_membership.organization_id.clone()
+            } else {
+                // Mint dedicated organization for user (site is its own workspace)
+                let org_slug = uuid::Uuid::new_v4().to_string();
+                let org = cms_db::org::OrganizationQueries::create(
+                    &ctx.pool,
+                    &request.name,
+                    &org_slug,
+                    None,
+                )
+                .await?;
+                let _ = cms_db::org::MemberQueries::create(
+                    &ctx.pool,
+                    user_id,
+                    &org.id,
+                    cms_entity::common::MemberRole::Owner,
+                )
+                .await?;
+                org.id
+            }
+        } else {
+            ctx.authz.require_org_member(user_id, org_id).await?;
+            org_id.to_string()
+        };
 
         // Generate a unique slug
         let mut slug = request.name.to_lowercase().replace(' ', "-");
@@ -43,7 +67,7 @@ impl ProjectService {
 
         loop {
             let is_available =
-                ProjectQueries::is_slug_available(&ctx.pool, org_id, &slug, None).await?;
+                ProjectQueries::is_slug_available(&ctx.pool, &effective_org_id, &slug, None).await?;
 
             if is_available {
                 break;
@@ -56,7 +80,7 @@ impl ProjectService {
         // Create the project
         let project = ProjectQueries::create(
             &ctx.pool,
-            org_id,
+            &effective_org_id,
             &request.name,
             &slug,
             request.description.as_deref(),
@@ -65,8 +89,30 @@ impl ProjectService {
         )
         .await?;
 
+        // Create default branch
+        let _ = cms_db::branch::BranchQueries::create(
+            &ctx.pool,
+            &project.id,
+            "main",
+            None,
+            true,
+            true,
+        )
+        .await;
+
+        // Create default language
+        let _ = cms_db::language::LanguageQueries::create(
+            &ctx.pool,
+            &project.id,
+            "en",
+            "English",
+            true,
+            false,
+        )
+        .await;
+
         // Get the organization for the response
-        let org = cms_db::org::OrganizationQueries::get_by_id(&ctx.pool, org_id)
+        let org = cms_db::org::OrganizationQueries::get_by_id(&ctx.pool, &effective_org_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Organization not found".to_string()))?;
 

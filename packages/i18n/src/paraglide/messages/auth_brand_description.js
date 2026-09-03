@@ -1,0 +1,10 @@
+import { getLocale } from '../runtime.js';
+
+const translations = {"ar":"تمنح Nibleaf Cloud الفرق سير عمل Markdown مصقولًا، وبحثًا فوريًا، وتحليلات، ونطاقات مخصصة، وبنية تحتية مُدارة.","bn":"Nibleaf ক্লাউড দলগুলিকে একটি মসৃণ Markdown কর্মপ্রবাহ, তাৎক্ষণিক অনুসন্ধান, বিশ্লেষণ, কাস্টম ডোমেন এবং পরিচালিত পরিকাঠামো দেয়৷","de":"Nibleaf Cloud bietet Teams einen ausgefeilten Markdown Workflow, sofortige Suche, Analysen, benutzerdefinierte Domänen und eine verwaltete Infrastruktur.","en":"Nibleaf Cloud gives teams a polished Markdown workflow, instant search, analytics, custom domains, and managed infrastructure.","es":"Nibleaf Cloud ofrece a los equipos un flujo de trabajo Markdown refinado, búsqueda instantánea, análisis, dominios personalizados e infraestructura administrada.","fr":"Nibleaf Cloud offre aux équipes un flux de travail Markdown raffiné, une recherche instantanée, des analyses, des domaines personnalisés et une infrastructure gérée.","hi":"Nibleaf क्लाउड टीमों को एक बेहतर Markdown वर्कफ़्लो, त्वरित खोज, विश्लेषण, कस्टम डोमेन और प्रबंधित बुनियादी ढांचा प्रदान करता है।","id":"Nibleaf Cloud memberi tim alur kerja Markdown yang sempurna, penelusuran instan, analitik, domain khusus, dan infrastruktur terkelola.","pt-BR":"Nibleaf A nuvem oferece às equipes um fluxo de trabalho Markdown sofisticado, pesquisa instantânea, análises, domínios personalizados e infraestrutura gerenciada.","ru":"Nibleaf Облако предоставляет командам усовершенствованный рабочий процесс Markdown, мгновенный поиск, аналитику, пользовательские домены и управляемую инфраструктуру.","ur":"Nibleaf کلاؤڈ ٹیموں کو ایک چمکدار Markdown ورک فلو، فوری تلاش، تجزیات، حسب ضرورت ڈومینز، اور منظم انفراسٹرکچر فراہم کرتا ہے۔","zh-CN":"Nibleaf 云为团队提供了完善的 Markdown 工作流程、即时搜索、分析、自定义域和托管基础设施。"};
+
+export function auth_brand_description(params, options) {
+  const locale = options?.locale || getLocale();
+  const template = translations[locale] ?? translations["en"] ?? "";
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, k) => params[k] !== undefined ? String(params[k]) : `{${k}}`);
+}

@@ -1,4 +1,4 @@
-import releaseManifest from '../../../../release/self-host.json';
+import releaseManifest from '../../../release/self-host.json';
 
 const RELEASE_REPOSITORY = 'https://github.com/lord007tn/cms';
 

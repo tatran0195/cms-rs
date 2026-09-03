@@ -51,6 +51,7 @@ async fn main() -> Result<(), AppError> {
     let app = Router::new()
         .nest("/api", api_router)
         .merge(sites_router)
+        .layer(axum::Extension(state.clone()))
         .layer(tower_http::trace::TraceLayer::new_for_http())
         .layer(tower_http::compression::CompressionLayer::new())
         .layer(tower_http::cors::CorsLayer::permissive())

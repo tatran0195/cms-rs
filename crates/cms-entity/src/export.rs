@@ -7,7 +7,8 @@ use crate::common::{Id, Timestamp};
 
 /// Export status
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
-#[sqlx(type_name = "ExportStatus", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+#[sqlx(type_name = "ExportStatus", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ExportStatus {
     Pending,
     Processing,
@@ -16,22 +17,54 @@ pub enum ExportStatus {
 }
 
 /// Export format
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
-#[sqlx(type_name = "ExportFormat", rename_all = "lowercase")]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, utoipa::ToSchema)]
+#[serde(rename_all = "lowercase")]
 pub enum ExportFormat {
     Html,
     Pdf,
     Markdown,
     Epub,
     // Uppercase aliases for backward compatibility with biz code
-    #[sqlx(rename = "html")]
     HTML,
-    #[sqlx(rename = "pdf")]
     PDF,
-    #[sqlx(rename = "markdown")]
     MARKDOWN,
-    #[sqlx(rename = "epub")]
     EPUB,
+}
+
+impl sqlx::Type<sqlx::Postgres> for ExportFormat {
+    fn type_info() -> sqlx::postgres::PgTypeInfo {
+        sqlx::postgres::PgTypeInfo::with_name("ExportFormat")
+    }
+}
+
+impl<'r> sqlx::Decode<'r, sqlx::Postgres> for ExportFormat {
+    fn decode(
+        value: sqlx::postgres::PgValueRef<'r>,
+    ) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
+        let s = <&str as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
+        match s {
+            "HTML" | "html" => Ok(ExportFormat::Html),
+            "PDF" | "pdf" => Ok(ExportFormat::Pdf),
+            "MARKDOWN" | "markdown" => Ok(ExportFormat::Markdown),
+            "EPUB" | "epub" => Ok(ExportFormat::Epub),
+            other => Err(format!("unknown ExportFormat: {}", other).into()),
+        }
+    }
+}
+
+impl<'q> sqlx::Encode<'q, sqlx::Postgres> for ExportFormat {
+    fn encode_by_ref(
+        &self,
+        buf: &mut sqlx::postgres::PgArgumentBuffer,
+    ) -> Result<sqlx::encode::IsNull, Box<dyn std::error::Error + 'static + Send + Sync>> {
+        let s = match self {
+            ExportFormat::Html | ExportFormat::HTML => "HTML",
+            ExportFormat::Pdf | ExportFormat::PDF => "PDF",
+            ExportFormat::Markdown | ExportFormat::MARKDOWN => "MARKDOWN",
+            ExportFormat::Epub | ExportFormat::EPUB => "EPUB",
+        };
+        <&str as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(&s, buf)
+    }
 }
 
 /// Export snapshot entity

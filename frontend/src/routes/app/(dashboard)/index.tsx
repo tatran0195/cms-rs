@@ -298,7 +298,7 @@ function ProjectsPage() {
                     {number(project._count?.deployments ?? 0)}
                   </TableCell>
                   <TableCell className="text-end tabular-nums">
-                    {number(viewsByProject.get(project.id) ?? 0)}
+                    {number(Number(viewsByProject.get(project.id) ?? 0))}
                   </TableCell>
                 </TableRow>
               ))}

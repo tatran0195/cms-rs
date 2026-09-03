@@ -1,0 +1,10 @@
+import { getLocale } from '../runtime.js';
+
+const translations = {"ar":"ينشئ هذا جلسة دعم لمدة ساعة في تطبيق العميل. تبقى جلسة الإدارة منفصلة ويُسجل كل بدء وإيقاف.","bn":"This creates a one-hour support session in the customer app. Your admin session remains separate and every start and stop is recorded.","de":"This creates a one-hour support session in the customer app. Your admin session remains separate and every start and stop is recorded.","en":"This creates a one-hour support session in the customer app. Your admin session remains separate and every start and stop is recorded.","es":"This creates a one-hour support session in the customer app. Your admin session remains separate and every start and stop is recorded.","fr":"This creates a one-hour support session in the customer app. Your admin session remains separate and every start and stop is recorded.","hi":"This creates a one-hour support session in the customer app. Your admin session remains separate and every start and stop is recorded.","id":"This creates a one-hour support session in the customer app. Your admin session remains separate and every start and stop is recorded.","pt-BR":"This creates a one-hour support session in the customer app. Your admin session remains separate and every start and stop is recorded.","ru":"This creates a one-hour support session in the customer app. Your admin session remains separate and every start and stop is recorded.","ur":"This creates a one-hour support session in the customer app. Your admin session remains separate and every start and stop is recorded.","zh-CN":"This creates a one-hour support session in the customer app. Your admin session remains separate and every start and stop is recorded."};
+
+export function admin_support_description(params, options) {
+  const locale = options?.locale || getLocale();
+  const template = translations[locale] ?? translations["en"] ?? "";
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, k) => params[k] !== undefined ? String(params[k]) : `{${k}}`);
+}

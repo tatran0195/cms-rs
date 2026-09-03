@@ -7,7 +7,8 @@ use crate::common::{Id, Timestamp};
 
 /// Notification type
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
-#[sqlx(type_name = "NotificationType", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+#[sqlx(type_name = "NotificationType", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum NotificationType {
     Comment,
     Invitation,
@@ -18,8 +19,8 @@ pub enum NotificationType {
 }
 
 /// Notification status
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
-#[sqlx(type_name = "NotificationStatus", rename_all = "lowercase")]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, utoipa::ToSchema)]
+#[serde(rename_all = "lowercase")]
 pub enum NotificationStatus {
     Unread,
     Read,
@@ -28,6 +29,40 @@ pub enum NotificationStatus {
     UNREAD,
     READ,
     ARCHIVED,
+}
+
+impl sqlx::Type<sqlx::Postgres> for NotificationStatus {
+    fn type_info() -> sqlx::postgres::PgTypeInfo {
+        sqlx::postgres::PgTypeInfo::with_name("NotificationStatus")
+    }
+}
+
+impl<'r> sqlx::Decode<'r, sqlx::Postgres> for NotificationStatus {
+    fn decode(
+        value: sqlx::postgres::PgValueRef<'r>,
+    ) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
+        let s = <&str as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
+        match s {
+            "UNREAD" | "unread" => Ok(NotificationStatus::Unread),
+            "READ" | "read" => Ok(NotificationStatus::Read),
+            "ARCHIVED" | "archived" => Ok(NotificationStatus::Archived),
+            other => Err(format!("unknown NotificationStatus: {}", other).into()),
+        }
+    }
+}
+
+impl<'q> sqlx::Encode<'q, sqlx::Postgres> for NotificationStatus {
+    fn encode_by_ref(
+        &self,
+        buf: &mut sqlx::postgres::PgArgumentBuffer,
+    ) -> Result<sqlx::encode::IsNull, Box<dyn std::error::Error + 'static + Send + Sync>> {
+        let s = match self {
+            NotificationStatus::Unread | NotificationStatus::UNREAD => "UNREAD",
+            NotificationStatus::Read | NotificationStatus::READ => "READ",
+            NotificationStatus::Archived | NotificationStatus::ARCHIVED => "ARCHIVED",
+        };
+        <&str as sqlx::Encode<sqlx::Postgres>>::encode_by_ref(&s, buf)
+    }
 }
 
 /// Notification entity

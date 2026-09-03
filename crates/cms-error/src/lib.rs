@@ -401,6 +401,23 @@ impl IntoResponse for AppError {
         let message = self.to_string();
         let details = self.details();
 
+        if status.is_server_error() {
+            tracing::error!(
+                status = %status,
+                error_code = %error_code,
+                error = %message,
+                details = ?details,
+                "AppError Server Error"
+            );
+        } else if status.is_client_error() {
+            tracing::warn!(
+                status = %status,
+                error_code = %error_code,
+                error = %message,
+                "AppError Client Error"
+            );
+        }
+
         let body = ErrorResponse {
             error: ErrorDetails {
                 code: error_code,

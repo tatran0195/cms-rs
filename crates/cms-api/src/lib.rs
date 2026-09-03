@@ -33,6 +33,7 @@ pub mod search;
 pub mod theme;
 pub mod usage;
 pub mod validation;
+pub mod workspace;
 use std::sync::Arc;
 
 use axum::Router;
@@ -73,6 +74,32 @@ pub fn create_api_router(state: Arc<AppState>) -> Router {
     router = router.nest("/platform-events", platform_event::router(state.clone()));
     router = router.nest("/mcp", mcp::router(state.clone()));
 
+    // App subrouter (mirrors original TypeScript /api/app/* routes)
+    let app_router = Router::new()
+        .nest("/projects", project::router(state.clone()))
+        .nest("/pages", page::router(state.clone()))
+        .nest("/branches", branch::router(state.clone()))
+        .nest("/languages", language::router(state.clone()))
+        .nest("/git", git::router(state.clone()))
+        .nest("/integrations", integration::router(state.clone()))
+        .nest("/deployments", deployment::router(state.clone()))
+        .nest("/domains", domain::router(state.clone()))
+        .nest("/reader-access", reader_access::router(state.clone()))
+        .nest("/comments", comment::router(state.clone()))
+        .nest("/search", search::router(state.clone()))
+        .nest("/export", export::router(state.clone()))
+        .nest("/openapi", openapi::router(state.clone()))
+        .nest("/usage", usage::router(state.clone()))
+        .nest("/notifications", notification::router(state.clone()))
+        .nest("/assets", asset::router(state.clone()))
+        .nest("/analytics", analytics::router(state.clone()))
+        .nest("/themes", theme::router(state.clone()))
+        .nest("/platform-events", platform_event::router(state.clone()))
+        .nest("/mcp", mcp::router(state.clone()))
+        .nest("/members", workspace::members_router(state.clone()))
+        .nest("/workspace", workspace::workspace_router(state.clone()));
+    router = router.nest("/app", app_router);
+
     // Admin routes (platform-admin-only)
     router = router.nest("/admin", admin::router(state.clone()));
 
@@ -93,7 +120,7 @@ pub fn create_api_router(state: Arc<AppState>) -> Router {
 
 /// Alias for create_api_router (for compatibility with main.rs)
 pub fn api_router(state: Arc<AppState>) -> Router {
-    create_api_router(state)
+    middleware::create_api_router_with_middleware(state)
 }
 
 /// Health check handler

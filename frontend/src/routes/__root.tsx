@@ -7,7 +7,7 @@ import {
   useRouter,
   useRouterState,
 } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { RootMarketingAnalytics } from "@/components/root-marketing-analytics";
 import type { SiteShell } from "@/hooks/api/types";
 import { siteThemeNoFlashScript } from "@/lib/site-theme";
@@ -108,29 +108,23 @@ function RootDocument({ children }: { children: ReactNode }) {
   const siteThemeBootstrap = siteProjectId
     ? siteThemeNoFlashScript(siteProjectId, siteThemeDefault ?? "light")
     : null;
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = dir;
+  }, [lang, dir]);
+
   return (
-    <html lang={lang} dir={dir} suppressHydrationWarning>
-      <head>
-        {nonce ? <meta property="csp-nonce" content={nonce} /> : null}
-        {siteProjectId ? (
-          <meta name="cms-site-project" content={siteProjectId} />
-        ) : null}
-        <HeadContent />
-      </head>
-      <body>
-        <ThemeProvider
-          applyDocumentTheme={!siteProjectId}
-          initialThemeScript={siteThemeBootstrap ?? undefined}
-        >
-          {children}
-        </ThemeProvider>
-        <RootMarketingAnalytics
-          pathname={pathname}
-          siteProjectId={siteProjectId}
-          language={lang === "ar" ? "ar" : "en"}
-        />
-        <Scripts />
-      </body>
-    </html>
+    <ThemeProvider
+      applyDocumentTheme={!siteProjectId}
+      initialThemeScript={siteThemeBootstrap ?? undefined}
+    >
+      {children}
+      <RootMarketingAnalytics
+        pathname={pathname}
+        siteProjectId={siteProjectId}
+        language={lang === "ar" ? "ar" : "en"}
+      />
+    </ThemeProvider>
   );
 }

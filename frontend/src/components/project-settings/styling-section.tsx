@@ -232,7 +232,7 @@ export function StylingSection({ project }: { project: Project }) {
       >
         <Segmented
           className="max-w-[340px]"
-          onChange={setTheme}
+          onChange={(val) => setTheme(val as any)}
           options={[
             { value: "light", label: t("settings.styling.theme.light") },
             { value: "dark", label: t("settings.styling.theme.dark") },
@@ -248,7 +248,7 @@ export function StylingSection({ project }: { project: Project }) {
       >
         <Segmented
           className="max-w-[280px]"
-          onChange={setRadius}
+          onChange={(val) => setRadius(val as any)}
           options={[
             { value: "sharp", label: t("settings.styling.radius.sharp") },
             { value: "rounded", label: t("settings.styling.radius.rounded") },

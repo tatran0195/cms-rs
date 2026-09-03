@@ -1,0 +1,10 @@
+import { getLocale } from '../runtime.js';
+
+const translations = {"ar":"قائمة فحص عملية لنشر وثائق منتج بالعربية: اتجاه الصفحة، الشيفرة داخل النص، البحث، الخطوط، شجرة الصفحات، ووسوم hreflang قبل النشر.","bn":"A practical checklist for Arabic product documentation covering page direction, inline code, search, fonts, page trees, and hreflang.","de":"A practical checklist for Arabic product documentation covering page direction, inline code, search, fonts, page trees, and hreflang.","en":"A practical checklist for Arabic product documentation covering page direction, inline code, search, fonts, page trees, and hreflang.","es":"A practical checklist for Arabic product documentation covering page direction, inline code, search, fonts, page trees, and hreflang.","fr":"A practical checklist for Arabic product documentation covering page direction, inline code, search, fonts, page trees, and hreflang.","hi":"A practical checklist for Arabic product documentation covering page direction, inline code, search, fonts, page trees, and hreflang.","id":"A practical checklist for Arabic product documentation covering page direction, inline code, search, fonts, page trees, and hreflang.","pt-BR":"A practical checklist for Arabic product documentation covering page direction, inline code, search, fonts, page trees, and hreflang.","ru":"A practical checklist for Arabic product documentation covering page direction, inline code, search, fonts, page trees, and hreflang.","ur":"A practical checklist for Arabic product documentation covering page direction, inline code, search, fonts, page trees, and hreflang.","zh-CN":"A practical checklist for Arabic product documentation covering page direction, inline code, search, fonts, page trees, and hreflang."};
+
+export function blog_arabicchecklist_description(params, options) {
+  const locale = options?.locale || getLocale();
+  const template = translations[locale] ?? translations["en"] ?? "";
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, k) => params[k] !== undefined ? String(params[k]) : `{${k}}`);
+}

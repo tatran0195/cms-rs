@@ -156,7 +156,7 @@ export function AuthenticationSection({ project }: { project: Project }) {
       >
         <Segmented
           className="max-w-[540px]"
-          onChange={setMode}
+          onChange={(val) => setMode(val as any)}
           options={[
             {
               value: "PUBLIC",

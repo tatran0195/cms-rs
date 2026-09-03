@@ -1,254 +1,152 @@
 /**
- * API Client for Rust Backend
- * 
- * This replaces the original Hono RPC client with a client that works
- * with our Rust + Axum backend.
+ * api-client.ts — ky-based REST client for the CMS Rust backend.
+ *
+ * This is the low-level named client used by direct callers.
+ * hooks/api/queries.ts and mutations.ts use the RPC-proxy `api` from api.ts instead.
  */
 
-import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig } from 'axios';
-import { getLocale } from '@cms/i18n';
+import { getLocale, REQUEST_LOCALE_HEADER } from '@cms/i18n';
+import ky, { type KyInstance, HTTPError } from 'ky';
 
-// API base URL - configured via Vite environment
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// SPA: always same-origin; dev-server proxy forwards /api → Rust backend.
+const BASE_URL = '/api';
 
-// Create axios instance with defaults
-export const api: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
+export { HTTPError };
+
+/** Shared ky instance — credentials + locale header on every request. */
+export const kyClient: KyInstance = ky.create({
+  prefixUrl: BASE_URL,
+  credentials: 'include',
+  hooks: {
+    beforeRequest: [
+      (request) => {
+        request.headers.set(REQUEST_LOCALE_HEADER, getLocale());
+      },
+    ],
+    afterResponse: [
+      async (request, _options, response) => {
+        if (response.status === 401 && typeof window !== 'undefined') {
+          const pathname = window.location.pathname;
+          const isAuthPage =
+            pathname.startsWith('/sign-in') ||
+            pathname.startsWith('/sign-up') ||
+            pathname.startsWith('/forgot-password') ||
+            pathname.startsWith('/reset-password') ||
+            pathname.startsWith('/verify-email');
+          const isAuthCheck = request.url.includes('auth/me');
+          if (!isAuthPage && !isAuthCheck) {
+            // Session expired — redirect to login
+            window.location.href = '/sign-in';
+          }
+        }
+        return response;
+      },
+    ],
   },
-  withCredentials: true, // Send cookies (for session auth)
 });
 
-// Request interceptor to add locale header
-api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const locale = getLocale();
-    if (config.headers) {
-      config.headers['X-Locale'] = locale;
+/** Extract a user-friendly error message from a ky HTTPError. */
+export async function getErrorMessage(error: unknown): Promise<string> {
+  if (error instanceof HTTPError) {
+    try {
+      const body = (await error.response.clone().json()) as { error?: { message?: string }; message?: string };
+      return body?.error?.message ?? body?.message ?? error.message;
+    } catch {
+      return error.message;
     }
-    return config;
-  },
-  (error: AxiosError) => {
-    return Promise.reject(error);
   }
-);
-
-// Response interceptor to handle errors
-api.interceptors.response.use(
-  (response) => response,
-  (error: AxiosError) => {
-    // Handle specific error cases
-    if (error.response) {
-      const status = error.response.status;
-
-      if (status === 401) {
-        // Unauthorized - clear token and redirect to login
-        localStorage.removeItem('cms_token');
-        localStorage.removeItem('cms_user');
-        if (typeof window !== 'undefined') {
-          window.location.href = '/sign-in';
-        }
-      }
-
-      if (status === 429) {
-        // Rate limited
-        const retryAfter = error.response.headers['retry-after'];
-        console.warn(`Rate limited. Retry after: ${retryAfter}s`);
-      }
-    }
-
-    return Promise.reject(error);
-  }
-);
-
-// Helper to extract error message
-export function getErrorMessage(error: unknown): string {
-  if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError;
-
-    // Try to get error message from response
-    if (axiosError.response?.data) {
-      const data = axiosError.response.data;
-      if (typeof data === 'string') {
-        return data;
-      }
-      if (typeof data === 'object' && data !== null && 'error' in data) {
-        return (data as { error?: string }).error || 'An error occurred';
-      }
-      if (typeof data === 'object' && data !== null && 'message' in data) {
-        return (data as { message?: string }).message || 'An error occurred';
-      }
-    }
-
-    // Fall back to status text or generic message
-    return axiosError.response?.statusText || axiosError.message || 'An error occurred';
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
+  if (error instanceof Error) return error.message;
   return 'An unknown error occurred';
 }
 
-// Typed API client for Rust backend
-// This mirrors the structure of the original Hono API
+// ─── Typed REST client (mirrors Rust API routes) ─────────────────────────────
+
 export const rustApi = {
-  // Auth endpoints
   auth: {
-    login: (data: { email: string; password: string }) =>
-      api.post('/auth/login', data),
-    register: (data: { email: string; password: string; name: string }) =>
-      api.post('/auth/register', data),
-    logout: () => api.post('/auth/logout'),
-    me: () => api.get('/auth/me'),
-    refresh: () => api.post('/auth/refresh'),
-    forgotPassword: (email: string) =>
-      api.post('/auth/forgot-password', { email }),
-    resetPassword: (token: string, password: string) =>
-      api.post('/auth/reset-password', { token, password }),
+    me: () => kyClient.get('auth/me').json(),
+    logout: () => kyClient.post('auth/logout').json(),
   },
 
-  // Organizations
   orgs: {
-    list: () => api.get('/orgs'),
-    get: (id: string) => api.get(`/orgs/${id}`),
-    create: (data: any) => api.post('/orgs', data),
-    update: (id: string, data: any) => api.put(`/orgs/${id}`, data),
-    delete: (id: string) => api.delete(`/orgs/${id}`),
+    list: () => kyClient.get('orgs').json(),
+    get: (id: string) => kyClient.get(`orgs/${id}`).json(),
+    create: (data: unknown) => kyClient.post('orgs', { json: data }).json(),
+    update: (id: string, data: unknown) => kyClient.put(`orgs/${id}`, { json: data }).json(),
+    delete: (id: string) => kyClient.delete(`orgs/${id}`).json(),
     members: {
-      list: (orgId: string) => api.get(`/orgs/${orgId}/members`),
-      add: (orgId: string, data: any) => api.post(`/orgs/${orgId}/members`, data),
-      remove: (orgId: string, userId: string) => api.delete(`/orgs/${orgId}/members/${userId}`),
+      list: (orgId: string) => kyClient.get(`orgs/${orgId}/members`).json(),
+      invite: (orgId: string, data: unknown) => kyClient.post(`orgs/${orgId}/members`, { json: data }).json(),
+      remove: (orgId: string, userId: string) => kyClient.delete(`orgs/${orgId}/members/${userId}`).json(),
     },
   },
 
-  // Projects
   projects: {
-    list: (orgId: string) => api.get(`/orgs/${orgId}/projects`),
-    get: (orgId: string, projectId: string) => api.get(`/orgs/${orgId}/projects/${projectId}`),
-    create: (orgId: string, data: any) => api.post(`/orgs/${orgId}/projects`, data),
-    update: (orgId: string, projectId: string, data: any) => api.put(`/orgs/${orgId}/projects/${projectId}`, data),
-    delete: (orgId: string, projectId: string) => api.delete(`/orgs/${orgId}/projects/${projectId}`),
+    list: () => kyClient.get('app/projects').json(),
+    get: (id: string) => kyClient.get(`app/projects/${id}`).json(),
+    create: (data: unknown) => kyClient.post('app/projects', { json: data }).json(),
+    update: (id: string, data: unknown) => kyClient.put(`app/projects/${id}`, { json: data }).json(),
+    delete: (id: string) => kyClient.delete(`app/projects/${id}`).json(),
   },
 
-  // Pages
   pages: {
-    list: (orgId: string, projectId: string) => api.get(`/orgs/${orgId}/projects/${projectId}/pages`),
-    get: (orgId: string, projectId: string, pageId: string) => api.get(`/orgs/${orgId}/projects/${projectId}/pages/${pageId}`),
-    create: (orgId: string, projectId: string, data: any) => api.post(`/orgs/${orgId}/projects/${projectId}/pages`, data),
-    update: (orgId: string, projectId: string, pageId: string, data: any) => api.put(`/orgs/${orgId}/projects/${projectId}/pages/${pageId}`, data),
-    delete: (orgId: string, projectId: string, pageId: string) => api.delete(`/orgs/${orgId}/projects/${projectId}/pages/${pageId}`),
+    list: (projectId: string, branchId?: string) =>
+      kyClient.get(`app/projects/${projectId}/pages`, { searchParams: branchId ? { branchId } : {} }).json(),
+    get: (projectId: string, pageId: string) => kyClient.get(`app/projects/${projectId}/pages/${pageId}`).json(),
+    create: (projectId: string, data: unknown) => kyClient.post(`app/projects/${projectId}/pages`, { json: data }).json(),
+    update: (projectId: string, pageId: string, data: unknown) =>
+      kyClient.put(`app/projects/${projectId}/pages/${pageId}`, { json: data }).json(),
+    delete: (projectId: string, pageId: string) => kyClient.delete(`app/projects/${projectId}/pages/${pageId}`).json(),
   },
 
-  // Branches
   branches: {
-    list: (orgId: string, projectId: string) => api.get(`/orgs/${orgId}/projects/${projectId}/branches`),
-    get: (orgId: string, projectId: string, branchId: string) => api.get(`/orgs/${orgId}/projects/${projectId}/branches/${branchId}`),
-    create: (orgId: string, projectId: string, data: any) => api.post(`/orgs/${orgId}/projects/${projectId}/branches`, data),
-    update: (orgId: string, projectId: string, branchId: string, data: any) => api.put(`/orgs/${orgId}/projects/${projectId}/branches/${branchId}`, data),
-    delete: (orgId: string, projectId: string, branchId: string) => api.delete(`/orgs/${orgId}/projects/${projectId}/branches/${branchId}`),
+    list: (projectId: string) => kyClient.get(`app/projects/${projectId}/branches`).json(),
+    create: (projectId: string, data: unknown) => kyClient.post(`app/projects/${projectId}/branches`, { json: data }).json(),
+    delete: (projectId: string, branchId: string) => kyClient.delete(`app/projects/${projectId}/branches/${branchId}`).json(),
   },
 
-  // Languages
   languages: {
-    list: (orgId: string, projectId: string) => api.get(`/orgs/${orgId}/projects/${projectId}/languages`),
-    get: (orgId: string, projectId: string, languageId: string) => api.get(`/orgs/${orgId}/projects/${projectId}/languages/${languageId}`),
-    create: (orgId: string, projectId: string, data: any) => api.post(`/orgs/${orgId}/projects/${projectId}/languages`, data),
-    update: (orgId: string, projectId: string, languageId: string, data: any) => api.put(`/orgs/${orgId}/projects/${projectId}/languages/${languageId}`, data),
-    delete: (orgId: string, projectId: string, languageId: string) => api.delete(`/orgs/${orgId}/projects/${projectId}/languages/${languageId}`),
+    list: (projectId: string) => kyClient.get(`app/projects/${projectId}/languages`).json(),
+    create: (projectId: string, data: unknown) => kyClient.post(`app/projects/${projectId}/languages`, { json: data }).json(),
+    update: (projectId: string, langId: string, data: unknown) =>
+      kyClient.put(`app/projects/${projectId}/languages/${langId}`, { json: data }).json(),
+    delete: (projectId: string, langId: string) => kyClient.delete(`app/projects/${projectId}/languages/${langId}`).json(),
   },
 
-  // Git
-  git: {
-    list: (orgId: string, projectId: string) => api.get(`/orgs/${orgId}/projects/${projectId}/git`),
-    connect: (orgId: string, projectId: string, data: any) => api.post(`/orgs/${orgId}/projects/${projectId}/git/connect`, data),
-    sync: (orgId: string, projectId: string) => api.post(`/orgs/${orgId}/projects/${projectId}/git/sync`),
-  },
-
-  // Integrations
-  integrations: {
-    list: (orgId: string, projectId: string) => api.get(`/orgs/${orgId}/projects/${projectId}/integrations`),
-    create: (orgId: string, projectId: string, data: any) => api.post(`/orgs/${orgId}/projects/${projectId}/integrations`, data),
-    update: (orgId: string, projectId: string, integrationId: string, data: any) => api.put(`/orgs/${orgId}/projects/${projectId}/integrations/${integrationId}`, data),
-    delete: (orgId: string, projectId: string, integrationId: string) => api.delete(`/orgs/${orgId}/projects/${projectId}/integrations/${integrationId}`),
-  },
-
-  // Deployments
   deployments: {
-    list: (orgId: string, projectId: string) => api.get(`/orgs/${orgId}/projects/${projectId}/deployments`),
-    get: (orgId: string, projectId: string, deploymentId: string) => api.get(`/orgs/${orgId}/projects/${projectId}/deployments/${deploymentId}`),
-    create: (orgId: string, projectId: string, data: any) => api.post(`/orgs/${orgId}/projects/${projectId}/deployments`, data),
+    list: (projectId: string) => kyClient.get(`app/projects/${projectId}/deployments`).json(),
+    create: (projectId: string, data: unknown) => kyClient.post(`app/projects/${projectId}/deployments`, { json: data }).json(),
   },
 
-  // Domains
   domains: {
-    list: (orgId: string) => api.get(`/orgs/${orgId}/domains`),
-    get: (orgId: string, domainId: string) => api.get(`/orgs/${orgId}/domains/${domainId}`),
-    create: (orgId: string, data: any) => api.post(`/orgs/${orgId}/domains`, data),
-    verify: (orgId: string, domainId: string) => api.post(`/orgs/${orgId}/domains/${domainId}/verify`),
+    list: (projectId: string) => kyClient.get(`app/projects/${projectId}/domains`).json(),
+    add: (projectId: string, data: unknown) => kyClient.post(`app/projects/${projectId}/domains`, { json: data }).json(),
+    delete: (projectId: string, domainId: string) => kyClient.delete(`app/projects/${projectId}/domains/${domainId}`).json(),
+    verify: (projectId: string, domainId: string) =>
+      kyClient.post(`app/projects/${projectId}/domains/${domainId}/verify`).json(),
   },
 
-  // Assets
   assets: {
-    list: (orgId: string, projectId: string) => api.get(`/orgs/${orgId}/projects/${projectId}/assets`),
-    upload: (orgId: string, projectId: string, file: File) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      return api.post(`/orgs/${orgId}/projects/${projectId}/assets`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+    list: (projectId: string) => kyClient.get(`app/projects/${projectId}/assets`).json(),
+    upload: (projectId: string, file: File) => {
+      const form = new FormData();
+      form.append('file', file);
+      return kyClient.post(`app/projects/${projectId}/assets`, { body: form }).json();
     },
-    delete: (orgId: string, projectId: string, assetId: string) => api.delete(`/orgs/${orgId}/projects/${projectId}/assets/${assetId}`),
+    delete: (projectId: string, assetId: string) => kyClient.delete(`app/projects/${projectId}/assets/${assetId}`).json(),
   },
 
-  // Comments
-  comments: {
-    list: (orgId: string, projectId: string, pageId: string) => api.get(`/orgs/${orgId}/projects/${projectId}/pages/${pageId}/comments`),
-    create: (orgId: string, projectId: string, pageId: string, data: any) => api.post(`/orgs/${orgId}/projects/${projectId}/pages/${pageId}/comments`, data),
-    update: (orgId: string, projectId: string, pageId: string, commentId: string, data: any) => api.put(`/orgs/${orgId}/projects/${projectId}/pages/${pageId}/comments/${commentId}`, data),
-    delete: (orgId: string, projectId: string, pageId: string, commentId: string) => api.delete(`/orgs/${orgId}/projects/${projectId}/pages/${pageId}/comments/${commentId}`),
-  },
-
-  // Search
-  search: {
-    search: (orgId: string, projectId: string, query: string) => api.get(`/orgs/${orgId}/projects/${projectId}/search?q=${encodeURIComponent(query)}`),
-  },
-
-  // Public endpoints (for published sites)
   public: {
-    projects: {
-      get: (slug: string) => api.get(`/public/projects/${slug}`),
-    },
-    sites: {
-      get: (projectId: string) => api.get(`/public/projects/${projectId}`),
-      page: {
-        get: (projectId: string, path: string) => api.get(`/public/projects/${projectId}/pages/${path}`),
-      },
-      changelog: {
-        get: (projectId: string) => api.get(`/public/projects/${projectId}/changelog`),
-      },
-    },
-    git: {
-      previews: {
-        get: (token: string) => api.get(`/public/git/previews/${token}`),
-      },
-    },
+    project: (orgSlug: string, projectSlug: string) =>
+      kyClient.get(`public/projects/${orgSlug}/${projectSlug}`).json(),
+    pages: (orgSlug: string, projectSlug: string) =>
+      kyClient.get(`public/pages/${orgSlug}/${projectSlug}`).json(),
+    page: (orgSlug: string, projectSlug: string, pagePath: string) =>
+      kyClient.get(`public/pages/${orgSlug}/${projectSlug}/${pagePath}`).json(),
+    search: (orgSlug: string, projectSlug: string, q: string) =>
+      kyClient.get(`public/search/${orgSlug}/${projectSlug}`, { searchParams: { q } }).json(),
   },
 
-  // Admin endpoints
-  admin: {
-    stats: () => api.get('/admin/stats'),
-    orgs: {
-      list: () => api.get('/admin/orgs'),
-      get: (id: string) => api.get(`/admin/orgs/${id}`),
-    },
-  },
-
-  // Health check
-  health: () => api.get('/health'),
+  health: () => kyClient.get('health').json(),
 };
 
 export default rustApi;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cmsPublicOpenApi } from './cms-openapi';
+import { cmsPublicOpenApi } from './nibleaf-openapi';
 
 describe('cmsPublicOpenApi', () => {
   const document = cmsPublicOpenApi('https://cms.com');
