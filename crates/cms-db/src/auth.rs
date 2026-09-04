@@ -410,6 +410,23 @@ impl ApiKeyQueries {
         Ok(rows.into_iter().map(|r| ApiKey::from(r).into()).collect())
     }
 
+    /// List all of a user's API keys as full rows (including the hashed key, so
+    /// the last-four display digits can be derived). Ordered newest first.
+    pub async fn get_all_for_user_raw(
+        pool: &PgPool,
+        user_id: &str,
+    ) -> Result<Vec<ApiKey>, AppError> {
+        let rows = sqlx::query_as::<_, ApiKeyRow>(
+            "SELECT * FROM \"ApiKey\" WHERE user_id = $1 ORDER BY created_at DESC",
+        )
+        .bind(user_id)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        Ok(rows.into_iter().map(ApiKey::from).collect())
+    }
+
     /// Create a new API key
     pub async fn create(
         pool: &PgPool,

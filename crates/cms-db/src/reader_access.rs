@@ -74,6 +74,28 @@ impl ReaderQueries {
         Ok(row.map(|r| r.into()))
     }
 
+    /// List all readers granted access to any audience belonging to a project.
+    pub async fn get_by_project(
+        pool: &PgPool,
+        project_id: &str,
+    ) -> Result<Vec<Reader>, AppError> {
+        let rows = sqlx::query_as::<_, ReaderRow>(
+            r#"
+            SELECT DISTINCT r.* FROM "Reader" r
+            JOIN "ReaderAudience" ra ON ra.reader_id = r.id
+            JOIN "Audience" a ON ra.audience_id = a.id
+            WHERE a.project_id = $1
+            ORDER BY r.created_at
+            "#,
+        )
+        .bind(project_id)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        Ok(rows.into_iter().map(|r| r.into()).collect())
+    }
+
     pub async fn create(
         pool: &PgPool,
         email: &str,

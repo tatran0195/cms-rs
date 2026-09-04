@@ -126,6 +126,11 @@ impl MarkdownRenderer {
     ///
     /// When `enable_syntax_highlighting` is `true`, fenced code blocks are
     /// highlighted server-side by syntect before the HTML sanitisation pass.
+    ///
+    /// MDX compatibility: GitHub admonition callouts (`> [!NOTE]`, `> [!TIP]`,
+    /// …) are turned into `<div data-callout data-variant="…">` blocks and
+    /// ` ```mermaid` fenced blocks are kept as `<pre class="mermaid">` so the
+    /// client can hydrate them.
     pub fn render_markdown(&self, markdown: &str) -> String {
         let options = self.build_parser_options();
         let parser = Parser::new_ext(markdown, options);
@@ -138,7 +143,105 @@ impl MarkdownRenderer {
             output
         };
 
+        let html = self.postprocess_mdx(&html);
         self.sanitize_html(&html)
+    }
+
+    /// Post-process the HTML produced by pulldown-cmark to add MDX features that
+    /// the default renderer cannot express:
+    ///
+    /// - GitHub-style admonition blockquotes `> [!NOTE]` … → a `div[data-callout]`.
+    /// - Mermaid fenced code blocks already arrive as `<pre><code class="mermaid">`
+    ///   (handled in `render_with_highlighting`); nothing more is needed here.
+    ///
+    /// The inner blockquote content is already Markdown-parsed by pulldown-cmark,
+    /// so rich bodies (lists, code, nested formatting) keep working.
+    fn postprocess_mdx(&self, html: &str) -> String {
+        self.rewrite_admonitions(html)
+    }
+
+    /// Convert `<blockquote><p>[!WORD] …</p>…</blockquote>` into the SPA's
+    /// `div[data-callout][data-variant]` shape.
+    fn rewrite_admonitions(&self, html: &str) -> String {
+        // Map the GitHub admonition keyword to the SPA callout variant.
+        fn keyword_to_variant(kw: &str) -> Option<&'static str> {
+            match kw.to_ascii_uppercase().as_str() {
+                "NOTE" => Some("note"),
+                "TIP" => Some("tip"),
+                "CHECK" => Some("check"),
+                "WARNING" => Some("warning"),
+                "CAUTION" => Some("danger"),
+                "IMPORTANT" => Some("info"),
+                "INFO" => Some("info"),
+                _ => None,
+            }
+        }
+
+        let blockquote_tag = "<blockquote>";
+        let mut out = String::with_capacity(html.len());
+        let mut rest = html;
+        while let Some(start) = rest.find(blockquote_tag) {
+            out.push_str(&rest[..start]);
+            let after_open = &rest[start + blockquote_tag.len()..];
+            // Find the matching close tag (blockquotes don't nest in pulldown).
+            let end = match after_open.find("</blockquote>") {
+                Some(i) => i,
+                None => {
+                    out.push_str(blockquote_tag);
+                    out.push_str(after_open);
+                    rest = "";
+                    break;
+                }
+            };
+            let inner = &after_open[..end];
+            let closing = &after_open[end..];
+
+            // Find the first paragraph and its `[!WORD]` marker.
+            if let Some(p_start) = inner.find("<p>") {
+                let after_p = &inner[p_start + 3..];
+                if let Some(p_end) = after_p.find("</p>") {
+                    let p_text = &after_p[..p_end];
+                    if let Some(marker_end) = p_text.find(']') {
+                        let marker = &p_text[..=marker_end];
+                        let word = marker
+                            .trim_start_matches("[!")
+                            .trim_end_matches(']')
+                            .trim();
+                        if let Some(variant) = keyword_to_variant(word) {
+                            // Drop the `[!WORD]` marker from the leading paragraph.
+                            let body_start = marker_end + 1;
+                            let cleaned_p = p_text[body_start..].trim_start();
+                            let mut body = String::new();
+                            body.push_str("<div class=\"pl-callout-body\">");
+                            if cleaned_p.is_empty() {
+                                body.push_str(&after_p[p_end + 4..]);
+                            } else {
+                                body.push_str("<p>");
+                                body.push_str(cleaned_p);
+                                body.push_str("</p>");
+                                body.push_str(&after_p[p_end + 4..]);
+                            }
+                            body.push_str("</div>");
+                            out.push_str("<div data-callout=\"true\" data-variant=\"");
+                            out.push_str(variant);
+                            out.push_str("\" class=\"pl-callout\">");
+                            out.push_str(&body);
+                            out.push_str("</div>");
+                            rest = &closing[..];
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            // Not an admonition — emit the blockquote verbatim.
+            out.push_str(blockquote_tag);
+            out.push_str(inner);
+            out.push_str(&closing);
+            rest = &after_open[end..];
+        }
+        out.push_str(rest);
+        out
     }
 
     /// Highlight a code snippet and return an HTML `<pre>` block with inline
@@ -208,9 +311,20 @@ impl MarkdownRenderer {
                 }
                 Event::End(TagEnd::CodeBlock) => {
                     in_code_block = false;
-                    let highlighted = self.do_highlight(&code_buf, current_lang.as_deref());
-                    // Inject pre-rendered HTML as a raw event.
-                    events.push(Event::Html(highlighted.into()));
+                    // Mermaid diagrams: keep the raw source in a
+                    // `<pre class="mermaid">` so the client can hydrate them.
+                    if current_lang
+                        .as_deref()
+                        .map(|l| l.split_whitespace().next().unwrap_or(l).eq_ignore_ascii_case("mermaid"))
+                        .unwrap_or(false)
+                    {
+                        let escaped = self.escape_html(&code_buf);
+                        events.push(Event::Html(format!("<pre class=\"mermaid\">{escaped}</pre>").into()));
+                    } else {
+                        let highlighted = self.do_highlight(&code_buf, current_lang.as_deref());
+                        // Inject pre-rendered HTML as a raw event.
+                        events.push(Event::Html(highlighted.into()));
+                    }
                     current_lang = None;
                     code_buf.clear();
                 }
@@ -425,6 +539,8 @@ impl MarkdownRenderer {
         global_attrs.insert("id");
         global_attrs.insert("style");
         global_attrs.insert("data-*");
+        global_attrs.insert("data-callout");
+        global_attrs.insert("data-variant");
 
         // Apply global attributes to all tags
         for tag in self.get_allowed_tags() {
@@ -699,6 +815,33 @@ mod tests {
         // Must not contain any syntect inline styles
         assert!(!html.contains("style=\""));
         assert!(html.contains("<pre><code>"));
+    }
+
+    #[test]
+    fn test_admonition_callout() {
+        let renderer = MarkdownRenderer::new(MarkdownRendererConfig::default());
+
+        let markdown = "> [!NOTE]\n> This is a note body.\n\n> [!TIP]\n> - item one\n> - item two\n";
+        let html = renderer.render_markdown(markdown);
+
+        assert!(html.contains("data-callout"), "admonition should become a callout div");
+        assert!(html.contains("data-variant=\"note\""), "variant should be note");
+        assert!(html.contains("This is a note body."), "body text preserved");
+        assert!(
+            html.contains("<li>") || html.contains("- item one"),
+            "list body should be parsed as markdown"
+        );
+    }
+
+    #[test]
+    fn test_mermaid_is_not_highlighted() {
+        let renderer = MarkdownRenderer::new(MarkdownRendererConfig::default());
+
+        let markdown = "```mermaid\ngraph TD\nA-->B\n```\n";
+        let html = renderer.render_markdown(markdown);
+
+        assert!(html.contains("class=\"mermaid\""), "mermaid block should be kept raw");
+        assert!(html.contains("graph TD"), "mermaid source preserved");
     }
 
     #[test]

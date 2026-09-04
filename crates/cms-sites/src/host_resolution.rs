@@ -127,11 +127,21 @@ impl HostResolver {
             }
         }
 
-        // If no custom domain found, check if it's the default app domain
+        // If no custom domain found, check if it's the default app domain.
+        let bare_default = self
+            .default_host
+            .trim_start_matches("https://")
+            .trim_start_matches("http://")
+            .split(':')
+            .next()
+            .unwrap_or(&self.default_host)
+            .to_string();
         if host == self.default_host
+            || host == bare_default
             || host.ends_with(".cms.app")
             || host.ends_with(".cms.com")
             || host.ends_with(".cms.dev")
+            || (bare_default.contains('.') && host.ends_with(&format!(".{}", bare_default)))
         {
             // Extract project from subdomain
             if let Some(project_slug) = self.extract_subdomain(host) {
@@ -154,7 +164,16 @@ impl HostResolver {
 
     /// Extract subdomain from host
     fn extract_subdomain(&self, host: &str) -> Option<String> {
-        if host == self.default_host {
+        let host = host.strip_suffix(':').unwrap_or(host);
+
+        // Normalize default_host to its bare host part (strip port & scheme).
+        let default_host = self
+            .default_host
+            .trim_start_matches("https://")
+            .trim_start_matches("http://");
+        let bare_default = default_host.split(':').next().unwrap_or(default_host);
+
+        if host == default_host || host == bare_default {
             return None;
         }
 
@@ -165,11 +184,11 @@ impl HostResolver {
         if parts.len() >= 3 {
             // Check if the last two parts match our default host
             let last_two = format!("{}.{}", parts[parts.len() - 2], parts[parts.len() - 1]);
-            if last_two == self.default_host {
+            if last_two == bare_default {
                 return Some(parts[0].to_string());
             }
 
-            // Check for .cms.app or .cms.com
+            // Check for .cms.app or .cms.com (legacy app-brand domains).
             if (parts[parts.len() - 1] == "app" || parts[parts.len() - 1] == "com")
                 && parts.len() >= 2
                 && parts[parts.len() - 2] == "cms"
@@ -179,7 +198,7 @@ impl HostResolver {
         }
 
         // If only 2 parts, the first part might be the subdomain
-        if parts.len() == 2 && parts[1] == self.default_host {
+        if parts.len() == 2 && parts[1] == bare_default {
             return Some(parts[0].to_string());
         }
 

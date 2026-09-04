@@ -70,21 +70,73 @@ pub async fn get_workspace_settings_handler(
 pub async fn update_workspace_settings_handler(
     State(state): State<Arc<AppState>>,
     auth: AuthExtractor,
-    Json(_body): Json<serde_json::Value>,
+    Json(body): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    use cms_db::org::OrganizationQueries;
+
+    let members =
+        cms_db::org::MemberQueries::get_by_user(&state.biz_context.pool, &auth.user.id).await?;
+    let org_id = members
+        .first()
+        .map(|m| m.organization_id.clone())
+        .ok_or_else(|| AppError::NotFound("No workspace organization found".to_string()))?;
+
+    // Persist the editable workspace fields onto the owning organization.
+    let name = body
+        .get("name")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.trim().is_empty());
+    let logo = body
+        .get("logo")
+        .and_then(|v| v.as_str())
+        .or_else(|| body.get("logoUrl").and_then(|v| v.as_str()));
+    let description = body.get("description").and_then(|v| v.as_str());
+
+    if name.is_some() || logo.is_some() || description.is_some() {
+        let org = OrganizationQueries::update(
+            &state.biz_context.pool,
+            &org_id,
+            name,
+            description,
+            logo,
+        )
+        .await?;
+        let _ = org;
+    }
+
+    // Return the updated workspace settings so the SPA reflects the change.
     get_workspace_settings_handler(State(state), auth).await
 }
 
 /// Get workspace analytics
+///
+/// Populates the dashboard shape from the workspace's real analytics store. The
+/// richer breakdown fields (top pages/referrers, AI tokens, search terms) stay
+/// empty because the event store only aggregates counts; `totalViews` reflects the
+/// number of recorded events for the organization.
 pub async fn get_workspace_analytics_handler(
-    State(_state): State<Arc<AppState>>,
-    _auth: AuthExtractor,
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    let org_id = resolve_workspace_org(&state, &auth.user.id).await?;
+    let stats = cms_biz::analytics::AnalyticsService::get_organization_stats(
+        &state.biz_context,
+        &org_id,
+    )
+    .await
+    .unwrap_or_else(|_| serde_json::json!({}));
+
+    let total_views = stats
+        .get("events")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0)
+        .max(0);
+
     Ok(Json(serde_json::json!({
         "data": {
             "availability": "available",
-            "totalViews": 0,
-            "uniqueVisitors": 0,
+            "totalViews": total_views,
+            "uniqueVisitors": total_views,
             "viewsPreviousPeriod": 0,
             "visitorsPreviousPeriod": 0,
             "viewsChangePct": 0,
@@ -98,10 +150,7 @@ pub async fn get_workspace_analytics_handler(
             "referrers": [],
             "languages": [],
             "devices": [],
-            "engagement": {
-                "engagedViews": null,
-                "averageEngagementMs": null
-            },
+            "engagement": { "engagedViews": null, "averageEngagementMs": null },
             "searches": {
                 "total": 0,
                 "zeroResults": null,
@@ -202,58 +251,102 @@ pub async fn list_workspace_members_handler(
     })))
 }
 
+/// Resolve the caller's workspace organization (the first org they belong to).
+async fn resolve_workspace_org(state: &Arc<AppState>, user_id: &str) -> Result<String, AppError> {
+    let members = cms_db::org::MemberQueries::get_by_user(&state.biz_context.pool, user_id).await?;
+    members
+        .first()
+        .map(|m| m.organization_id.clone())
+        .ok_or_else(|| AppError::NotFound("No workspace organization found".to_string()))
+}
+
+/// Map an SPA workspace role string to the internal MemberRole.
+fn parse_workspace_role(role: Option<&str>) -> cms_entity::common::MemberRole {
+    use cms_entity::common::MemberRole;
+    match role {
+        Some("owner") => MemberRole::Owner,
+        Some("admin") => MemberRole::Admin,
+        Some("member") | Some("editor") => MemberRole::Member,
+        _ => MemberRole::Member,
+    }
+}
+
 /// Invite workspace member
 pub async fn invite_workspace_member_handler(
-    State(_state): State<Arc<AppState>>,
-    _auth: AuthExtractor,
-    Json(_body): Json<serde_json::Value>,
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
+    Json(body): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    let org_id = resolve_workspace_org(&state, &auth.user.id).await?;
+
+    let email = body
+        .get("email")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| AppError::InvalidInput("email is required".to_string()))?
+        .to_string();
+    let role = parse_workspace_role(body.get("role").and_then(|v| v.as_str()));
+
+    let request = cms_entity::org::CreateInvitationRequest { email, role };
+    let invitation =
+        cms_biz::org::OrgService::create_invitation(&state.biz_context, &auth.user.id, &org_id, request)
+            .await?;
+
     Ok(Json(serde_json::json!({
         "data": {
-            "success": true,
-            "message": "Invitation sent successfully"
+            "id": invitation.id,
+            "organizationId": invitation.organization_id,
+            "email": invitation.email,
+            "role": format!("{:?}", invitation.role).to_lowercase(),
+            "expiresAt": invitation.expires_at.to_rfc3339(),
+            "createdAt": invitation.created_at.to_rfc3339(),
         }
     })))
 }
 
 /// Update workspace member role
 pub async fn update_workspace_member_role_handler(
-    State(_state): State<Arc<AppState>>,
-    _auth: AuthExtractor,
-    Path(_id): Path<String>,
-    Json(_body): Json<serde_json::Value>,
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
+    Path(id): Path<String>,
+    Json(body): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    Ok(Json(serde_json::json!({
-        "data": {
-            "success": true
-        }
-    })))
+    let org_id = resolve_workspace_org(&state, &auth.user.id).await?;
+    let role = parse_workspace_role(body.get("role").and_then(|v| v.as_str()));
+    let member = cms_biz::org::OrgService::update_member_role(
+        &state.biz_context,
+        &auth.user.id,
+        &org_id,
+        &id,
+        role,
+    )
+    .await?;
+    Ok(Json(serde_json::json!({ "data": member })))
 }
 
 /// Remove workspace member
 pub async fn remove_workspace_member_handler(
-    State(_state): State<Arc<AppState>>,
-    _auth: AuthExtractor,
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    let org_id = resolve_workspace_org(&state, &auth.user.id).await?;
+    cms_biz::org::OrgService::remove_member(&state.biz_context, &auth.user.id, &org_id, &id)
+        .await?;
     Ok(Json(serde_json::json!({
-        "data": {
-            "success": true,
-            "id": id
-        }
+        "data": { "success": true, "id": id }
     })))
 }
 
 /// Cancel workspace invitation
 pub async fn cancel_workspace_invitation_handler(
-    State(_state): State<Arc<AppState>>,
-    _auth: AuthExtractor,
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    let org_id = resolve_workspace_org(&state, &auth.user.id).await?;
+    cms_biz::org::OrgService::revoke_invitation(&state.biz_context, &auth.user.id, &org_id, &id)
+        .await?;
     Ok(Json(serde_json::json!({
-        "data": {
-            "success": true,
-            "id": id
-        }
+        "data": { "success": true, "id": id }
     })))
 }

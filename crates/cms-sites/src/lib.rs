@@ -161,9 +161,23 @@ fn create_router(state: Arc<SitesAppState>) -> Router {
         .with_state(state)
 }
 
+/// Derive the site base host from config, falling back to `"cms.app"`.
+///
+/// Prefers the operator's `site.self_host`, then `site.marketing_host`, then the
+/// historical default — so self-hosted operators and branded deployments don't
+/// need to bake `cms.app` into the binary.
+fn site_host(state: &Arc<SitesAppState>) -> String {
+    let site = &state.config.site;
+    site.self_host
+        .clone()
+        .or_else(|| site.marketing_host.clone())
+        .map(|h| h.trim_start_matches("https://").trim_start_matches("http://").to_string())
+        .unwrap_or_else(|| "cms.app".to_string())
+}
+
 /// Get host resolver from app state
 fn get_host_resolver(state: &Arc<SitesAppState>) -> HostResolver {
-    HostResolver::new(state.biz_context.pool.clone(), "cms.app".to_string())
+    HostResolver::new(state.biz_context.pool.clone(), site_host(state))
 }
 
 /// Get markdown renderer from app state
@@ -183,13 +197,13 @@ fn get_markdown_renderer(_state: &Arc<SitesAppState>) -> MarkdownRenderer {
 }
 
 /// Get SEO generator from app state
-fn get_seo_generator(_state: &Arc<SitesAppState>) -> SeoGenerator {
-    SeoGenerator::new("https://cms.app".to_string())
+fn get_seo_generator(state: &Arc<SitesAppState>) -> SeoGenerator {
+    SeoGenerator::new(format!("https://{}", site_host(state)))
 }
 
 /// Get sitemap generator from app state
-fn get_sitemap_generator(_state: &Arc<SitesAppState>) -> SitemapGenerator {
-    SitemapGenerator::new("https://cms.app".to_string())
+fn get_sitemap_generator(state: &Arc<SitesAppState>) -> SitemapGenerator {
+    SitemapGenerator::new(format!("https://{}", site_host(state)))
 }
 
 /// Root handler - resolves host and serves appropriate content
@@ -456,7 +470,7 @@ async fn robots_txt_handler(
                 if result.is_custom_domain {
                     format!("https://{}", result.hostname)
                 } else {
-                    format!("https://{}.cms.app", project.slug)
+                    format!("https://{}.{}", project.slug, site_host(&state))
                 }
             ))
         }
@@ -497,7 +511,7 @@ async fn sitemap_xml_handler(
             let base_url = if result.is_custom_domain {
                 format!("https://{}", result.hostname)
             } else {
-                format!("https://{}.cms.app", project.slug)
+                format!("https://{}.{}", project.slug, site_host(&state))
             };
 
             let sitemap_gen = SitemapGenerator::new(base_url);

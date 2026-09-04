@@ -103,6 +103,56 @@ impl CommentQueries {
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 
+    /// Get comments across a project (any page owned by the project)
+    pub async fn get_by_project(
+        pool: &PgPool,
+        project_id: &str,
+        parent_id: Option<&str>,
+        resolved: Option<bool>,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> Result<Vec<Comment>, AppError> {
+        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+            "SELECT c.* FROM \"Comment\" c \
+             JOIN \"Page\" p ON c.page_id = p.id WHERE p.project_id = ",
+        );
+        query_builder.push_bind(project_id);
+
+        if let Some(parent_id) = parent_id {
+            if parent_id.is_empty() {
+                query_builder.push(" AND c.parent_id IS NULL");
+            } else {
+                query_builder.push(" AND c.parent_id = ");
+                query_builder.push_bind(parent_id);
+            }
+        }
+
+        if let Some(resolved) = resolved {
+            query_builder.push(" AND c.resolved = ");
+            query_builder.push_bind(resolved);
+        }
+
+        query_builder.push(" ORDER BY c.created_at DESC");
+
+        if let Some(limit) = limit {
+            query_builder.push(" LIMIT ");
+            query_builder.push_bind(limit);
+        }
+
+        if let Some(offset) = offset {
+            query_builder.push(" OFFSET ");
+            query_builder.push_bind(offset);
+        }
+
+        let rows = query_builder
+            .build_query_as::<CommentRow>()
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+
+        Ok(rows.into_iter().map(|r| r.into()).collect())
+    }
+
     /// Count comments by page
     pub async fn count_by_page(
         pool: &PgPool,

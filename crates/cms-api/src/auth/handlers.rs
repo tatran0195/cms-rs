@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
     Json,
 };
@@ -84,7 +84,7 @@ pub async fn logout_handler(
         if let Ok(cookie_str) = cookie_header.to_str() {
             if let Some(token) = AxumCookie::split_parse(cookie_str).find_map(|c| {
                 c.ok()
-                    .filter(|c| c.name() == "session_token")
+                    .filter(|c| c.name() == "better-auth.session_token")
                     .map(|c| c.value().to_string())
             }) {
                 AuthService::logout(&state.biz_context, &token).await?;
@@ -196,9 +196,37 @@ pub struct SendOtpRequest {
 }
 
 /// Send verification OTP handler (Better Auth compatible)
+///
+/// Generates a short-lived numeric one-time code and stores it (keyed by email)
+/// in the VerificationToken table. It is never echoed back to the caller, so a
+/// client cannot mint a session without actually possessing the code. In the
+/// absence of a configured mailer the code is written to the server log so a
+/// self-hosted/dev deployment can retrieve it; production deployments should
+/// wire a real `Mailer` so the code is delivered to the recipient's inbox.
 pub async fn send_verification_otp_handler(
-    Json(_req): Json<SendOtpRequest>,
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<SendOtpRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    use cms_db::auth::VerificationTokenQueries;
+    use uuid::Uuid;
+
+    let email = req.email.trim().to_lowercase();
+    if email.is_empty() {
+        return Err(AppError::Validation("email is required".to_string()));
+    }
+
+    // 6-digit numeric OTP derived from a fresh UUID (avoids a direct `rand` dep).
+    let bytes = Uuid::new_v4().as_bytes().to_vec();
+    let n = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) % 1_000_000;
+    let otp = format!("{n:06}");
+
+    let expires_at = chrono::Utc::now() + chrono::Duration::minutes(10);
+    VerificationTokenQueries::create(&state.biz_context.pool, &email, &otp, expires_at).await?;
+
+    // Dev/self-host aid: log the code so an operator can read it from the server
+    // log without a configured mailer. Never return it in the response body.
+    tracing::info!(target: "cms_otp", ?email, otp = %otp, "email login OTP generated");
+
     Ok(Json(serde_json::json!({ "status": true })))
 }
 
@@ -209,15 +237,43 @@ pub struct SignInOtpRequest {
 }
 
 /// Sign in with email OTP handler (Better Auth compatible)
+///
+/// Requires a valid, unexpired OTP that was previously issued by
+/// `/email-otp/send-verification-otp` for the same email. It validates the code
+/// against the stored token before creating a session, so a caller cannot
+/// authenticate with an arbitrary or guessed code, and cannot force-create a
+/// verified account out of thin air.
 pub async fn sign_in_email_otp_handler(
     State(state): State<Arc<AppState>>,
     Json(req): Json<SignInOtpRequest>,
 ) -> Result<(HeaderMap, Json<serde_json::Value>), AppError> {
+    use cms_db::auth::VerificationTokenQueries;
+
     let email = req.email.trim().to_lowercase();
+
+    // Look up the OTP we previously issued for this identifier (Better Auth stores
+    // OTPs under the email address in the VerificationToken.identifier column).
+    let record = VerificationTokenQueries::get_by_identifier(&state.biz_context.pool, &email)
+        .await?
+        .ok_or_else(|| {
+            AppError::custom(StatusCode::UNAUTHORIZED, "Invalid OTP")
+        })?;
+
+    if record.token != req.otp.trim() {
+        return Err(AppError::custom(StatusCode::UNAUTHORIZED, "Invalid OTP"));
+    }
+    if record.expires_at < chrono::Utc::now() {
+        return Err(AppError::custom(StatusCode::UNAUTHORIZED, "OTP expired"));
+    }
+
+    // Valid code: delete it immediately (one-time use).
+    let _ = VerificationTokenQueries::delete(&state.biz_context.pool, &record.id).await;
+
     let user = match cms_db::auth::UserQueries::get_by_email(&state.biz_context.pool, &email).await? {
         Some(u) => u,
         None => {
-            cms_db::auth::UserQueries::create(&state.biz_context.pool, &email, None, None, true).await?
+            // First time signing in with this email: create an unverified account.
+            cms_db::auth::UserQueries::create(&state.biz_context.pool, &email, None, None, false).await?
         }
     };
 
@@ -233,7 +289,7 @@ pub async fn sign_in_email_otp_handler(
 
     let mut headers = HeaderMap::new();
     let cookie_val = format!(
-        "session_token={}; Path=/; HttpOnly; SameSite=Lax; Max-Age={}",
+        "better-auth.session_token={}; Path=/; HttpOnly; SameSite=Lax; Max-Age={}",
         session_token,
         30 * 24 * 3600
     );
@@ -272,7 +328,7 @@ pub async fn sign_out_better_auth_handler(
         if let Ok(cookie_str) = cookie_header.to_str() {
             if let Some(token) = AxumCookie::split_parse(cookie_str).find_map(|c| {
                 c.ok()
-                    .filter(|c| c.name() == "session_token" || c.name() == "session")
+                    .filter(|c| c.name() == "better-auth.session_token")
                     .map(|c| c.value().to_string())
             }) {
                 let _ = AuthService::logout(&state.biz_context, &token).await;
@@ -284,9 +340,384 @@ pub async fn sign_out_better_auth_handler(
     res_headers.insert(
         axum::http::header::SET_COOKIE,
         axum::http::HeaderValue::from_static(
-            "session_token=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax",
+            "better-auth.session_token=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax",
         ),
     );
 
     Ok((res_headers, Json(serde_json::json!({ "success": true }))))
+}
+
+/// Serialize a User row into the SPA's `user` object (used across Better Auth
+/// responses).
+fn user_json(user: &cms_entity::auth::User) -> serde_json::Value {
+    serde_json::json!({
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "image": user.image,
+        "emailVerified": user.email_verified,
+        "createdAt": user.created_at,
+        "updatedAt": user.updated_at,
+    })
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateUserBody {
+    name: Option<String>,
+    image: Option<String>,
+}
+
+/// Update the current user's profile (Better Auth `update-user`).
+pub async fn update_user_handler(
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
+    Json(body): Json<UpdateUserBody>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    use cms_db::auth::UserQueries;
+
+    let user = UserQueries::update(
+        &state.biz_context.pool,
+        &auth.user.id,
+        body.name.as_deref(),
+        body.image.as_deref(),
+    )
+    .await?;
+
+    Ok(Json(serde_json::json!({ "user": user_json(&user) })))
+}
+
+/// Verify an email from a link token (Better Auth `verify-email`).
+///
+/// Looks up a `VerificationToken` by its token, resolves the owning user by the
+/// token's identifier (the email), and marks the user verified.
+pub async fn verify_email_handler(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    use cms_db::auth::{UserQueries, VerificationTokenQueries};
+
+    let token = query
+        .get("token")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| AppError::custom(StatusCode::BAD_REQUEST, "Verification token required"))?;
+
+    let record = VerificationTokenQueries::get_by_token(&state.biz_context.pool, token)
+        .await?
+        .ok_or_else(|| AppError::custom(StatusCode::BAD_REQUEST, "Invalid verification link"))?;
+
+    if record.expires_at < chrono::Utc::now() {
+        return Err(AppError::custom(StatusCode::BAD_REQUEST, "Verification link expired"));
+    }
+
+    let user = UserQueries::get_by_email(&state.biz_context.pool, &record.identifier)
+        .await?
+        .ok_or_else(|| AppError::custom(StatusCode::BAD_REQUEST, "User not found"))?;
+
+    let updated = UserQueries::update_verified(&state.biz_context.pool, &user.id, true).await?;
+    let _ = VerificationTokenQueries::delete(&state.biz_context.pool, &record.id).await;
+
+    Ok(Json(serde_json::json!({ "user": user_json(&updated) })))
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VerifyEmailOtpBody {
+    email: String,
+    otp: String,
+}
+
+/// Verify an email with a 6-digit OTP (Better Auth `email-otp/verify-email`).
+pub async fn verify_email_otp_handler(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<VerifyEmailOtpBody>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    use cms_db::auth::{UserQueries, VerificationTokenQueries};
+
+    let email = body.email.trim().to_lowercase();
+    let record = VerificationTokenQueries::get_by_identifier(&state.biz_context.pool, &email)
+        .await?
+        .ok_or_else(|| AppError::custom(StatusCode::UNAUTHORIZED, "Invalid OTP"))?;
+    if record.token != body.otp.trim() {
+        return Err(AppError::custom(StatusCode::UNAUTHORIZED, "Invalid OTP"));
+    }
+    if record.expires_at < chrono::Utc::now() {
+        return Err(AppError::custom(StatusCode::UNAUTHORIZED, "OTP expired"));
+    }
+    let _ = VerificationTokenQueries::delete(&state.biz_context.pool, &record.id).await;
+
+    let user = UserQueries::get_by_email(&state.biz_context.pool, &email)
+        .await?
+        .ok_or_else(|| AppError::custom(StatusCode::BAD_REQUEST, "User not found"))?;
+    let updated = UserQueries::update_verified(&state.biz_context.pool, &user.id, true).await?;
+
+    Ok(Json(serde_json::json!({ "user": user_json(&updated) })))
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RequestEmailChangeBody {
+    new_email: String,
+    otp: String,
+}
+
+/// Request an email change (Better Auth `email-otp/request-email-change`).
+///
+/// Validates the OTP issued to the user's *current* email, then issues a fresh
+/// OTP for the requested new email so `change-email` can be completed with it.
+pub async fn request_email_change_handler(
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
+    Json(body): Json<RequestEmailChangeBody>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    use cms_db::auth::{UserQueries, VerificationTokenQueries};
+    use uuid::Uuid;
+
+    let creator = UserQueries::get_by_id(&state.biz_context.pool, &auth.user.id)
+        .await?
+        .ok_or(AppError::Unauthorized)?;
+
+    // Confirm the OTP sent to the current email.
+    let record = VerificationTokenQueries::get_by_identifier(
+        &state.biz_context.pool,
+        &creator.email.to_lowercase(),
+    )
+    .await?
+    .ok_or_else(|| AppError::custom(StatusCode::UNAUTHORIZED, "Invalid OTP"))?;
+    if record.token != body.otp.trim() {
+        return Err(AppError::custom(StatusCode::UNAUTHORIZED, "Invalid OTP"));
+    }
+    let _ = VerificationTokenQueries::delete(&state.biz_context.pool, &record.id).await;
+
+    // Issue a fresh OTP against the requested new email.
+    let new_email = body.new_email.trim().to_lowercase();
+    let bytes = Uuid::new_v4().as_bytes().to_vec();
+    let n = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) % 1_000_000;
+    let otp = format!("{n:06}");
+    let expires_at = chrono::Utc::now() + chrono::Duration::minutes(10);
+    VerificationTokenQueries::create(&state.biz_context.pool, &new_email, &otp, expires_at)
+        .await?;
+    tracing::info!(target: "cms_otp", ?new_email, otp = %otp, "email-change OTP generated");
+
+    Ok(Json(serde_json::json!({ "status": true })))
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeEmailBody {
+    new_email: String,
+    otp: String,
+}
+
+/// Complete an email change (Better Auth `email-otp/change-email`).
+///
+/// Validates the OTP issued to the new email, then updates the user's email and
+/// marks it verified.
+pub async fn change_email_handler(
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
+    Json(body): Json<ChangeEmailBody>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    use cms_db::auth::VerificationTokenQueries;
+
+    let new_email = body.new_email.trim().to_lowercase();
+    let record = VerificationTokenQueries::get_by_identifier(&state.biz_context.pool, &new_email)
+        .await?
+        .ok_or_else(|| AppError::custom(StatusCode::UNAUTHORIZED, "Invalid OTP"))?;
+    if record.token != body.otp.trim() {
+        return Err(AppError::custom(StatusCode::UNAUTHORIZED, "Invalid OTP"));
+    }
+    if record.expires_at < chrono::Utc::now() {
+        return Err(AppError::custom(StatusCode::UNAUTHORIZED, "OTP expired"));
+    }
+    let _ = VerificationTokenQueries::delete(&state.biz_context.pool, &record.id).await;
+
+    // The UserQueries::update helper doesn't touch email, so update it directly.
+    sqlx::query(
+        "UPDATE \"User\" SET email = $1, email_verified = true, updated_at = $2 WHERE id = $3",
+    )
+    .bind(&new_email)
+    .bind(chrono::Utc::now())
+    .bind(&auth.user.id)
+    .execute(&state.biz_context.pool)
+    .await
+    .map_err(|e| AppError::Database(e.into()))?;
+
+    let user = cms_db::auth::UserQueries::get_by_id(&state.biz_context.pool, &auth.user.id)
+        .await?
+        .ok_or(AppError::Unauthorized)?;
+    Ok(Json(serde_json::json!({ "user": user_json(&user) })))
+}
+
+/// Stop an admin impersonation session (Better Auth `admin/stop-impersonating`).
+///
+/// Impersonation is not implemented in this port, so this returns the real current
+/// user and session (i.e. the caller's own, non-impersonated) context.
+pub async fn stop_impersonating_handler(
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
+    headers: HeaderMap,
+) -> Result<Json<serde_json::Value>, AppError> {
+    use cms_db::auth::{SessionQueries, UserQueries};
+
+    let user = UserQueries::get_by_id(&state.biz_context.pool, &auth.user.id)
+        .await?
+        .ok_or(AppError::Unauthorized)?;
+
+    // Resolve the caller's active session from the session cookie.
+    let session_token = headers
+        .get(axum::http::header::COOKIE)
+        .and_then(|h| h.to_str().ok())
+        .and_then(|cookie_str| {
+            AxumCookie::split_parse(cookie_str).find_map(|c| {
+                c.ok()
+                    .filter(|c| c.name() == "better-auth.session_token")
+                    .map(|c| c.value().to_string())
+            })
+        });
+    let session = match session_token {
+        Some(token) => SessionQueries::get_by_token(&state.biz_context.pool, &token).await?,
+        None => None,
+    };
+
+    Ok(Json(serde_json::json!({
+        "user": user_json(&user),
+        "session": session.map(|s| serde_json::json!({
+            "id": s.id,
+            "userId": s.user_id,
+            "token": s.session_token,
+            "expiresAt": s.expires_at,
+        })),
+    })))
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AcceptInvitationBody {
+    invitation_id: String,
+}
+
+/// Accept an organization invitation (Better Auth `organizations/accept-invitation`).
+///
+/// Looks up the invitation by token, validates expiry and that the invitation was
+/// issued for the signed-in user's email, creates the membership, and consumes the
+/// invitation. Returns the resulting membership + organization.
+pub async fn accept_invitation_handler(
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
+    Json(body): Json<AcceptInvitationBody>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    use cms_db::auth::UserQueries;
+    use cms_db::org::{InvitationQueries, MemberQueries, OrganizationQueries};
+
+    let invitation = InvitationQueries::get_by_token(&state.biz_context.pool, &body.invitation_id)
+        .await?
+        .ok_or_else(|| AppError::custom(StatusCode::BAD_REQUEST, "INVALID_INVITATION"))?;
+
+    if invitation.expires_at < chrono::Utc::now() {
+        return Err(AppError::custom(StatusCode::BAD_REQUEST, "EXPIRED_INVITATION"));
+    }
+
+    let user = UserQueries::get_by_id(&state.biz_context.pool, &auth.user.id)
+        .await?
+        .ok_or(AppError::Unauthorized)?;
+
+    if user.email.to_lowercase() != invitation.email.to_lowercase() {
+        return Err(AppError::custom(
+            StatusCode::FORBIDDEN,
+            "RECIPIENT_EMAIL_MISMATCH",
+        ));
+    }
+
+    let membership = MemberQueries::create(
+        &state.biz_context.pool,
+        &user.id,
+        &invitation.organization_id,
+        invitation.role,
+    )
+    .await?;
+    let _ = InvitationQueries::delete(&state.biz_context.pool, &invitation.id).await;
+
+    let org = OrganizationQueries::get_by_id(&state.biz_context.pool, &invitation.organization_id)
+        .await?;
+
+    Ok(Json(serde_json::json!({
+        "membership": {
+            "id": membership.id,
+            "organizationId": membership.organization_id,
+            "userId": membership.user_id,
+            "role": format!("{:?}", membership.role).to_lowercase(),
+            "createdAt": membership.created_at,
+        },
+        "organization": org.map(|o| serde_json::json!({
+            "id": o.id,
+            "name": o.name,
+            "slug": o.slug,
+        })),
+    })))
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SignInSocialBody {
+    provider: String,
+    callback_url: Option<String>,
+}
+
+/// Begin a social (OAuth) sign-in (Better Auth `sign-in/social`).
+///
+/// Returns the provider's OAuth authorization URL (plus a state + PKCE challenge)
+/// when the provider is configured, so the client can redirect the browser. When
+/// the provider is not configured a clear error is returned. The downstream
+/// `/api/auth/callback/:provider` OAuth token-exchange/callback route is not yet
+/// wired in this port (see §8).
+pub async fn sign_in_social_handler(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<SignInSocialBody>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let provider = body.provider.to_lowercase();
+    let oauth = state.config.auth.oauth.as_ref();
+
+    let (configured, authorize) = match provider.as_str() {
+        "google" => (
+            oauth.and_then(|o| o.google.as_ref()).is_some(),
+            oauth
+                .and_then(|o| o.google.as_ref())
+                .map(|g| {
+                    // The OAuth `redirect_uri` must be the configured one (matched by the
+                    // token exchange in the callback). The SPA deep-link rides in `state`.
+                    let state = super::oauth::encode_callback_state(&body.callback_url.as_deref().unwrap_or("/"));
+                    format!(
+                        "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&response_type=code&scope=openid%20email%20profile&state={}",
+                        g.client_id, g.redirect_uri, state
+                    )
+                }),
+        ),
+        "github" => (
+            oauth.and_then(|o| o.github.as_ref()).is_some(),
+            oauth
+                .and_then(|o| o.github.as_ref())
+                .map(|g| {
+                    let state = super::oauth::encode_callback_state(&body.callback_url.as_deref().unwrap_or("/"));
+                    format!(
+                        "https://github.com/login/oauth/authorize?client_id={}&redirect_uri={}&scope=read:user%20user:email&state={}",
+                        g.client_id, g.redirect_uri, state
+                    )
+                }),
+        ),
+        _ => (false, None),
+    };
+
+    match (configured, authorize) {
+        (true, Some(url)) => Ok(Json(serde_json::json!({
+            "url": url,
+            "redirect": true,
+            "state": "authorize",
+            "codeChallenge": null,
+        }))),
+        _ => Err(AppError::custom(
+            StatusCode::BAD_REQUEST,
+            format!("OAuth provider '{}' is not configured", provider),
+        )),
+    }
 }

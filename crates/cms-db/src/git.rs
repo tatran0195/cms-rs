@@ -514,6 +514,85 @@ impl GitFileStateQueries {
 // Remaining Git tables (stubs for now)
 // ============================================
 
+#[derive(Debug, FromRow)]
+struct GitConflictRow {
+    id: String,
+    project_id: String,
+    file_path: String,
+    conflict_type: String,
+    our_content: String,
+    their_content: String,
+    resolved_content: Option<String>,
+    resolved_at: Option<DateTime<Utc>>,
+    resolved_by: Option<String>,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+}
+
+impl From<GitConflictRow> for GitConflict {
+    fn from(r: GitConflictRow) -> Self {
+        Self {
+            id: r.id,
+            project_id: r.project_id,
+            file_path: r.file_path,
+            conflict_type: r.conflict_type,
+            our_content: r.our_content,
+            their_content: r.their_content,
+            resolved_content: r.resolved_content,
+            resolved_at: r.resolved_at,
+            resolved_by: r.resolved_by,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
+        }
+    }
+}
+
+#[derive(Debug, FromRow)]
+struct GitPullRequestRow {
+    id: String,
+    connection_id: String,
+    pr_number: i32,
+    title: String,
+    state: String,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+}
+
+impl From<GitPullRequestRow> for GitPullRequest {
+    fn from(r: GitPullRequestRow) -> Self {
+        Self {
+            id: r.id,
+            connection_id: r.connection_id,
+            pr_number: r.pr_number,
+            title: r.title,
+            state: r.state,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
+        }
+    }
+}
+
+#[derive(Debug, FromRow)]
+struct GitPreviewRow {
+    id: String,
+    pull_request_id: String,
+    deployment_id: Option<String>,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+}
+
+impl From<GitPreviewRow> for GitPreview {
+    fn from(r: GitPreviewRow) -> Self {
+        Self {
+            id: r.id,
+            pull_request_id: r.pull_request_id,
+            deployment_id: r.deployment_id,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
+        }
+    }
+}
+
 /// GitConflict queries
 pub struct GitConflictQueries;
 
@@ -522,9 +601,14 @@ impl GitConflictQueries {
         pool: &PgPool,
         conflict_id: &str,
     ) -> Result<Option<GitConflict>, AppError> {
-        Err(AppError::NotFound(
-            "GitConflict queries not yet implemented".to_string(),
-        ))
+        let row = sqlx::query_as::<_, GitConflictRow>(
+            "SELECT * FROM \"GitConflict\" WHERE id = $1",
+        )
+        .bind(conflict_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+        Ok(row.map(|r| r.into()))
     }
 
     pub async fn get_by_project(
@@ -533,15 +617,27 @@ impl GitConflictQueries {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<GitConflict>, AppError> {
-        Err(AppError::NotFound(
-            "GitConflict queries not yet implemented".to_string(),
-        ))
+        let rows = sqlx::query_as::<_, GitConflictRow>(
+            "SELECT * FROM \"GitConflict\" WHERE project_id = $1 ORDER BY created_at LIMIT $2 OFFSET $3",
+        )
+        .bind(project_id)
+        .bind(limit.unwrap_or(100))
+        .bind(offset.unwrap_or(0))
+        .fetch_all(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+        Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 
     pub async fn count_by_project(pool: &PgPool, project_id: &str) -> Result<i64, AppError> {
-        Err(AppError::NotFound(
-            "GitConflict queries not yet implemented".to_string(),
-        ))
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM \"GitConflict\" WHERE project_id = $1",
+        )
+        .bind(project_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+        Ok(count)
     }
 
     pub async fn resolve(
@@ -550,9 +646,17 @@ impl GitConflictQueries {
         resolved_by: &str,
         resolved_content: &str,
     ) -> Result<GitConflict, AppError> {
-        Err(AppError::NotFound(
-            "GitConflict queries not yet implemented".to_string(),
-        ))
+        let row = sqlx::query_as::<_, GitConflictRow>(
+            "UPDATE \"GitConflict\" SET resolved_content = $2, resolved_at = $3, resolved_by = $4, updated_at = $3 WHERE id = $1 RETURNING *",
+        )
+        .bind(conflict_id)
+        .bind(resolved_content)
+        .bind(Utc::now())
+        .bind(resolved_by)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+        Ok(row.into())
     }
 }
 
@@ -561,9 +665,14 @@ pub struct GitPullRequestQueries;
 
 impl GitPullRequestQueries {
     pub async fn get_by_id(pool: &PgPool, pr_id: &str) -> Result<Option<GitPullRequest>, AppError> {
-        Err(AppError::NotFound(
-            "GitPullRequest queries not yet implemented".to_string(),
-        ))
+        let row = sqlx::query_as::<_, GitPullRequestRow>(
+            "SELECT * FROM \"GitPullRequest\" WHERE id = $1",
+        )
+        .bind(pr_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+        Ok(row.map(|r| r.into()))
     }
 
     pub async fn get_by_connection(
@@ -572,15 +681,27 @@ impl GitPullRequestQueries {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<GitPullRequest>, AppError> {
-        Err(AppError::NotFound(
-            "GitPullRequest queries not yet implemented".to_string(),
-        ))
+        let rows = sqlx::query_as::<_, GitPullRequestRow>(
+            "SELECT * FROM \"GitPullRequest\" WHERE connection_id = $1 ORDER BY created_at LIMIT $2 OFFSET $3",
+        )
+        .bind(connection_id)
+        .bind(limit.unwrap_or(100))
+        .bind(offset.unwrap_or(0))
+        .fetch_all(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+        Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 
     pub async fn count_by_connection(pool: &PgPool, connection_id: &str) -> Result<i64, AppError> {
-        Err(AppError::NotFound(
-            "GitPullRequest queries not yet implemented".to_string(),
-        ))
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM \"GitPullRequest\" WHERE connection_id = $1",
+        )
+        .bind(connection_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+        Ok(count)
     }
 }
 
@@ -592,18 +713,28 @@ impl GitPreviewQueries {
         pool: &PgPool,
         preview_id: &str,
     ) -> Result<Option<GitPreview>, AppError> {
-        Err(AppError::NotFound(
-            "GitPreview queries not yet implemented".to_string(),
-        ))
+        let row = sqlx::query_as::<_, GitPreviewRow>(
+            "SELECT * FROM \"GitPreview\" WHERE id = $1",
+        )
+        .bind(preview_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+        Ok(row.map(|r| r.into()))
     }
 
     pub async fn get_by_pull_request(
         pool: &PgPool,
         pr_id: &str,
     ) -> Result<Vec<GitPreview>, AppError> {
-        Err(AppError::NotFound(
-            "GitPreview queries not yet implemented".to_string(),
-        ))
+        let rows = sqlx::query_as::<_, GitPreviewRow>(
+            "SELECT * FROM \"GitPreview\" WHERE pull_request_id = $1 ORDER BY created_at",
+        )
+        .bind(pr_id)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+        Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 }
 

@@ -111,6 +111,15 @@ where
     type Rejection = Infallible;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        // Try to get locale from the `x-nibleaf-locale` header the SPA sends.
+        if let Some(locale_header) = parts.headers.get("x-nibleaf-locale") {
+            if let Ok(locale_str) = locale_header.to_str() {
+                if let Some(locale) = Locale::from_language_tag(locale_str.trim()) {
+                    return Ok(locale);
+                }
+            }
+        }
+
         // Try to get locale from Accept-Language header
         if let Some(accept_language) = parts.headers.get(header::ACCEPT_LANGUAGE) {
             if let Ok(languages) = accept_language.to_str() {
@@ -240,5 +249,26 @@ mod tests {
         assert_eq!(cookies.get("locale"), Some(&"en-US".to_string()));
         assert_eq!(cookies.get("session"), Some(&"abc123".to_string()));
         assert_eq!(cookies.get("theme"), Some(&"dark".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_locale_from_nibleaf_header() {
+        use axum::http::Request;
+
+        let req = Request::builder()
+            .header("x-nibleaf-locale", "ja")
+            .body(())
+            .unwrap();
+        let locale = Locale::from_request_parts(&mut req.into_parts().0, &())
+            .await
+            .expect("should resolve locale");
+        assert_eq!(locale, Locale::Ja);
+
+        // Invalid/missing header should fall back to default.
+        let req = Request::builder().body(()).unwrap();
+        let locale = Locale::from_request_parts(&mut req.into_parts().0, &())
+            .await
+            .expect("should resolve locale");
+        assert_eq!(locale, Locale::default());
     }
 }
