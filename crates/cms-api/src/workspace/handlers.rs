@@ -94,7 +94,31 @@ pub async fn get_workspace_analytics_handler(
             "topPages": [],
             "topReferrers": [],
             "topCountries": [],
-            "topSearches": []
+            "topSearches": [],
+            "referrers": [],
+            "languages": [],
+            "devices": [],
+            "engagement": {
+                "engagedViews": null,
+                "averageEngagementMs": null
+            },
+            "searches": {
+                "total": 0,
+                "zeroResults": null,
+                "clickedResults": null,
+                "averageLatencyMs": null,
+                "queryTerms": "legacy",
+                "topTerms": []
+            },
+            "ai": {
+                "answersCompleted": null,
+                "answersFailed": null,
+                "promptTokens": null,
+                "completionTokens": null,
+                "costMicros": null,
+                "averageLatencyMs": null
+            },
+            "noAnswerReasons": []
         }
     })))
 }
@@ -122,9 +146,23 @@ pub async fn list_workspace_members_handler(
         )
         .await?;
 
+        let user_ids: Vec<&str> = org_members.iter().map(|m| m.user_id.as_str()).collect();
+        let users = cms_db::auth::UserQueries::get_by_ids(&state.biz_context.pool, &user_ids)
+            .await
+            .unwrap_or_default();
+        let user_map: std::collections::HashMap<String, cms_entity::auth::User> = users
+            .into_iter()
+            .map(|u| (u.id.clone(), u))
+            .collect();
+
         let items: Vec<serde_json::Value> = org_members
             .into_iter()
             .map(|m| {
+                let (user_name, user_email, user_image) = if let Some(u) = user_map.get(&m.user_id) {
+                    (u.name.clone(), u.email.clone(), u.image.clone())
+                } else {
+                    (auth.user.name.clone(), auth.user.email.clone(), auth.user.image.clone())
+                };
                 serde_json::json!({
                     "id": m.id,
                     "organizationId": m.organization_id,
@@ -133,18 +171,35 @@ pub async fn list_workspace_members_handler(
                     "createdAt": m.created_at,
                     "user": {
                         "id": m.user_id,
-                        "name": auth.user.name.clone(),
-                        "email": auth.user.email.clone(),
-                        "image": auth.user.image.clone(),
+                        "name": user_name,
+                        "email": user_email,
+                        "image": user_image,
                     }
                 })
             })
             .collect();
 
-        return Ok(Json(serde_json::json!({ "data": items })));
+        let invitations = cms_db::org::InvitationQueries::list_by_org(
+            &state.biz_context.pool,
+            &org_id,
+        )
+        .await
+        .unwrap_or_default();
+
+        return Ok(Json(serde_json::json!({
+            "data": {
+                "members": items,
+                "invitations": invitations
+            }
+        })));
     }
 
-    Ok(Json(serde_json::json!({ "data": [] })))
+    Ok(Json(serde_json::json!({
+        "data": {
+            "members": [],
+            "invitations": []
+        }
+    })))
 }
 
 /// Invite workspace member

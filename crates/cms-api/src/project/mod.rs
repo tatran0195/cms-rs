@@ -35,16 +35,20 @@ pub fn router(state: Arc<AppState>) -> Router {
         // Project pages subroutes
         .route("/{project_id}/pages", get(list_project_pages_handler))
         .route("/{project_id}/pages", post(create_project_page_handler))
-        .route("/{project_id}/pages/{id}", get(crate::page::handlers::get_page_handler))
-        .route("/{project_id}/pages/{id}", put(crate::page::handlers::update_page_handler))
-        .route("/{project_id}/pages/{id}", patch(crate::page::handlers::update_page_handler))
-        .route("/{project_id}/pages/{id}", delete(crate::page::handlers::delete_page_handler))
+        .route("/{project_id}/pages/reorder", post(reorder_project_pages_handler))
+        .route("/{project_id}/pages/{id}", get(get_project_page_handler))
+        .route("/{project_id}/pages/{id}", put(update_project_page_handler))
+        .route("/{project_id}/pages/{id}", patch(update_project_page_handler))
+        .route("/{project_id}/pages/{id}", delete(delete_project_page_handler))
         // Project branches subroutes
         .route("/{project_id}/branches", get(list_project_branches_handler))
         .route("/{project_id}/branches", post(create_project_branch_handler))
         // Project languages subroutes
         .route("/{project_id}/languages", get(list_project_languages_handler))
         .route("/{project_id}/languages", post(create_project_language_handler))
+        .route("/{project_id}/languages/{id}", patch(update_project_language_handler))
+        .route("/{project_id}/languages/{id}", put(update_project_language_handler))
+        .route("/{project_id}/languages/{id}", delete(delete_project_language_handler))
         // Project deployments subroutes
         .route("/{project_id}/deployments", get(list_project_deployments_handler))
         // Project domains subroutes
@@ -65,12 +69,11 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/{project_id}/settings/git/webhook-secret", post(action_project_git_handler))
         .route("/{project_id}/settings/import/mintlify", post(action_project_git_handler))
         .route("/{project_id}/settings/import/ghost", post(action_project_git_handler))
-        // Pages reorder
-        .route("/{project_id}/pages/reorder", post(reorder_project_pages_handler))
         // Branch merge
         .route("/{project_id}/branches/{branch_id}/merge", post(merge_project_branch_handler))
         // Deployments extended
-        .route("/{project_id}/deployments", post(trigger_project_export_handler))
+        .route("/{project_id}/deployments", post(create_project_deployment_handler))
+        .route("/{project_id}/deployments/latest", get(get_latest_project_deployment_handler))
         .route("/{project_id}/deployments/changes", get(get_deployment_changes_handler))
         .route("/{project_id}/deployments/{id}/rollback", post(rollback_deployment_handler))
         // Domains extended

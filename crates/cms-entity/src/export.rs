@@ -8,7 +8,7 @@ use crate::common::{Id, Timestamp};
 /// Export status
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
-#[sqlx(type_name = "ExportStatus", rename_all = "SCREAMING_SNAKE_CASE")]
+#[sqlx(type_name = "\"ExportStatus\"", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ExportStatus {
     Pending,
     Processing,
@@ -33,7 +33,7 @@ pub enum ExportFormat {
 
 impl sqlx::Type<sqlx::Postgres> for ExportFormat {
     fn type_info() -> sqlx::postgres::PgTypeInfo {
-        sqlx::postgres::PgTypeInfo::with_name("ExportFormat")
+        sqlx::postgres::PgTypeInfo::with_name("\"ExportFormat\"")
     }
 }
 

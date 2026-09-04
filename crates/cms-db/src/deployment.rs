@@ -173,6 +173,7 @@ impl DeploymentQueries {
     ) -> Result<Deployment, AppError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
+        let branch_opt = if branch_id.is_empty() { None } else { Some(branch_id) };
 
         let row = sqlx::query_as::<_, DeploymentRow>(
             r#"
@@ -183,7 +184,7 @@ impl DeploymentQueries {
         )
         .bind(&id)
         .bind(project_id)
-        .bind(branch_id)
+        .bind(branch_opt)
         .bind(status)
         .bind(now)
         .bind(now)

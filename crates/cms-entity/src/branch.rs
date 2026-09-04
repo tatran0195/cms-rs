@@ -84,6 +84,7 @@ pub struct BranchWithProjectResponse {
 /// List branches query parameters
 #[derive(Debug, Clone, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct ListBranchesQuery {
+    #[serde(default)]
     pub project_id: Id,
     #[serde(default)]
     pub search: Option<String>,

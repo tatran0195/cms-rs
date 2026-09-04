@@ -265,13 +265,14 @@ impl ProjectService {
             .require_org_member(user_id, org_id)
             .await?;
 
+        let offset = page.saturating_sub(1) * page_size;
         let projects = ProjectQueries::get_by_organization(
             &ctx.pool,
             org_id,
             query.is_public,
             query.search.as_deref(),
-            Some(page as i64),
             Some(page_size as i64),
+            Some(offset as i64),
         )
         .await?;
 
@@ -302,11 +303,16 @@ impl ProjectService {
         let members = MemberQueries::get_by_user(&ctx.pool, user_id).await?;
         let org_ids: Vec<&str> = members.iter().map(|m| m.organization_id.as_str()).collect();
 
+        if org_ids.is_empty() {
+            return Ok(PaginatedResponse::new(vec![], 0, page, page_size));
+        }
+
+        let offset = page.saturating_sub(1) * page_size;
         let projects = ProjectQueries::get_by_organizations(
             &ctx.pool,
             &org_ids,
-            Some(page as i64),
             Some(page_size as i64),
+            Some(offset as i64),
         )
         .await?;
 

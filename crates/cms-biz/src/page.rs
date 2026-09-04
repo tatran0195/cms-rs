@@ -57,17 +57,32 @@ impl PageService {
             }
         }
 
-        // Check if slug is available
-        if !PageQueries::is_slug_available(&ctx.pool, project_id, branch_id, &request.slug, None)
-            .await?
-        {
-            return Err(AppError::Conflict(
-                "Page with this slug already exists in this branch".to_string(),
-            ));
+        // Generate slug if empty, or ensure slug is unique
+        let mut slug = request.slug.trim().to_lowercase().replace(' ', "-");
+        if slug.is_empty() {
+            slug = request.title.trim().to_lowercase().replace(' ', "-");
+        }
+        if slug.is_empty() {
+            slug = "untitled".to_string();
+        }
+
+        let original_slug = slug.clone();
+        let mut counter = 1;
+        loop {
+            let is_available =
+                PageQueries::is_slug_available(&ctx.pool, project_id, branch_id, &slug, None)
+                    .await?;
+            if is_available {
+                break;
+            }
+            slug = format!("{}-{}", original_slug, counter);
+            counter += 1;
         }
 
         // Determine position
-        let position = if let Some(parent_id) = &request.parent_id {
+        let position = if let Some(pos) = request.position {
+            pos
+        } else if let Some(parent_id) = &request.parent_id {
             if parent_id.is_empty() {
                 // Root level - get max position for root pages in this branch
                 let max_position =
@@ -96,7 +111,7 @@ impl PageService {
             project_id,
             branch_id,
             request.parent_id.as_deref(),
-            &request.slug,
+            &slug,
             &request.title,
             request.description.as_deref(),
             request.content.as_deref(),
@@ -105,7 +120,10 @@ impl PageService {
         )
         .await?;
 
-        Ok(page.into())
+        let mut response: PageResponse = page.into();
+        response.language_id = request.language_id;
+        response.kind = request.kind.or(Some("PAGE".to_string()));
+        Ok(response)
     }
 
     /// Get a page by ID
@@ -185,6 +203,7 @@ impl PageService {
             )
             .await?;
 
+        let offset = page.saturating_sub(1) * page_size;
         let pages = PageQueries::get_by_project_and_branch(
             &ctx.pool,
             &query.project_id,
@@ -192,8 +211,8 @@ impl PageService {
             query.parent_id.as_deref(),
             query.is_published,
             query.search.as_deref(),
-            Some(page as i64),
             Some(page_size as i64),
+            Some(offset as i64),
         )
         .await?;
 
@@ -286,6 +305,12 @@ impl PageService {
             }
         }
 
+        let is_published = if let Some(hidden) = request.hidden {
+            Some(!hidden)
+        } else {
+            request.is_published
+        };
+
         let updated = PageQueries::update(
             &ctx.pool,
             page_id,
@@ -295,7 +320,7 @@ impl PageService {
             request.description.as_deref(),
             request.content.as_deref(),
             request.position,
-            request.is_published,
+            is_published,
         )
         .await?;
 

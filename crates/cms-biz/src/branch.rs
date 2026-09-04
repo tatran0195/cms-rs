@@ -239,12 +239,15 @@ impl BranchService {
             .require_project_role(user_id, &query.project_id, MemberRole::Viewer)
             .await?;
 
+        let limit = page_size.max(1);
+        let offset = page.saturating_sub(1) * limit;
+
         let branches = BranchQueries::get_by_project(
             &ctx.pool,
             &query.project_id,
             query.search.as_deref(),
-            Some(page as i64),
-            Some(page_size as i64),
+            Some(limit as i64),
+            Some(offset as i64),
         )
         .await?;
 

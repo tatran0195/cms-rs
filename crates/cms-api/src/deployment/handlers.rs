@@ -49,12 +49,15 @@ pub async fn list_deployments_handler(
     Query(query): Query<ListDeploymentsQuery>,
 ) -> Result<Json<PaginatedResponse<DeploymentResponse>>, AppError> {
     let project_id = query.project_id.as_deref().unwrap_or("");
+    let limit = query.limit.unwrap_or(20) as u64;
+    let offset = query.offset.unwrap_or(0) as u64;
+    let page = if limit > 0 { (offset / limit) + 1 } else { 1 };
     let result = DeploymentService::list_deployments(
         &state.biz_context,
         &auth.user.id,
         project_id,
-        query.limit.unwrap_or(1) as u64,
-        query.offset.unwrap_or(20) as u64,
+        page,
+        limit,
     )
     .await?;
 

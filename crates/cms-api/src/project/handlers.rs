@@ -179,10 +179,52 @@ pub async fn list_project_pages_handler(
     Path(project_id): Path<String>,
     Query(mut query): Query<cms_entity::page::ListPagesQuery>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    query.project_id = project_id;
-    let result =
+    query.project_id = project_id.clone();
+    if query.branch_id.is_empty() {
+        if let Ok(Some(b)) =
+            cms_db::branch::BranchQueries::get_default(&state.biz_context.pool, &project_id).await
+        {
+            query.branch_id = b.id;
+        } else if let Ok(Some(b)) =
+            cms_db::branch::BranchQueries::get_by_project(&state.biz_context.pool, &project_id, None, Some(1), None).await.map(|v| v.into_iter().next())
+        {
+            query.branch_id = b.id;
+        } else if let Ok(b) = cms_db::branch::BranchQueries::create(
+            &state.biz_context.pool,
+            &project_id,
+            "main",
+            Some("Default branch"),
+            true,
+            false,
+        ).await {
+            query.branch_id = b.id;
+        }
+    }
+
+    let default_lang_id = if let Some(lid) = query.language_id.clone() {
+        Some(lid)
+    } else if let Ok(Some(dl)) =
+        cms_db::language::LanguageQueries::get_default(&state.biz_context.pool, &project_id).await
+    {
+        Some(dl.id)
+    } else if let Ok(langs) =
+        cms_db::language::LanguageQueries::get_by_project(&state.biz_context.pool, &project_id, Some(1), None).await
+    {
+        langs.into_iter().next().map(|l| l.id)
+    } else {
+        None
+    };
+
+    let mut result =
         cms_biz::page::PageService::list_pages(&state.biz_context, &auth.user.id, query, 1, 100)
             .await?;
+
+    for page in &mut result.data {
+        if page.language_id.is_none() {
+            page.language_id = default_lang_id.clone();
+        }
+    }
+
     Ok(Json(serde_json::json!({ "data": result.data })))
 }
 
@@ -200,10 +242,25 @@ pub async fn create_project_page_handler(
                 .await
         {
             request.branch_id = b.id;
+        } else if let Ok(Some(b)) =
+            cms_db::branch::BranchQueries::get_by_project(&state.biz_context.pool, &project_id, None, Some(1), None).await.map(|v| v.into_iter().next())
+        {
+            request.branch_id = b.id;
+        } else if let Ok(b) = cms_db::branch::BranchQueries::create(
+            &state.biz_context.pool,
+            &project_id,
+            "main",
+            Some("Default branch"),
+            true,
+            false,
+        ).await {
+            request.branch_id = b.id;
         }
     }
     let branch_id = request.branch_id.clone();
-    let page = cms_biz::page::PageService::create_page(
+    let requested_lang_id = request.language_id.clone();
+    let requested_kind = request.kind.clone();
+    let mut page = cms_biz::page::PageService::create_page(
         &state.biz_context,
         &auth.user.id,
         &project_id,
@@ -211,7 +268,118 @@ pub async fn create_project_page_handler(
         request,
     )
     .await?;
+
+    let lang_id = if let Some(lid) = requested_lang_id {
+        Some(lid)
+    } else if let Ok(Some(dl)) =
+        cms_db::language::LanguageQueries::get_default(&state.biz_context.pool, &project_id).await
+    {
+        Some(dl.id)
+    } else if let Ok(langs) =
+        cms_db::language::LanguageQueries::get_by_project(&state.biz_context.pool, &project_id, Some(1), None).await
+    {
+        langs.into_iter().next().map(|l| l.id)
+    } else {
+        None
+    };
+
+    if page.language_id.is_none() {
+        page.language_id = lang_id;
+    }
+    if page.kind.is_none() {
+        page.kind = requested_kind.or(Some("PAGE".to_string()));
+    }
+
     Ok(Json(serde_json::json!({ "data": page })))
+}
+
+/// Get a page for a project
+pub async fn get_project_page_handler(
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
+    Path((project_id, page_id)): Path<(String, String)>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let mut page =
+        cms_biz::page::PageService::get_page(&state.biz_context, &auth.user.id, &page_id).await?;
+
+    if page.language_id.is_none() {
+        if let Ok(Some(dl)) =
+            cms_db::language::LanguageQueries::get_default(&state.biz_context.pool, &project_id).await
+        {
+            page.language_id = Some(dl.id);
+        }
+    }
+
+    Ok(Json(serde_json::json!({ "data": page })))
+}
+
+/// Update a page for a project
+pub async fn update_project_page_handler(
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
+    Path((project_id, page_id)): Path<(String, String)>,
+    Json(request): Json<cms_entity::page::UpdatePageRequest>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let mut page =
+        cms_biz::page::PageService::update_page(&state.biz_context, &auth.user.id, &page_id, request)
+            .await?;
+
+    if page.language_id.is_none() {
+        if let Ok(Some(dl)) =
+            cms_db::language::LanguageQueries::get_default(&state.biz_context.pool, &project_id).await
+        {
+            page.language_id = Some(dl.id);
+        }
+    }
+
+    Ok(Json(serde_json::json!({ "data": page })))
+}
+
+/// Delete a page for a project
+pub async fn delete_project_page_handler(
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
+    Path((_project_id, page_id)): Path<(String, String)>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    cms_biz::page::PageService::delete_page(&state.biz_context, &auth.user.id, &page_id).await?;
+    Ok(Json(serde_json::json!({ "data": { "success": true } })))
+}
+
+/// Reorder pages for a project
+pub async fn reorder_project_pages_handler(
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
+    Path(project_id): Path<String>,
+    Json(payload): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    state
+        .biz_context
+        .authz
+        .require_project_role(&auth.user.id, &project_id, cms_entity::common::MemberRole::Editor)
+        .await?;
+
+    if let Some(items) = payload.get("items").and_then(|v| v.as_array()) {
+        for item in items {
+            if let Some(id) = item.get("id").and_then(|v| v.as_str()) {
+                let parent_id = item.get("parentId").and_then(|v| v.as_str());
+                let position = item.get("position").and_then(|v| v.as_i64()).map(|p| p as i32);
+                let _ = cms_db::page::PageQueries::update(
+                    &state.biz_context.pool,
+                    id,
+                    parent_id,
+                    None,
+                    None,
+                    None,
+                    None,
+                    position,
+                    None,
+                )
+                .await;
+            }
+        }
+    }
+
+    Ok(Json(serde_json::json!({ "data": { "success": true } })))
 }
 
 /// List branches for a project
@@ -221,8 +389,8 @@ pub async fn list_project_branches_handler(
     Path(project_id): Path<String>,
     Query(mut query): Query<cms_entity::branch::ListBranchesQuery>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    query.project_id = project_id;
-    let result = cms_biz::branch::BranchService::list_branches(
+    query.project_id = project_id.clone();
+    let mut result = cms_biz::branch::BranchService::list_branches(
         &state.biz_context,
         &auth.user.id,
         query,
@@ -230,6 +398,21 @@ pub async fn list_project_branches_handler(
         100,
     )
     .await?;
+
+    if result.data.is_empty() {
+        if let Ok(b) = cms_db::branch::BranchQueries::create(
+            &state.biz_context.pool,
+            &project_id,
+            "main",
+            Some("Default branch"),
+            true,
+            false,
+        ).await {
+            result.data.push(b.into());
+            result.total = 1;
+        }
+    }
+
     Ok(Json(serde_json::json!({ "data": result.data })))
 }
 
@@ -286,6 +469,38 @@ pub async fn create_project_language_handler(
     Ok(Json(serde_json::json!({ "data": lang })))
 }
 
+/// Update a language for a project
+pub async fn update_project_language_handler(
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
+    Path((_project_id, language_id)): Path<(String, String)>,
+    Json(request): Json<cms_entity::language::UpdateLanguageRequest>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let lang = cms_biz::language::LanguageService::update_language(
+        &state.biz_context,
+        &auth.user.id,
+        &language_id,
+        request,
+    )
+    .await?;
+    Ok(Json(serde_json::json!({ "data": lang })))
+}
+
+/// Delete a language for a project
+pub async fn delete_project_language_handler(
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
+    Path((_project_id, language_id)): Path<(String, String)>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    cms_biz::language::LanguageService::delete_language(
+        &state.biz_context,
+        &auth.user.id,
+        &language_id,
+    )
+    .await?;
+    Ok(Json(serde_json::json!({ "data": { "success": true } })))
+}
+
 /// List deployments for a project
 pub async fn list_project_deployments_handler(
     State(state): State<Arc<AppState>>,
@@ -300,7 +515,93 @@ pub async fn list_project_deployments_handler(
         50,
     )
     .await?;
-    Ok(Json(serde_json::json!({ "data": result.data })))
+
+    let total_count = result.total as i64;
+    let pages_count = cms_db::page::PageQueries::get_by_project(&state.biz_context.pool, &project_id)
+        .await
+        .map(|p| p.len() as i64)
+        .unwrap_or(0);
+
+    let items: Vec<serde_json::Value> = result
+        .data
+        .into_iter()
+        .enumerate()
+        .map(|(idx, d)| {
+            let version = total_count - (idx as i64);
+            let status_str = match d.status {
+                cms_entity::deployment::DeploymentStatus::Active => "READY",
+                cms_entity::deployment::DeploymentStatus::Pending => "PENDING",
+                cms_entity::deployment::DeploymentStatus::Building
+                | cms_entity::deployment::DeploymentStatus::Deploying => "BUILDING",
+                cms_entity::deployment::DeploymentStatus::Failed
+                | cms_entity::deployment::DeploymentStatus::Deleted => "FAILED",
+            };
+            serde_json::json!({
+                "id": d.id,
+                "version": version,
+                "status": status_str,
+                "pagesCount": pages_count,
+                "commitMessage": d.build_logs.as_deref().unwrap_or("Publish site"),
+                "error": d.error_message,
+                "errorDetails": null,
+                "createdAt": d.created_at.to_rfc3339(),
+                "completedAt": d.deployed_at.map(|t| t.to_rfc3339()).unwrap_or_else(|| d.created_at.to_rfc3339()),
+            })
+        })
+        .collect();
+
+    Ok(Json(serde_json::json!({ "data": items })))
+}
+
+/// Get latest READY deployment for a project
+pub async fn get_latest_project_deployment_handler(
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
+    Path(project_id): Path<String>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let result = cms_biz::deployment::DeploymentService::list_deployments(
+        &state.biz_context,
+        &auth.user.id,
+        &project_id,
+        1,
+        5,
+    )
+    .await?;
+
+    let total_count = result.total as i64;
+    let pages_count = cms_db::page::PageQueries::get_by_project(&state.biz_context.pool, &project_id)
+        .await
+        .map(|p| p.len() as i64)
+        .unwrap_or(0);
+
+    let latest_ready = result.data.into_iter().enumerate().find_map(|(idx, d)| {
+        let version = total_count - (idx as i64);
+        let status_str = match d.status {
+            cms_entity::deployment::DeploymentStatus::Active => "READY",
+            cms_entity::deployment::DeploymentStatus::Pending => "PENDING",
+            cms_entity::deployment::DeploymentStatus::Building
+            | cms_entity::deployment::DeploymentStatus::Deploying => "BUILDING",
+            cms_entity::deployment::DeploymentStatus::Failed
+            | cms_entity::deployment::DeploymentStatus::Deleted => "FAILED",
+        };
+        if status_str == "READY" {
+            Some(serde_json::json!({
+                "id": d.id,
+                "version": version,
+                "status": status_str,
+                "pagesCount": pages_count,
+                "commitMessage": d.build_logs.as_deref().unwrap_or("Publish site"),
+                "error": d.error_message,
+                "errorDetails": null,
+                "createdAt": d.created_at.to_rfc3339(),
+                "completedAt": d.deployed_at.map(|t| t.to_rfc3339()).unwrap_or_else(|| d.created_at.to_rfc3339()),
+            }))
+        } else {
+            None
+        }
+    });
+
+    Ok(Json(serde_json::json!({ "data": latest_ready })))
 }
 
 /// List domains for a project
@@ -357,7 +658,31 @@ pub async fn get_project_analytics_handler(
             "topPages": [],
             "topReferrers": [],
             "topCountries": [],
-            "topSearches": []
+            "topSearches": [],
+            "referrers": [],
+            "languages": [],
+            "devices": [],
+            "engagement": {
+                "engagedViews": null,
+                "averageEngagementMs": null
+            },
+            "searches": {
+                "total": 0,
+                "zeroResults": null,
+                "clickedResults": null,
+                "averageLatencyMs": null,
+                "queryTerms": "legacy",
+                "topTerms": []
+            },
+            "ai": {
+                "answersCompleted": null,
+                "answersFailed": null,
+                "promptTokens": null,
+                "completionTokens": null,
+                "costMicros": null,
+                "averageLatencyMs": null
+            },
+            "noAnswerReasons": []
         }
     })))
 }
@@ -425,15 +750,7 @@ pub async fn reindex_project_search_handler(
     Ok(Json(serde_json::json!({ "data": { "success": true } })))
 }
 
-/// Reorder project pages
-pub async fn reorder_project_pages_handler(
-    State(_state): State<Arc<AppState>>,
-    _auth: AuthExtractor,
-    Path(_project_id): Path<String>,
-    Json(_body): Json<serde_json::Value>,
-) -> Result<Json<serde_json::Value>, AppError> {
-    Ok(Json(serde_json::json!({ "data": { "success": true } })))
-}
+
 
 /// Merge branch
 pub async fn merge_project_branch_handler(
@@ -450,16 +767,157 @@ pub async fn get_deployment_changes_handler(
     _auth: AuthExtractor,
     Path(_project_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    Ok(Json(serde_json::json!({ "data": [] })))
+    Ok(Json(serde_json::json!({
+        "data": {
+            "changes": [],
+            "redirectIssues": [],
+            "hasBaseline": true
+        }
+    })))
+}
+
+/// Create and trigger a project deployment (publish site)
+pub async fn create_project_deployment_handler(
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
+    Path(project_id): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    // 1. Verify project exists
+    let _project = cms_db::project::ProjectQueries::get_by_id(&state.biz_context.pool, &project_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
+
+    // Check project role (MemberRole::Member or higher)
+    state.biz_context.authz
+        .require_project_role(&auth.user.id, &project_id, cms_entity::common::MemberRole::Member)
+        .await?;
+
+    // 2. Find default branch
+    let default_branch = cms_db::branch::BranchQueries::get_default(&state.biz_context.pool, &project_id)
+        .await?
+        .or_else(|| None);
+    let branch_id = default_branch.map(|b| b.id);
+
+    // 3. Count existing deployments to assign version number
+    let count = cms_db::deployment::DeploymentQueries::count_by_project(&state.biz_context.pool, &project_id)
+        .await
+        .unwrap_or(0);
+    let version = count + 1;
+
+    // 4. Count pages in the project
+    let pages = cms_db::page::PageQueries::get_by_project(&state.biz_context.pool, &project_id)
+        .await
+        .unwrap_or_default();
+    let pages_count = pages.len() as i64;
+
+    // 5. Extract optional commit message
+    let commit_message = body
+        .get("message")
+        .and_then(|m| m.as_str())
+        .map(|s| s.to_string());
+
+    // 6. Create deployment record
+    let branch_ref = branch_id.as_deref().unwrap_or("");
+    let deployment = cms_db::deployment::DeploymentQueries::create(
+        &state.biz_context.pool,
+        &project_id,
+        branch_ref,
+        cms_entity::deployment::DeploymentStatus::Building,
+    )
+    .await?;
+
+    if let Some(ref msg) = commit_message {
+        let _ = sqlx::query("UPDATE \"Deployment\" SET build_logs = $1 WHERE id = $2")
+            .bind(msg)
+            .bind(&deployment.id)
+            .execute(&state.biz_context.pool)
+            .await;
+    }
+
+    // 7. Process deployment job (renders pages to storage and marks Active/READY)
+    let payload = serde_json::json!({
+        "deployment_id": deployment.id
+    });
+    if let Err(e) = cms_biz::deployment::process_deployment_job(&state.biz_context.pool, state.storage.clone(), &payload).await {
+        tracing::error!("Deployment job execution failed: {}", e);
+    }
+
+    // 8. Fetch updated deployment
+    let updated = cms_db::deployment::DeploymentQueries::get_by_id(&state.biz_context.pool, &deployment.id)
+        .await?
+        .unwrap_or(deployment);
+
+    let status_str = match updated.status {
+        cms_entity::deployment::DeploymentStatus::Active => "READY",
+        cms_entity::deployment::DeploymentStatus::Pending => "PENDING",
+        cms_entity::deployment::DeploymentStatus::Building
+        | cms_entity::deployment::DeploymentStatus::Deploying => "BUILDING",
+        cms_entity::deployment::DeploymentStatus::Failed
+        | cms_entity::deployment::DeploymentStatus::Deleted => "FAILED",
+    };
+
+    let res = serde_json::json!({
+        "id": updated.id,
+        "version": version,
+        "status": status_str,
+        "pagesCount": pages_count,
+        "commitMessage": commit_message.or(updated.build_logs),
+        "error": updated.error_message,
+        "errorDetails": null,
+        "createdAt": updated.created_at.to_rfc3339(),
+        "completedAt": updated.deployed_at.map(|t| t.to_rfc3339()).unwrap_or_else(|| chrono::Utc::now().to_rfc3339())
+    });
+
+    Ok(Json(serde_json::json!({ "data": res })))
 }
 
 /// Rollback deployment
 pub async fn rollback_deployment_handler(
-    State(_state): State<Arc<AppState>>,
-    _auth: AuthExtractor,
-    Path((_project_id, _id)): Path<(String, String)>,
+    State(state): State<Arc<AppState>>,
+    auth: AuthExtractor,
+    Path((project_id, target_deployment_id)): Path<(String, String)>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    Ok(Json(serde_json::json!({ "data": { "success": true } })))
+    state.biz_context.authz
+        .require_project_role(&auth.user.id, &project_id, cms_entity::common::MemberRole::Member)
+        .await?;
+
+    let count = cms_db::deployment::DeploymentQueries::count_by_project(&state.biz_context.pool, &project_id)
+        .await
+        .unwrap_or(0);
+    let version = count + 1;
+    let pages_count = cms_db::page::PageQueries::get_by_project(&state.biz_context.pool, &project_id)
+        .await
+        .map(|p| p.len() as i64)
+        .unwrap_or(0);
+
+    let target = cms_db::deployment::DeploymentQueries::get_by_id(&state.biz_context.pool, &target_deployment_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Target deployment not found".to_string()))?;
+
+    let branch_ref = target.branch_id.as_deref().unwrap_or("");
+    let deployment = cms_db::deployment::DeploymentQueries::create(
+        &state.biz_context.pool,
+        &project_id,
+        branch_ref,
+        cms_entity::deployment::DeploymentStatus::Active,
+    )
+    .await?;
+    let _ = cms_db::deployment::DeploymentQueries::update_deployed_at(&state.biz_context.pool, &deployment.id).await;
+
+    let res = serde_json::json!({
+        "id": deployment.id,
+        "version": version,
+        "status": "READY",
+        "pagesCount": pages_count,
+        "commitMessage": format!("Rollback to deployment {}", target_deployment_id),
+        "error": null,
+        "errorDetails": null,
+        "createdAt": deployment.created_at.to_rfc3339(),
+        "completedAt": chrono::Utc::now().to_rfc3339()
+    });
+
+    Ok(Json(serde_json::json!({ "data": res })))
 }
 
 /// Verify domain
@@ -524,9 +982,24 @@ pub async fn list_project_members_handler(
             None,
         )
         .await?;
+
+        let user_ids: Vec<&str> = members.iter().map(|m| m.user_id.as_str()).collect();
+        let users = cms_db::auth::UserQueries::get_by_ids(&state.biz_context.pool, &user_ids)
+            .await
+            .unwrap_or_default();
+        let user_map: std::collections::HashMap<String, cms_entity::auth::User> = users
+            .into_iter()
+            .map(|u| (u.id.clone(), u))
+            .collect();
+
         let items: Vec<serde_json::Value> = members
             .into_iter()
             .map(|m| {
+                let (user_name, user_email, user_image) = if let Some(u) = user_map.get(&m.user_id) {
+                    (u.name.clone(), u.email.clone(), u.image.clone())
+                } else {
+                    (auth.user.name.clone(), auth.user.email.clone(), auth.user.image.clone())
+                };
                 serde_json::json!({
                     "id": m.id,
                     "organizationId": m.organization_id,
@@ -535,16 +1008,34 @@ pub async fn list_project_members_handler(
                     "createdAt": m.created_at,
                     "user": {
                         "id": m.user_id,
-                        "name": auth.user.name.clone(),
-                        "email": auth.user.email.clone(),
-                        "image": auth.user.image.clone(),
+                        "name": user_name,
+                        "email": user_email,
+                        "image": user_image,
                     }
                 })
             })
             .collect();
-        return Ok(Json(serde_json::json!({ "data": items })));
+
+        let invitations = cms_db::org::InvitationQueries::list_by_org(
+            &state.biz_context.pool,
+            &p.organization_id,
+        )
+        .await
+        .unwrap_or_default();
+
+        return Ok(Json(serde_json::json!({
+            "data": {
+                "members": items,
+                "invitations": invitations
+            }
+        })));
     }
-    Ok(Json(serde_json::json!({ "data": [] })))
+    Ok(Json(serde_json::json!({
+        "data": {
+            "members": [],
+            "invitations": []
+        }
+    })))
 }
 
 /// Project comments list

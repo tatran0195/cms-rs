@@ -56,19 +56,34 @@ impl LanguageService {
             ));
         }
 
+        // Determine is_rtl
+        let is_rtl = if let Some(dir) = &request.direction {
+            dir == "RTL"
+        } else {
+            request.is_rtl
+        };
+
         // Determine if this should be the default language
-        let is_default = {
-            let count = LanguageQueries::count_by_project(&ctx.pool, &request.project_id).await?;
+        let count = LanguageQueries::count_by_project(&ctx.pool, &request.project_id).await?;
+        let is_default = if let Some(def) = request.is_default {
+            def || count == 0
+        } else {
             count == 0 // First language is default
+        };
+
+        let name = if request.name.trim().is_empty() {
+            request.code.clone()
+        } else {
+            request.name
         };
 
         let language = LanguageQueries::create(
             &ctx.pool,
             &request.project_id,
             &request.code,
-            &request.name,
+            &name,
             is_default,
-            request.is_rtl,
+            is_rtl,
         )
         .await?;
 
@@ -109,14 +124,22 @@ impl LanguageService {
             .require_project_role(user_id, &language.project_id, MemberRole::Admin)
             .await?;
 
-        // Cannot change the default language's code
-        // (This would require updating all content that references this language)
+        // If setting as default, update default status
+        if request.is_default == Some(true) {
+            LanguageQueries::set_default(&ctx.pool, language_id).await?;
+        }
+
+        let is_rtl = if let Some(dir) = &request.direction {
+            Some(dir == "RTL")
+        } else {
+            request.is_rtl
+        };
 
         let updated = LanguageQueries::update(
             &ctx.pool,
             language_id,
             request.name.as_deref(),
-            request.is_rtl,
+            is_rtl,
         )
         .await?;
 
@@ -178,11 +201,12 @@ impl LanguageService {
             .require_project_role(user_id, &query.project_id, MemberRole::Viewer)
             .await?;
 
+        let offset = page.saturating_sub(1) * page_size;
         let languages = LanguageQueries::get_by_project(
             &ctx.pool,
             &query.project_id,
-            Some(page as i64),
             Some(page_size as i64),
+            Some(offset as i64),
         )
         .await?;
 

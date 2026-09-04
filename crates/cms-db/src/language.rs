@@ -124,6 +124,22 @@ impl LanguageQueries {
         Ok(row.map(|r| r.into()))
     }
 
+    /// Get default language for a project
+    pub async fn get_default(
+        pool: &PgPool,
+        project_id: &str,
+    ) -> Result<Option<Language>, AppError> {
+        let row = sqlx::query_as::<_, LanguageRow>(
+            "SELECT * FROM \"Language\" WHERE project_id = $1 AND is_default = true LIMIT 1",
+        )
+        .bind(project_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| AppError::Database(e.into()))?;
+
+        Ok(row.map(|r| r.into()))
+    }
+
     /// Get languages by project
     pub async fn get_by_project(
         pool: &PgPool,

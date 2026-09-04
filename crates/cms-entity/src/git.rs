@@ -9,7 +9,7 @@ use crate::common::{Id, Timestamp};
 /// Git provider types
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
-#[sqlx(type_name = "GitProvider", rename_all = "SCREAMING_SNAKE_CASE")]
+#[sqlx(type_name = "\"GitProvider\"", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum GitProvider {
     Github,
     Gitlab,
@@ -32,7 +32,7 @@ pub enum GitSyncOperationType {
 
 impl sqlx::Type<sqlx::Postgres> for GitSyncOperationType {
     fn type_info() -> sqlx::postgres::PgTypeInfo {
-        sqlx::postgres::PgTypeInfo::with_name("GitSyncOperationType")
+        sqlx::postgres::PgTypeInfo::with_name("\"GitSyncOperationType\"")
     }
 }
 
@@ -67,7 +67,7 @@ impl<'q> sqlx::Encode<'q, sqlx::Postgres> for GitSyncOperationType {
 /// Git sync operation status
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
-#[sqlx(type_name = "GitSyncOperationStatus", rename_all = "SCREAMING_SNAKE_CASE")]
+#[sqlx(type_name = "\"GitSyncOperationStatus\"", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum GitSyncOperationStatus {
     Pending,
     Processing,

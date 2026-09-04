@@ -63,10 +63,24 @@ pub struct UpdateProjectRequest {
     pub is_public: Option<bool>,
 }
 
+/// Project count response
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectCountResponse {
+    #[serde(default)]
+    pub pages: i64,
+    #[serde(default)]
+    pub deployments: i64,
+    #[serde(default)]
+    pub domains: i64,
+}
+
 /// Project response
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ProjectResponse {
     pub id: Id,
+    #[serde(alias = "organization_id")]
     pub organization_id: Id,
     pub name: String,
     pub slug: String,
@@ -74,9 +88,14 @@ pub struct ProjectResponse {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub icon: Option<String>,
+    #[serde(alias = "is_public")]
     pub is_public: bool,
+    #[serde(alias = "created_at")]
     pub created_at: DateTime<Utc>,
+    #[serde(alias = "updated_at")]
     pub updated_at: DateTime<Utc>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub _count: Option<ProjectCountResponse>,
 }
 
 impl From<Project> for ProjectResponse {
@@ -91,6 +110,11 @@ impl From<Project> for ProjectResponse {
             is_public: project.is_public,
             created_at: project.created_at,
             updated_at: project.updated_at,
+            _count: Some(ProjectCountResponse {
+                pages: 0,
+                deployments: 0,
+                domains: 0,
+            }),
         }
     }
 }

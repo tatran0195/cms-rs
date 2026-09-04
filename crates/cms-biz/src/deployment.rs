@@ -96,11 +96,14 @@ impl DeploymentService {
             .require_project_role(user_id, project_id, MemberRole::Viewer)
             .await?;
 
+        let limit = page_size.max(1);
+        let offset = page.saturating_sub(1) * limit;
+
         let deployments = DeploymentQueries::get_by_project(
             &ctx.pool,
             project_id,
-            Some(page as i64),
-            Some(page_size as i64),
+            Some(limit as i64),
+            Some(offset as i64),
         )
         .await?;
 
@@ -481,24 +484,8 @@ async fn do_deployment(
     deployment: &cms_entity::deployment::Deployment,
     deployment_id: &str,
 ) -> Result<(), AppError> {
-    // Get the branch to deploy
-    let branch_id_ref = deployment.branch_id.as_deref().unwrap_or("");
-    let _branch = BranchQueries::get_by_id(pool, branch_id_ref)
-        .await?
-        .ok_or_else(|| AppError::NotFound("Branch not found".to_string()))?;
-
-    // Get all pages in the branch
-    let pages = PageQueries::get_by_project_and_branch(
-        pool,
-        &deployment.project_id,
-        branch_id_ref,
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
-    .await?;
+    // Get all pages to deploy
+    let pages = PageQueries::get_by_project(pool, &deployment.project_id).await?;
 
     tracing::info!(
         "Deploying {} pages for deployment {}",
@@ -507,7 +494,7 @@ async fn do_deployment(
     );
 
     for page in &pages {
-        let markdown = page.content.as_deref().unwrap_or("");
+        let markdown = &page.content;
         let html = render_markdown_to_html(markdown, &page.title);
 
         // Store as sites/{project_id}/{deployment_id}/{page_path}.html

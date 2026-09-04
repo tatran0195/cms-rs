@@ -149,9 +149,10 @@ impl BranchQueries {
         name: &str,
         description: Option<&str>,
         is_default: bool,
-        is_public: bool,
+        is_protected: bool,
     ) -> Result<Branch, AppError> {
         let id = Uuid::new_v4().to_string();
+        let slug = name.to_lowercase().replace(' ', "-");
         let now = Utc::now();
 
         // If this is the default branch, make sure no other branch is default
@@ -165,17 +166,18 @@ impl BranchQueries {
 
         let row = sqlx::query_as::<_, BranchRow>(
             r#"
-            INSERT INTO "Branch" (id, project_id, name, description, is_default, is_public, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            INSERT INTO "Branch" (id, project_id, name, slug, description, is_default, is_protected, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *
             "#
         )
         .bind(&id)
         .bind(project_id)
         .bind(name)
+        .bind(&slug)
         .bind(description)
         .bind(is_default)
-        .bind(is_public)
+        .bind(is_protected)
         .bind(now)
         .bind(now)
         .fetch_one(pool)

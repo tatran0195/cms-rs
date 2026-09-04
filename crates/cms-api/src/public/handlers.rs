@@ -132,17 +132,45 @@ pub async fn get_public_site_handler(
     let nav: Vec<serde_json::Value> = pages
         .into_iter()
         .map(|p| {
+            let clean_path = p.path.trim_matches('/').to_string();
             serde_json::json!({
                 "id": p.id,
                 "kind": "PAGE",
                 "title": p.title,
-                "path": p.path,
+                "path": clean_path,
                 "icon": null,
                 "tag": null,
                 "children": []
             })
         })
         .collect();
+
+    let languages = cms_db::language::LanguageQueries::get_by_project(&state.biz_context.pool, &id, None, None)
+        .await
+        .unwrap_or_default();
+
+    let lang_nodes: Vec<serde_json::Value> = if languages.is_empty() {
+        vec![serde_json::json!({
+            "code": "en",
+            "label": "English",
+            "direction": "LTR",
+            "isDefault": true,
+            "enabled": true
+        })]
+    } else {
+        languages
+            .into_iter()
+            .map(|l| {
+                serde_json::json!({
+                    "code": l.code,
+                    "label": l.name,
+                    "direction": if l.is_rtl { "RTL" } else { "LTR" },
+                    "isDefault": l.is_default,
+                    "enabled": true
+                })
+            })
+            .collect()
+    };
 
     Ok(Json(serde_json::json!({
         "data": {
@@ -155,15 +183,7 @@ pub async fn get_public_site_handler(
                 "primaryDomain": null,
             },
             "nav": nav,
-            "languages": [
-                {
-                    "code": "en",
-                    "label": "English",
-                    "direction": "LTR",
-                    "isDefault": true,
-                    "enabled": true
-                }
-            ],
+            "languages": lang_nodes,
             "versions": [
                 {
                     "id": "main",
@@ -188,7 +208,8 @@ pub async fn get_public_site_page_handler(
     Path(id): Path<String>,
     Query(query): Query<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let path = query.get("path").and_then(|v| v.as_str()).unwrap_or("");
+    let raw_path = query.get("path").and_then(|v| v.as_str()).unwrap_or("");
+    let path = raw_path.trim_matches('/');
     let project = cms_db::project::ProjectQueries::get_by_id(&state.biz_context.pool, &id).await?;
     let project = project.ok_or_else(|| AppError::NotFound("Site not found".to_string()))?;
 
@@ -200,27 +221,69 @@ pub async fn get_public_site_page_handler(
         .map(|b| b.id)
         .unwrap_or_else(|| "main".to_string());
 
-    let page = if path.is_empty() || path == "/" {
-        cms_db::page::PageQueries::get_by_project(&state.biz_context.pool, &id)
-            .await
-            .ok()
-            .and_then(|pages| pages.into_iter().next())
+    let all_pages = cms_db::page::PageQueries::get_by_project(&state.biz_context.pool, &id)
+        .await
+        .unwrap_or_default();
+
+    let page = if path.is_empty() {
+        all_pages.first().cloned()
     } else {
-        cms_db::page::PageQueries::get_by_path(&state.biz_context.pool, &id, &branch_id, path)
-            .await
-            .ok()
-            .flatten()
+        all_pages
+            .iter()
+            .find(|p| p.path.trim_matches('/') == path || p.slug.trim_matches('/') == path)
+            .cloned()
     };
 
-    let (title, content, page_path, page_id) = if let Some(p) = page {
-        (p.title, p.content, p.path, p.id)
+    let page = if let Some(p) = page {
+        p
+    } else if let Ok(Some(p)) =
+        cms_db::page::PageQueries::get_by_path(&state.biz_context.pool, &id, &branch_id, path).await
+    {
+        p
+    } else if path.is_empty() {
+        cms_entity::page::Page {
+            id: "home".to_string(),
+            project_id: id.clone(),
+            branch_id: branch_id.clone(),
+            parent_id: None,
+            path: "".to_string(),
+            slug: "".to_string(),
+            title: "Home".to_string(),
+            description: None,
+            content: "# Welcome\n\nContent is being prepared.".to_string(),
+            position: 0,
+            is_published: true,
+            is_indexed: true,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        }
     } else {
-        (
-            "Home".to_string(),
-            "# Welcome\n\nContent is being prepared.".to_string(),
-            "/".to_string(),
-            "home".to_string(),
-        )
+        return Err(AppError::NotFound("Page not found".to_string()));
+    };
+
+    let clean_path = page.path.trim_matches('/').to_string();
+
+    let languages = cms_db::language::LanguageQueries::get_by_project(&state.biz_context.pool, &id, None, None)
+        .await
+        .unwrap_or_default();
+
+    let lang_alternates: Vec<serde_json::Value> = if languages.is_empty() {
+        vec![serde_json::json!({
+            "code": "en",
+            "isDefault": true,
+            "path": clean_path
+        })]
+    } else {
+        languages
+            .into_iter()
+            .map(|l| {
+                serde_json::json!({
+                    "code": l.code,
+                    "isDefault": l.is_default,
+                    "path": clean_path
+                })
+            })
+            .collect()
     };
 
     Ok(Json(serde_json::json!({
@@ -234,17 +297,37 @@ pub async fn get_public_site_page_handler(
                 "primaryDomain": null,
             },
             "page": {
-                "id": page_id,
-                "createdAt": chrono::Utc::now().to_rfc3339(),
-                "updatedAt": chrono::Utc::now().to_rfc3339(),
-                "title": title,
-                "description": null,
+                "id": page.id,
+                "createdAt": page.created_at.to_rfc3339(),
+                "updatedAt": page.updated_at.to_rfc3339(),
+                "title": page.title,
+                "description": page.description.unwrap_or_default(),
                 "icon": null,
-                "path": page_path,
-                "content": content,
+                "path": clean_path,
+                "content": page.content,
                 "headings": [],
                 "config": null
-            }
+            },
+            "activeLanguage": "en",
+            "activeVersion": "main",
+            "versions": [
+                {
+                    "id": "main",
+                    "name": "main",
+                    "slug": "main",
+                    "isDefault": true
+                }
+            ],
+            "languageConfig": null,
+            "languages": lang_alternates,
+            "breadcrumbs": [
+                {
+                    "title": page.title,
+                    "path": clean_path
+                }
+            ],
+            "prev": null,
+            "next": null
         }
     })))
 }

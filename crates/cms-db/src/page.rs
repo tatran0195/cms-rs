@@ -70,6 +70,8 @@ impl From<PageRow> for PageListItem {
             project_id: row.project_id,
             branch_id: row.branch_id,
             parent_id: row.parent_id,
+            language_id: None,
+            kind: Some("PAGE".to_string()),
             path: row.path,
             slug: row.slug,
             title: row.title,
@@ -129,10 +131,8 @@ impl PageQueries {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<PageListItem>, AppError> {
-        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT id, project_id, branch_id, parent_id, path, slug, title, position, \
-             is_published, created_at, updated_at FROM \"Page\" WHERE project_id = ",
-        );
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT * FROM \"Page\" WHERE project_id = ");
         query_builder.push_bind(project_id);
         query_builder.push(" AND branch_id = ");
         query_builder.push_bind(branch_id);
@@ -184,6 +184,8 @@ impl PageQueries {
                 project_id: r.project_id,
                 branch_id: r.branch_id,
                 parent_id: r.parent_id,
+                language_id: None,
+                kind: Some("PAGE".to_string()),
                 path: r.path,
                 slug: r.slug,
                 title: r.title,
@@ -721,7 +723,7 @@ impl PageQueries {
     ) -> Result<i32, AppError> {
         let count: Option<i32> = match parent_id {
             Some(pid) => sqlx::query_scalar(
-                "SELECT MAX(sort_order) FROM \"Page\" WHERE project_id = $1 AND branch_id = $2 \
+                "SELECT MAX(position) FROM \"Page\" WHERE project_id = $1 AND branch_id = $2 \
                  AND parent_id = $3",
             )
             .bind(project_id)
@@ -731,7 +733,7 @@ impl PageQueries {
             .await
             .map_err(|e| AppError::Database(e.into()))?,
             None => sqlx::query_scalar(
-                "SELECT MAX(sort_order) FROM \"Page\" WHERE project_id = $1 AND branch_id = $2 \
+                "SELECT MAX(position) FROM \"Page\" WHERE project_id = $1 AND branch_id = $2 \
                  AND parent_id IS NULL",
             )
             .bind(project_id)
@@ -749,7 +751,7 @@ impl PageQueries {
             return Ok(vec![]);
         }
         let rows = sqlx::query_as::<_, PageRow>(
-            "SELECT * FROM \"Page\" WHERE id = ANY($1) ORDER BY sort_order ASC",
+            "SELECT * FROM \"Page\" WHERE id = ANY($1) ORDER BY position ASC",
         )
         .bind(page_ids)
         .fetch_all(pool)
@@ -781,7 +783,7 @@ impl PageQueries {
     ) -> Result<Vec<Page>, AppError> {
         let rows = sqlx::query_as::<_, PageRow>(
             "SELECT * FROM \"Page\" WHERE project_id = $1 AND branch_id = $2 AND parent_id = $3 \
-             ORDER BY sort_order ASC",
+             ORDER BY position ASC",
         )
         .bind(project_id)
         .bind(branch_id)

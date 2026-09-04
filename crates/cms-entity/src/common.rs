@@ -160,7 +160,7 @@ pub enum MemberRole {
 
 impl sqlx::Type<sqlx::Postgres> for MemberRole {
     fn type_info() -> sqlx::postgres::PgTypeInfo {
-        sqlx::postgres::PgTypeInfo::with_name("MemberRole")
+        sqlx::postgres::PgTypeInfo::with_name("\"MemberRole\"")
     }
 }
 
