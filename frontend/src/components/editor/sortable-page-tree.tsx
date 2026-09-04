@@ -468,7 +468,7 @@ function RowPresentation({
         onClick={() => onSelect?.(node.id)}
         className={cn(
           "flex min-w-0 flex-1 items-center gap-2 py-1.5 text-start text-sm",
-          isGroup && "font-semibold text-[11px] uppercase tracking-wide",
+          isGroup && "font-semibold text-[11px] tracking-wide",
         )}
       >
         {isGroup ? (

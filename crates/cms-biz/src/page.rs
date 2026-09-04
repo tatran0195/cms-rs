@@ -47,31 +47,73 @@ impl PageService {
                 let _parent = PageQueries::get_by_id(&ctx.pool, parent_id)
                     .await?
                     .ok_or_else(|| AppError::NotFound("Parent page not found".to_string()))?;
-
-                // Check if adding this page would create a cycle
-                if PageQueries::would_create_cycle(&ctx.pool, parent_id, Some(parent_id)).await? {
-                    return Err(AppError::Conflict(
-                        "Cannot create page: would create a cycle in the page tree".to_string(),
-                    ));
-                }
+                // No cycle check needed for CREATE — a brand-new page has no children
+                // and therefore cannot be an ancestor of anything.
             }
         }
 
-        // Generate slug if empty, or ensure slug is unique
+
+        // Resolve language_id: if not provided, try to look up default language for project
+        let language_id = if let Some(lid) = request.language_id.as_deref() {
+            if !lid.is_empty() {
+                Some(lid.to_string())
+            } else {
+                None
+            }
+        } else if let Ok(Some(dl)) = cms_db::language::LanguageQueries::get_default(&ctx.pool, project_id).await {
+            Some(dl.id)
+        } else if let Ok(langs) = cms_db::language::LanguageQueries::get_by_project(&ctx.pool, project_id, Some(1), None).await {
+            langs.into_iter().next().map(|l| l.id)
+        } else {
+            None
+        };
+
+        // Generate slug if empty, or ensure path is unique (slugs can repeat under different parents)
         let mut slug = request.slug.trim().to_lowercase().replace(' ', "-");
+        // Sanitize: keep only alphanumeric, hyphens, underscores
+        slug = slug.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_').collect();
         if slug.is_empty() {
-            slug = request.title.trim().to_lowercase().replace(' ', "-");
+            slug = request.title.trim().to_lowercase()
+                .chars()
+                .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+                .collect::<String>()
+                .trim_matches('-')
+                .to_string();
         }
         if slug.is_empty() {
             slug = "untitled".to_string();
         }
 
+        // Resolve parent path (needed to compute candidate full path for uniqueness check)
+        let parent_path: Option<String> = if let Some(ref pid) = request.parent_id {
+            if !pid.is_empty() {
+                PageQueries::get_path(&ctx.pool, pid).await.unwrap_or(None)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+
         let original_slug = slug.clone();
         let mut counter = 1;
         loop {
+            let candidate_path = if let Some(ref pp) = parent_path {
+                format!("{}/{}", pp.trim_end_matches('/'), slug)
+            } else {
+                format!("/{}", slug)
+            };
             let is_available =
-                PageQueries::is_slug_available(&ctx.pool, project_id, branch_id, &slug, None)
-                    .await?;
+                PageQueries::is_path_available(
+                    &ctx.pool,
+                    project_id,
+                    branch_id,
+                    language_id.as_deref(),
+                    &candidate_path,
+                    None,
+                )
+                .await?;
             if is_available {
                 break;
             }
@@ -84,9 +126,9 @@ impl PageService {
             pos
         } else if let Some(parent_id) = &request.parent_id {
             if parent_id.is_empty() {
-                // Root level - get max position for root pages in this branch
+                // Root level - get max position for root pages in this branch and language
                 let max_position =
-                    PageQueries::get_max_position(&ctx.pool, project_id, branch_id, None).await?;
+                    PageQueries::get_max_position(&ctx.pool, project_id, branch_id, language_id.as_deref(), None).await?;
                 max_position + 1
             } else {
                 // Under a parent - get max position for children of this parent
@@ -94,6 +136,7 @@ impl PageService {
                     &ctx.pool,
                     project_id,
                     branch_id,
+                    language_id.as_deref(),
                     Some(parent_id),
                 )
                 .await?;
@@ -102,7 +145,7 @@ impl PageService {
         } else {
             // No parent specified - root level
             let max_position =
-                PageQueries::get_max_position(&ctx.pool, project_id, branch_id, None).await?;
+                PageQueries::get_max_position(&ctx.pool, project_id, branch_id, language_id.as_deref(), None).await?;
             max_position + 1
         };
 
@@ -110,20 +153,22 @@ impl PageService {
             &ctx.pool,
             project_id,
             branch_id,
+            language_id.as_deref(),
             request.parent_id.as_deref(),
+            request.kind.as_deref(),
             &slug,
             &request.title,
             request.description.as_deref(),
             request.content.as_deref(),
+            request.icon.as_deref(),
+            request.config.as_ref(),
+            request.translation_key.as_deref(),
             position,
             request.is_published,
         )
         .await?;
 
-        let mut response: PageResponse = page.into();
-        response.language_id = request.language_id;
-        response.kind = request.kind.or(Some("PAGE".to_string()));
-        Ok(response)
+        Ok(page.into())
     }
 
     /// Get a page by ID
@@ -204,10 +249,11 @@ impl PageService {
             .await?;
 
         let offset = page.saturating_sub(1) * page_size;
-        let pages = PageQueries::get_by_project_and_branch(
+        let pages = PageQueries::get_by_project_branch_and_language(
             &ctx.pool,
             &query.project_id,
             &query.branch_id,
+            query.language_id.as_deref(),
             query.parent_id.as_deref(),
             query.is_published,
             query.search.as_deref(),
@@ -216,10 +262,11 @@ impl PageService {
         )
         .await?;
 
-        let total = PageQueries::count_by_project_and_branch(
+        let total = PageQueries::count_by_project_branch_and_language(
             &ctx.pool,
             &query.project_id,
             &query.branch_id,
+            query.language_id.as_deref(),
             query.parent_id.as_deref(),
             query.is_published,
             query.search.as_deref(),
@@ -287,20 +334,21 @@ impl PageService {
             }
         }
 
-        // If slug is changing, check for conflicts
+        // If slug is changing, check for conflicts within this page's language
         if let Some(new_slug) = &request.slug {
             if new_slug != &page.slug
                 && !PageQueries::is_slug_available(
                     &ctx.pool,
                     &page.project_id,
                     &page.branch_id,
+                    page.language_id.as_deref(),
                     new_slug,
                     Some(page_id),
                 )
                 .await?
             {
                 return Err(AppError::Conflict(
-                    "Page with this slug already exists in this branch".to_string(),
+                    "Page with this slug already exists in this branch and language".to_string(),
                 ));
             }
         }
@@ -315,10 +363,15 @@ impl PageService {
             &ctx.pool,
             page_id,
             request.parent_id.as_deref(),
+            request.language_id.as_deref(),
+            request.kind.as_deref(),
             request.slug.as_deref(),
             request.title.as_deref(),
             request.description.as_deref(),
             request.content.as_deref(),
+            request.icon.as_deref(),
+            request.config.as_ref(),
+            request.translation_key.as_deref(),
             request.position,
             is_published,
         )

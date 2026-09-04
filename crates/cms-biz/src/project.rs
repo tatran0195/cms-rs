@@ -224,9 +224,11 @@ impl ProjectService {
             &ctx.pool,
             project_id,
             request.name.as_deref(),
+            request.slug.as_deref(),
             request.description.as_deref(),
             request.icon.as_deref(),
             request.is_public,
+            request.config.as_ref(),
         )
         .await?;
 

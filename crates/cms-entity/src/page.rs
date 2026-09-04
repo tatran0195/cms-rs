@@ -16,13 +16,23 @@ pub struct Page {
     pub project_id: Id,
     pub branch_id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub language_id: Option<Id>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_id: Option<Id>,
+    #[serde(default = "default_page_kind")]
+    pub kind: String,
     pub path: String, // Materialized path (e.g., "/docs/getting-started")
     pub slug: String,
     pub title: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub content: String, // Markdown/MDX content
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub config: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub translation_key: Option<String>,
     pub position: i32,   // Position in the tree for ordering
     #[serde(default)]
     pub is_published: bool,
@@ -30,6 +40,10 @@ pub struct Page {
     pub is_indexed: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+fn default_page_kind() -> String {
+    "PAGE".to_string()
 }
 
 /// Page create request
@@ -82,6 +96,10 @@ pub struct UpdatePageRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(alias = "languageId", default, skip_serializing_if = "Option::is_none")]
+    pub language_id: Option<Id>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub is_published: Option<bool>,
     #[serde(alias = "hidden", default, skip_serializing_if = "Option::is_none")]
     pub hidden: Option<bool>,
@@ -109,6 +127,9 @@ pub struct PageResponse {
     pub title: String,
     pub description: Option<String>,
     pub content: String,
+    pub icon: Option<String>,
+    pub config: Option<serde_json::Value>,
+    pub translation_key: Option<String>,
     pub position: i32,
     pub is_published: bool,
     pub is_indexed: bool,
@@ -136,11 +157,12 @@ impl serde::Serialize for PageResponse {
         map.serialize_entry("title", &self.title)?;
         map.serialize_entry("slug", &self.slug)?;
         map.serialize_entry("path", &self.path)?;
-        map.serialize_entry("icon", &Option::<String>::None)?;
+        map.serialize_entry("icon", &self.icon)?;
         map.serialize_entry("description", &self.description)?;
         map.serialize_entry("content", &self.content)?;
-        map.serialize_entry("config", &Option::<serde_json::Value>::None)?;
-        map.serialize_entry("translationKey", &Option::<String>::None)?;
+        map.serialize_entry("config", &self.config)?;
+        map.serialize_entry("translationKey", &self.translation_key)?;
+        map.serialize_entry("translation_key", &self.translation_key)?;
         map.serialize_entry("position", &self.position)?;
         map.serialize_entry("hidden", &(!self.is_published))?;
         map.serialize_entry("is_published", &self.is_published)?;
@@ -160,13 +182,16 @@ impl From<Page> for PageResponse {
             project_id: page.project_id,
             branch_id: page.branch_id,
             parent_id: page.parent_id,
-            language_id: None,
-            kind: Some("PAGE".to_string()),
+            language_id: page.language_id,
+            kind: Some(page.kind),
             path: page.path,
             slug: page.slug,
             title: page.title,
             description: page.description,
             content: page.content,
+            icon: page.icon,
+            config: page.config,
+            translation_key: page.translation_key,
             position: page.position,
             is_published: page.is_published,
             is_indexed: page.is_indexed,
@@ -208,6 +233,9 @@ pub struct PageListItem {
     pub title: String,
     pub description: Option<String>,
     pub content: Option<String>,
+    pub icon: Option<String>,
+    pub config: Option<serde_json::Value>,
+    pub translation_key: Option<String>,
     pub position: i32,
     pub is_published: bool,
     pub created_at: DateTime<Utc>,
@@ -234,11 +262,12 @@ impl serde::Serialize for PageListItem {
         map.serialize_entry("title", &self.title)?;
         map.serialize_entry("slug", &self.slug)?;
         map.serialize_entry("path", &self.path)?;
-        map.serialize_entry("icon", &Option::<String>::None)?;
+        map.serialize_entry("icon", &self.icon)?;
         map.serialize_entry("description", &self.description)?;
         map.serialize_entry("content", &self.content)?;
-        map.serialize_entry("config", &Option::<serde_json::Value>::None)?;
-        map.serialize_entry("translationKey", &Option::<String>::None)?;
+        map.serialize_entry("config", &self.config)?;
+        map.serialize_entry("translationKey", &self.translation_key)?;
+        map.serialize_entry("translation_key", &self.translation_key)?;
         map.serialize_entry("position", &self.position)?;
         map.serialize_entry("hidden", &(!self.is_published))?;
         map.serialize_entry("is_published", &self.is_published)?;
@@ -305,12 +334,17 @@ mod tests {
             id: "page-1".to_string(),
             project_id: "proj-1".to_string(),
             branch_id: "branch-1".to_string(),
+            language_id: Some("lang-1".to_string()),
             parent_id: None,
+            kind: "GROUP".to_string(),
             path: "/docs/getting-started".to_string(),
             slug: "getting-started".to_string(),
             title: "Getting Started".to_string(),
             description: Some("Welcome to CMS".to_string()),
             content: "# Getting Started\n\nWelcome!".to_string(),
+            icon: Some("book".to_string()),
+            config: None,
+            translation_key: Some("getting-started-key".to_string()),
             position: 0,
             is_published: true,
             is_indexed: true,
@@ -321,6 +355,9 @@ mod tests {
         let response: PageResponse = page.into();
         assert_eq!(response.id, "page-1");
         assert_eq!(response.path, "/docs/getting-started");
+        assert_eq!(response.kind, Some("GROUP".to_string()));
+        assert_eq!(response.language_id, Some("lang-1".to_string()));
+        assert_eq!(response.icon, Some("book".to_string()));
     }
 
     #[test]
@@ -343,6 +380,7 @@ mod tests {
         assert_eq!(req.title, "New group");
         assert_eq!(req.kind, Some("GROUP".to_string()));
         assert_eq!(req.slug, "new-group");
+        assert_eq!(req.language_id, Some("lang-123".to_string()));
     }
 
     #[test]
@@ -351,20 +389,24 @@ mod tests {
             id: "page-1".to_string(),
             project_id: "proj-1".to_string(),
             branch_id: "branch-1".to_string(),
+            language_id: Some("lang-1".to_string()),
             parent_id: Some("parent-1".to_string()),
+            kind: "PAGE".to_string(),
             path: "/docs/intro".to_string(),
             slug: "intro".to_string(),
             title: "Intro".to_string(),
             description: None,
             content: "Hello".to_string(),
+            icon: None,
+            config: None,
+            translation_key: None,
             position: 1,
             is_published: true,
             is_indexed: true,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
-        let mut response: PageResponse = page.into();
-        response.language_id = Some("lang-1".to_string());
+        let response: PageResponse = page.into();
         let val = serde_json::to_value(&response).unwrap();
         assert_eq!(val["id"], "page-1");
         assert_eq!(val["projectId"], "proj-1");

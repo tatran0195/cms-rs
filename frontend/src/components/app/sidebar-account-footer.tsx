@@ -71,7 +71,7 @@ export function SidebarAccountFooter() {
                           src={visibleSession.user.image}
                         />
                       ) : null}
-                      <AvatarFallback className="rounded-lg bg-gradient-to-br from-primary to-primary/60 font-semibold text-primary-foreground text-xs">
+                      <AvatarFallback className="rounded-lg bg-linear-to-br from-primary to-primary/60 font-semibold text-primary-foreground text-xs">
                         {initials}
                       </AvatarFallback>
                     </Avatar>

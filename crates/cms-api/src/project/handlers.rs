@@ -265,9 +265,11 @@ pub async fn list_project_pages_handler(
         cms_biz::page::PageService::list_pages(&state.biz_context, &auth.user.id, query, 1, 100)
             .await?;
 
-    for page in &mut result.data {
-        if page.language_id.is_none() {
-            page.language_id = default_lang_id.clone();
+    if let Some(ref default_lang) = default_lang_id {
+        for page in &mut result.data {
+            if page.language_id.is_none() {
+                page.language_id = Some(default_lang.clone());
+            }
         }
     }
 
@@ -304,9 +306,7 @@ pub async fn create_project_page_handler(
         }
     }
     let branch_id = request.branch_id.clone();
-    let requested_lang_id = request.language_id.clone();
-    let requested_kind = request.kind.clone();
-    let mut page = cms_biz::page::PageService::create_page(
+    let page = cms_biz::page::PageService::create_page(
         &state.biz_context,
         &auth.user.id,
         &project_id,
@@ -314,27 +314,6 @@ pub async fn create_project_page_handler(
         request,
     )
     .await?;
-
-    let lang_id = if let Some(lid) = requested_lang_id {
-        Some(lid)
-    } else if let Ok(Some(dl)) =
-        cms_db::language::LanguageQueries::get_default(&state.biz_context.pool, &project_id).await
-    {
-        Some(dl.id)
-    } else if let Ok(langs) =
-        cms_db::language::LanguageQueries::get_by_project(&state.biz_context.pool, &project_id, Some(1), None).await
-    {
-        langs.into_iter().next().map(|l| l.id)
-    } else {
-        None
-    };
-
-    if page.language_id.is_none() {
-        page.language_id = lang_id;
-    }
-    if page.kind.is_none() {
-        page.kind = requested_kind.or(Some("PAGE".to_string()));
-    }
 
     Ok(Json(serde_json::json!({ "data": page })))
 }
@@ -407,12 +386,21 @@ pub async fn reorder_project_pages_handler(
     if let Some(items) = payload.get("items").and_then(|v| v.as_array()) {
         for item in items {
             if let Some(id) = item.get("id").and_then(|v| v.as_str()) {
-                let parent_id = item.get("parentId").and_then(|v| v.as_str());
+                let parent_id_param: Option<&str> = match item.get("parentId") {
+                    Some(serde_json::Value::Null) => Some(""),
+                    Some(serde_json::Value::String(s)) => Some(s.as_str()),
+                    _ => None,
+                };
                 let position = item.get("position").and_then(|v| v.as_i64()).map(|p| p as i32);
                 let _ = cms_db::page::PageQueries::update(
                     &state.biz_context.pool,
                     id,
-                    parent_id,
+                    parent_id_param,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
                     None,
                     None,
                     None,
@@ -1235,20 +1223,39 @@ pub async fn get_project_search_diagnostics_handler(
 
     let latest_run = runs.data.first();
     let indexed = latest_run.map(|r| r.pages_indexed).unwrap_or(0);
-    let total_pages = cms_db::page::PageQueries::get_by_project(&state.biz_context.pool, &project_id)
+    let pages = cms_db::page::PageQueries::get_by_project(&state.biz_context.pool, &project_id)
         .await
-        .map(|p| p.len() as i64)
-        .unwrap_or(0);
+        .unwrap_or_default();
+    let total_pages = pages.len() as i64;
 
-    let samples: Vec<serde_json::Value> = runs
-        .data
+    let langs = cms_db::language::LanguageQueries::get_by_project(&state.biz_context.pool, &project_id, Some(100), None)
+        .await
+        .unwrap_or_default();
+    let branches = cms_db::branch::BranchQueries::get_by_project(&state.biz_context.pool, &project_id, None, Some(100), None)
+        .await
+        .unwrap_or_default();
+
+    let corpus_languages: Vec<serde_json::Value> = if langs.is_empty() {
+        vec![serde_json::json!({ "code": "en", "count": total_pages })]
+    } else {
+        langs.iter().map(|l| serde_json::json!({ "code": l.code, "count": total_pages })).collect()
+    };
+
+    let corpus_versions: Vec<serde_json::Value> = if branches.is_empty() {
+        vec![serde_json::json!({ "slug": "main", "count": total_pages })]
+    } else {
+        branches.iter().map(|b| serde_json::json!({ "slug": b.name, "count": total_pages })).collect()
+    };
+
+    let samples: Vec<serde_json::Value> = pages
         .iter()
         .take(25)
-        .map(|r| {
+        .enumerate()
+        .map(|(idx, p)| {
             serde_json::json!({
-                "pointId": r.id,
-                "pageId": r.project_id,
-                "ordinal": 0,
+                "pointId": format!("pt_{}", p.id),
+                "pageId": p.id,
+                "ordinal": idx as i64,
                 "language": "en",
                 "versionSlug": "main",
                 "status": "indexed",
@@ -1256,10 +1263,25 @@ pub async fn get_project_search_diagnostics_handler(
         })
         .collect();
 
+    let health = if let Some(r) = latest_run {
+        match r.status {
+            cms_entity::search::SearchIndexRunStatus::Processing => "indexing",
+            cms_entity::search::SearchIndexRunStatus::Failed => "failed",
+            cms_entity::search::SearchIndexRunStatus::Completed => {
+                if indexed > 0 { "ready" } else { "empty" }
+            }
+            cms_entity::search::SearchIndexRunStatus::Pending => "indexing",
+        }
+    } else if indexed > 0 {
+        "ready"
+    } else {
+        "empty"
+    };
+
     Ok(Json(serde_json::json!({
         "data": {
             "availability": { "configured": indexed > 0, "reason": null },
-            "health": if indexed > 0 { "ready" } else { "empty" },
+            "health": health,
             "runtime": "hybrid",
             "index": {
                 "logicalId": format!("project:{}", project_id),
@@ -1272,28 +1294,36 @@ pub async fn get_project_search_diagnostics_handler(
             "corpus": {
                 "chunks": indexed,
                 "pages": total_pages,
-                "languages": [],
-                "versions": [],
+                "languages": corpus_languages,
+                "versions": corpus_versions,
                 "distributionTruncated": { "languages": false, "versions": false },
             },
-            "latestRun": latest_run.map(|r| serde_json::json!({
-                "id": r.id,
-                "status": format!("{:?}", r.status).to_uppercase(),
-                "startedAt": r.started_at.map(|t| t.to_rfc3339()),
-                "completedAt": r.completed_at.map(|t| t.to_rfc3339()),
-                "counts": {
-                    "expected": total_pages,
-                    "indexed": r.pages_indexed,
-                    "embedded": 0,
-                    "reused": 0,
-                    "unchanged": 0,
-                    "metadataUpdated": 0,
-                    "deleted": 0,
-                    "stale": 0,
-                    "failed": 0,
-                },
-                "errorCode": r.error_message,
-            })),
+            "latestRun": latest_run.map(|r| {
+                let status_str = match r.status {
+                    cms_entity::search::SearchIndexRunStatus::Pending => "PENDING",
+                    cms_entity::search::SearchIndexRunStatus::Processing => "RUNNING",
+                    cms_entity::search::SearchIndexRunStatus::Completed => "READY",
+                    cms_entity::search::SearchIndexRunStatus::Failed => "FAILED",
+                };
+                serde_json::json!({
+                    "id": r.id,
+                    "status": status_str,
+                    "startedAt": r.started_at.map(|t| t.to_rfc3339()).or_else(|| r.completed_at.map(|t| t.to_rfc3339())),
+                    "completedAt": r.completed_at.map(|t| t.to_rfc3339()),
+                    "counts": {
+                        "expected": total_pages,
+                        "indexed": r.pages_indexed as i64,
+                        "embedded": r.pages_indexed as i64,
+                        "reused": 0,
+                        "unchanged": 0,
+                        "metadataUpdated": 0,
+                        "deleted": 0,
+                        "stale": 0,
+                        "failed": 0,
+                    },
+                    "errorCode": r.error_message,
+                })
+            }),
             "samples": { "items": samples, "nextCursor": null, "hasMore": false },
             "issues": { "staleCount": 0, "failedCount": 0, "items": [] },
         }

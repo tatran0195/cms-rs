@@ -18,6 +18,7 @@ struct ProjectRow {
     description: Option<String>,
     icon: Option<String>,
     is_public: bool,
+    config: Option<serde_json::Value>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -57,6 +58,7 @@ impl From<ProjectRow> for Project {
             description: row.description,
             icon: row.icon,
             is_public: row.is_public,
+            config: row.config,
             created_at: row.created_at,
             updated_at: row.updated_at,
         }
@@ -239,8 +241,8 @@ impl ProjectQueries {
 
         let row = sqlx::query_as::<_, ProjectRow>(
             r#"
-            INSERT INTO "Project" (id, organization_id, name, slug, description, icon, is_public, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            INSERT INTO "Project" (id, organization_id, name, slug, description, icon, is_public, config, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, '{}', $8, $9)
             RETURNING *
             "#
         )
@@ -271,9 +273,11 @@ impl ProjectQueries {
         pool: &PgPool,
         project_id: &str,
         name: Option<&str>,
+        slug: Option<&str>,
         description: Option<&str>,
         icon: Option<&str>,
         is_public: Option<bool>,
+        config: Option<&serde_json::Value>,
     ) -> Result<Project, AppError> {
         let mut query_builder: QueryBuilder<Postgres> =
             QueryBuilder::new("UPDATE \"Project\" SET ");
@@ -282,6 +286,14 @@ impl ProjectQueries {
         if let Some(name) = name {
             query_builder.push("name = ");
             query_builder.push_bind(name);
+            has_updates = true;
+        }
+        if let Some(slug) = slug {
+            if has_updates {
+                query_builder.push(", ");
+            }
+            query_builder.push("slug = ");
+            query_builder.push_bind(slug);
             has_updates = true;
         }
         if let Some(description) = description {
@@ -308,11 +320,23 @@ impl ProjectQueries {
             query_builder.push_bind(is_public);
             has_updates = true;
         }
-
-        if has_updates {
-            query_builder.push(", updated_at = ");
-            query_builder.push_bind(Utc::now());
+        if let Some(config) = config {
+            if has_updates {
+                query_builder.push(", ");
+            }
+            query_builder.push("config = COALESCE(\"Project\".config, '{}'::jsonb) || ");
+            query_builder.push_bind(config.clone());
+            has_updates = true;
         }
+
+        if !has_updates {
+            return Self::get_by_id(pool, project_id)
+                .await?
+                .ok_or_else(|| AppError::NotFound("Project not found".to_string()));
+        }
+
+        query_builder.push(", updated_at = ");
+        query_builder.push_bind(Utc::now());
 
         query_builder.push(" WHERE id = ");
         query_builder.push_bind(project_id);
@@ -322,7 +346,13 @@ impl ProjectQueries {
             .build_query_as::<ProjectRow>()
             .fetch_one(pool)
             .await
-            .map_err(|e| AppError::Database(e.into()))?;
+            .map_err(|e| {
+                if e.to_string().contains("duplicate key") {
+                    AppError::Conflict("Project with this slug already exists".to_string())
+                } else {
+                    AppError::Database(e.into())
+                }
+            })?;
 
         Ok(row.into())
     }

@@ -15,12 +15,17 @@ struct PageRow {
     id: String,
     project_id: String,
     branch_id: String,
+    language_id: Option<String>,
     parent_id: Option<String>,
+    kind: Option<String>,
     path: String,
     slug: String,
     title: String,
     description: Option<String>,
     content: String,
+    icon: Option<String>,
+    config: Option<serde_json::Value>,
+    translation_key: Option<String>,
     position: i32,
     is_published: bool,
     is_indexed: bool,
@@ -48,12 +53,17 @@ impl From<PageRow> for Page {
             id: row.id,
             project_id: row.project_id,
             branch_id: row.branch_id,
+            language_id: row.language_id,
             parent_id: row.parent_id,
+            kind: row.kind.unwrap_or_else(|| "PAGE".to_string()),
             path: row.path,
             slug: row.slug,
             title: row.title,
             description: row.description,
             content: row.content,
+            icon: row.icon,
+            config: row.config,
+            translation_key: row.translation_key,
             position: row.position,
             is_published: row.is_published,
             is_indexed: row.is_indexed,
@@ -70,13 +80,16 @@ impl From<PageRow> for PageListItem {
             project_id: row.project_id,
             branch_id: row.branch_id,
             parent_id: row.parent_id,
-            language_id: None,
-            kind: Some("PAGE".to_string()),
+            language_id: row.language_id,
+            kind: row.kind.or(Some("PAGE".to_string())),
             path: row.path,
             slug: row.slug,
             title: row.title,
-            description: row.description.clone(),
-            content: Some(row.content.clone()),
+            description: row.description,
+            content: Some(row.content),
+            icon: row.icon,
+            config: row.config,
+            translation_key: row.translation_key,
             position: row.position,
             is_published: row.is_published,
             created_at: row.created_at,
@@ -98,6 +111,16 @@ impl PageQueries {
             .map_err(|e| AppError::Database(e.into()))?;
 
         Ok(row.map(|r| r.into()))
+    }
+
+    /// Get just the path of a page by ID (lightweight for slug dedup).
+    pub async fn get_path(pool: &PgPool, page_id: &str) -> Result<Option<String>, AppError> {
+        let path: Option<String> = sqlx::query_scalar("SELECT path FROM \"Page\" WHERE id = $1")
+            .bind(page_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
+        Ok(path)
     }
 
     /// Get a page by path
@@ -131,11 +154,44 @@ impl PageQueries {
         limit: Option<i64>,
         offset: Option<i64>,
     ) -> Result<Vec<PageListItem>, AppError> {
+        Self::get_by_project_branch_and_language(
+            pool,
+            project_id,
+            branch_id,
+            None,
+            parent_id,
+            is_published,
+            search,
+            limit,
+            offset,
+        )
+        .await
+    }
+
+    /// Get pages by project, branch, and optional language
+    pub async fn get_by_project_branch_and_language(
+        pool: &PgPool,
+        project_id: &str,
+        branch_id: &str,
+        language_id: Option<&str>,
+        parent_id: Option<&str>,
+        is_published: Option<bool>,
+        search: Option<&str>,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> Result<Vec<PageListItem>, AppError> {
         let mut query_builder: QueryBuilder<Postgres> =
             QueryBuilder::new("SELECT * FROM \"Page\" WHERE project_id = ");
         query_builder.push_bind(project_id);
         query_builder.push(" AND branch_id = ");
         query_builder.push_bind(branch_id);
+
+        if let Some(lang_id) = language_id {
+            if !lang_id.is_empty() {
+                query_builder.push(" AND language_id = ");
+                query_builder.push_bind(lang_id);
+            }
+        }
 
         if let Some(parent_id) = parent_id {
             if parent_id.is_empty() {
@@ -177,26 +233,7 @@ impl PageQueries {
             .await
             .map_err(|e| AppError::Database(e.into()))?;
 
-        Ok(rows
-            .into_iter()
-            .map(|r| PageListItem {
-                id: r.id,
-                project_id: r.project_id,
-                branch_id: r.branch_id,
-                parent_id: r.parent_id,
-                language_id: None,
-                kind: Some("PAGE".to_string()),
-                path: r.path,
-                slug: r.slug,
-                title: r.title,
-                description: r.description.clone(),
-                content: None,
-                position: r.position,
-                is_published: r.is_published,
-                created_at: r.created_at,
-                updated_at: r.updated_at,
-            })
-            .collect())
+        Ok(rows.into_iter().map(PageListItem::from).collect())
     }
 
     /// Count pages by project and branch
@@ -208,11 +245,40 @@ impl PageQueries {
         is_published: Option<bool>,
         search: Option<&str>,
     ) -> Result<i64, AppError> {
+        Self::count_by_project_branch_and_language(
+            pool,
+            project_id,
+            branch_id,
+            None,
+            parent_id,
+            is_published,
+            search,
+        )
+        .await
+    }
+
+    /// Count pages by project, branch, and optional language
+    pub async fn count_by_project_branch_and_language(
+        pool: &PgPool,
+        project_id: &str,
+        branch_id: &str,
+        language_id: Option<&str>,
+        parent_id: Option<&str>,
+        is_published: Option<bool>,
+        search: Option<&str>,
+    ) -> Result<i64, AppError> {
         let mut query_builder: QueryBuilder<Postgres> =
             QueryBuilder::new("SELECT COUNT(*) as count FROM \"Page\" WHERE project_id = ");
         query_builder.push_bind(project_id);
         query_builder.push(" AND branch_id = ");
         query_builder.push_bind(branch_id);
+
+        if let Some(lang_id) = language_id {
+            if !lang_id.is_empty() {
+                query_builder.push(" AND language_id = ");
+                query_builder.push_bind(lang_id);
+            }
+        }
 
         if let Some(parent_id) = parent_id {
             if parent_id.is_empty() {
@@ -370,11 +436,16 @@ impl PageQueries {
         pool: &PgPool,
         project_id: &str,
         branch_id: &str,
+        language_id: Option<&str>,
         parent_id: Option<&str>,
+        kind: Option<&str>,
         slug: &str,
         title: &str,
         description: Option<&str>,
         content: Option<&str>,
+        icon: Option<&str>,
+        config: Option<&serde_json::Value>,
+        translation_key: Option<&str>,
         position: i32,
         is_published: bool,
     ) -> Result<Page, AppError> {
@@ -382,41 +453,54 @@ impl PageQueries {
 
         // Calculate the path based on parent
         let path = if let Some(parent_id) = parent_id {
-            // Get parent path
-            let parent_path: Option<String> =
-                sqlx::query_scalar("SELECT path FROM \"Page\" WHERE id = $1")
-                    .bind(parent_id)
-                    .fetch_one(pool)
-                    .await
-                    .map_err(|e| AppError::Database(e.into()))?;
-
-            if let Some(parent_path) = parent_path {
-                format!("{}/{}", parent_path.trim_end_matches('/'), slug)
-            } else {
+            if parent_id.is_empty() {
                 format!("/{}", slug)
+            } else {
+                let parent_path: Option<String> =
+                    sqlx::query_scalar("SELECT path FROM \"Page\" WHERE id = $1")
+                        .bind(parent_id)
+                        .fetch_optional(pool)
+                        .await
+                        .map_err(|e| AppError::Database(e.into()))?;
+
+                if let Some(parent_path) = parent_path {
+                    format!("{}/{}", parent_path.trim_end_matches('/'), slug)
+                } else {
+                    format!("/{}", slug)
+                }
             }
         } else {
             format!("/{}", slug)
         };
 
         let now = Utc::now();
+        let effective_kind = kind.unwrap_or("PAGE");
 
         let row = sqlx::query_as::<_, PageRow>(
             r#"
-            INSERT INTO "Page" (id, project_id, branch_id, parent_id, path, slug, title, description, content, position, is_published, is_indexed, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            INSERT INTO "Page" (
+                id, project_id, branch_id, language_id, parent_id, kind,
+                path, slug, title, description, content, icon, config,
+                translation_key, position, is_published, is_indexed, created_at, updated_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
             RETURNING *
             "#
         )
         .bind(&id)
         .bind(project_id)
         .bind(branch_id)
+        .bind(language_id)
         .bind(parent_id)
+        .bind(effective_kind)
         .bind(&path)
         .bind(slug)
         .bind(title)
         .bind(description)
         .bind(content.unwrap_or(""))
+        .bind(icon)
+        .bind(config)
+        .bind(translation_key)
         .bind(position)
         .bind(is_published)
         .bind(is_published) // is_indexed mirrors is_published by default
@@ -426,7 +510,7 @@ impl PageQueries {
         .await
         .map_err(|e| {
             if e.to_string().contains("duplicate key") {
-                AppError::Conflict("Page with this slug already exists in this branch".to_string())
+                AppError::Conflict("Page with this slug already exists in this branch and language".to_string())
             } else {
                 AppError::Database(e.into())
             }
@@ -440,10 +524,15 @@ impl PageQueries {
         pool: &PgPool,
         page_id: &str,
         parent_id: Option<&str>,
+        language_id: Option<&str>,
+        kind: Option<&str>,
         slug: Option<&str>,
         title: Option<&str>,
         description: Option<&str>,
         content: Option<&str>,
+        icon: Option<&str>,
+        config: Option<&serde_json::Value>,
+        translation_key: Option<&str>,
         position: Option<i32>,
         is_published: Option<bool>,
     ) -> Result<Page, AppError> {
@@ -456,8 +545,8 @@ impl PageQueries {
                 .map_err(|e| AppError::Database(e.into()))?;
 
         let new_path = if let Some(current) = &current_page {
-            let parent_changed = parent_id != current.parent_id.as_deref();
-            let slug_changed = slug != Some(current.slug.as_str());
+            let parent_changed = parent_id.is_some() && parent_id != current.parent_id.as_deref();
+            let slug_changed = slug.is_some() && slug != Some(current.slug.as_str());
 
             if parent_changed || slug_changed {
                 if let Some(parent_id) = parent_id {
@@ -468,7 +557,7 @@ impl PageQueries {
                         let parent_path: Option<String> =
                             sqlx::query_scalar("SELECT path FROM \"Page\" WHERE id = $1")
                                 .bind(parent_id)
-                                .fetch_one(pool)
+                                .fetch_optional(pool)
                                 .await
                                 .map_err(|e| AppError::Database(e.into()))?;
 
@@ -482,6 +571,23 @@ impl PageQueries {
                             format!("/{}", slug.unwrap_or(&current.slug))
                         }
                     }
+                } else if let Some(ref current_parent_id) = current.parent_id {
+                    let parent_path: Option<String> =
+                        sqlx::query_scalar("SELECT path FROM \"Page\" WHERE id = $1")
+                            .bind(current_parent_id)
+                            .fetch_optional(pool)
+                            .await
+                            .map_err(|e| AppError::Database(e.into()))?;
+
+                    if let Some(parent_path) = parent_path {
+                        format!(
+                            "{}/{}",
+                            parent_path.trim_end_matches('/'),
+                            slug.unwrap_or(&current.slug)
+                        )
+                    } else {
+                        format!("/{}", slug.unwrap_or(&current.slug))
+                    }
                 } else {
                     format!("/{}", slug.unwrap_or(&current.slug))
                 }
@@ -489,7 +595,6 @@ impl PageQueries {
                 current.path.clone()
             }
         } else {
-            // Page doesn't exist, but we'll let the update fail below
             String::new()
         };
 
@@ -503,6 +608,26 @@ impl PageQueries {
                 query_builder.push("parent_id = ");
                 query_builder.push_bind(parent_id);
             }
+            has_updates = true;
+        }
+        if let Some(language_id) = language_id {
+            if has_updates {
+                query_builder.push(", ");
+            }
+            if language_id.is_empty() {
+                query_builder.push("language_id = NULL");
+            } else {
+                query_builder.push("language_id = ");
+                query_builder.push_bind(language_id);
+            }
+            has_updates = true;
+        }
+        if let Some(kind) = kind {
+            if has_updates {
+                query_builder.push(", ");
+            }
+            query_builder.push("kind = ");
+            query_builder.push_bind(kind);
             has_updates = true;
         }
         if let Some(slug) = slug {
@@ -545,6 +670,30 @@ impl PageQueries {
             query_builder.push_bind(content);
             has_updates = true;
         }
+        if let Some(icon) = icon {
+            if has_updates {
+                query_builder.push(", ");
+            }
+            query_builder.push("icon = ");
+            query_builder.push_bind(icon);
+            has_updates = true;
+        }
+        if let Some(config) = config {
+            if has_updates {
+                query_builder.push(", ");
+            }
+            query_builder.push("config = ");
+            query_builder.push_bind(config);
+            has_updates = true;
+        }
+        if let Some(translation_key) = translation_key {
+            if has_updates {
+                query_builder.push(", ");
+            }
+            query_builder.push("translation_key = ");
+            query_builder.push_bind(translation_key);
+            has_updates = true;
+        }
         if let Some(position) = position {
             if has_updates {
                 query_builder.push(", ");
@@ -559,7 +708,6 @@ impl PageQueries {
             }
             query_builder.push("is_published = ");
             query_builder.push_bind(is_published);
-            // Also update is_indexed to match
             query_builder.push(", is_indexed = ");
             query_builder.push_bind(is_published);
             has_updates = true;
@@ -581,7 +729,7 @@ impl PageQueries {
             .map_err(|e| {
                 if e.to_string().contains("duplicate key") {
                     AppError::Conflict(
-                        "Page with this slug already exists in this branch".to_string(),
+                        "Page with this slug already exists in this branch and language".to_string(),
                     )
                 } else {
                     AppError::Database(e.into())
@@ -638,12 +786,40 @@ impl PageQueries {
         Ok(pages.into_iter().map(|r| r.into()).collect())
     }
 
-    /// Check if a slug is available in a branch
+    /// Check if a path is available in a branch and language.
+    /// Since the unique constraint is on (project_id, branch_id, language_id, path),
+    /// we check path uniqueness — not raw slug — to avoid false conflicts between
+    /// pages under different parents that share the same slug.
     pub async fn is_slug_available(
         pool: &PgPool,
         project_id: &str,
         branch_id: &str,
+        language_id: Option<&str>,
         slug: &str,
+        exclude_page_id: Option<&str>,
+    ) -> Result<bool, AppError> {
+        // Build the candidate path prefix to check — we can't know the full path
+        // without the parent, so we check all paths that END with /<slug> at root
+        // OR that exactly equal /<slug>. For the full path check, callers should
+        // use is_path_available instead.  This function remains for root-level checks.
+        Self::is_path_available(
+            pool,
+            project_id,
+            branch_id,
+            language_id,
+            &format!("/{}", slug),
+            exclude_page_id,
+        )
+        .await
+    }
+
+    /// Check if a full path is available in a branch and language.
+    pub async fn is_path_available(
+        pool: &PgPool,
+        project_id: &str,
+        branch_id: &str,
+        language_id: Option<&str>,
+        path: &str,
         exclude_page_id: Option<&str>,
     ) -> Result<bool, AppError> {
         let mut query_builder: QueryBuilder<Postgres> =
@@ -651,8 +827,20 @@ impl PageQueries {
         query_builder.push_bind(project_id);
         query_builder.push(" AND branch_id = ");
         query_builder.push_bind(branch_id);
-        query_builder.push(" AND slug = ");
-        query_builder.push_bind(slug);
+
+        if let Some(lang_id) = language_id {
+            if !lang_id.is_empty() {
+                query_builder.push(" AND language_id = ");
+                query_builder.push_bind(lang_id);
+            } else {
+                query_builder.push(" AND language_id IS NULL");
+            }
+        } else {
+            query_builder.push(" AND language_id IS NULL");
+        }
+
+        query_builder.push(" AND path = ");
+        query_builder.push_bind(path);
 
         if let Some(exclude_id) = exclude_page_id {
             query_builder.push(" AND id != ");
@@ -668,6 +856,7 @@ impl PageQueries {
 
         Ok(count == 0)
     }
+
 
     /// Detect if moving a page would create a cycle in the tree
     pub async fn would_create_cycle(
@@ -719,29 +908,39 @@ impl PageQueries {
         pool: &PgPool,
         project_id: &str,
         branch_id: &str,
+        language_id: Option<&str>,
         parent_id: Option<&str>,
     ) -> Result<i32, AppError> {
-        let count: Option<i32> = match parent_id {
-            Some(pid) => sqlx::query_scalar(
-                "SELECT MAX(position) FROM \"Page\" WHERE project_id = $1 AND branch_id = $2 \
-                 AND parent_id = $3",
-            )
-            .bind(project_id)
-            .bind(branch_id)
-            .bind(pid)
+        let mut query_builder: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT MAX(position) FROM \"Page\" WHERE project_id = ");
+        query_builder.push_bind(project_id);
+        query_builder.push(" AND branch_id = ");
+        query_builder.push_bind(branch_id);
+
+        if let Some(lang_id) = language_id {
+            if !lang_id.is_empty() {
+                query_builder.push(" AND language_id = ");
+                query_builder.push_bind(lang_id);
+            }
+        }
+
+        if let Some(pid) = parent_id {
+            if pid.is_empty() {
+                query_builder.push(" AND parent_id IS NULL");
+            } else {
+                query_builder.push(" AND parent_id = ");
+                query_builder.push_bind(pid);
+            }
+        } else {
+            query_builder.push(" AND parent_id IS NULL");
+        }
+
+        let count: Option<i32> = query_builder
+            .build_query_scalar()
             .fetch_one(pool)
             .await
-            .map_err(|e| AppError::Database(e.into()))?,
-            None => sqlx::query_scalar(
-                "SELECT MAX(position) FROM \"Page\" WHERE project_id = $1 AND branch_id = $2 \
-                 AND parent_id IS NULL",
-            )
-            .bind(project_id)
-            .bind(branch_id)
-            .fetch_one(pool)
-            .await
-            .map_err(|e| AppError::Database(e.into()))?,
-        };
+            .map_err(|e| AppError::Database(e.into()))?;
+
         Ok(count.unwrap_or(0))
     }
 

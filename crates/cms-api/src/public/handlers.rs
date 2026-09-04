@@ -160,13 +160,13 @@ fn build_nav(pages: &[cms_entity::page::Page]) -> Vec<serde_json::Value> {
             for &i in idx {
                 let p = &ordered[i];
                 let kid = build(ordered, children, Some(p.id.clone()));
-                let kind = if kid.is_empty() { "PAGE" } else { "GROUP" };
+                let kind = if p.kind == "GROUP" || !kid.is_empty() { "GROUP" } else { "PAGE" };
                 out.push(serde_json::json!({
                     "id": p.id,
                     "kind": kind,
                     "title": p.title,
                     "path": p.path.trim_matches('/'),
-                    "icon": null,
+                    "icon": p.icon.clone(),
                     "tag": null,
                     "children": kid,
                 }));
@@ -364,12 +364,17 @@ pub async fn get_public_site_page_handler(
             id: "home".to_string(),
             project_id: id.clone(),
             branch_id: branch_id.clone(),
+            language_id: None,
             parent_id: None,
+            kind: "PAGE".to_string(),
             path: "".to_string(),
             slug: "".to_string(),
             title: "Home".to_string(),
             description: None,
             content: "# Welcome\n\nContent is being prepared.".to_string(),
+            icon: None,
+            config: None,
+            translation_key: None,
             position: 0,
             is_published: true,
             is_indexed: true,

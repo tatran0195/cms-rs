@@ -18,6 +18,8 @@ pub struct Project {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub icon: Option<String>,
     pub is_public: bool,
+    #[serde(default)]
+    pub config: Option<serde_json::Value>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -37,7 +39,6 @@ pub struct CreateProjectRequest {
     #[validate(length(max = 500, message = "Description must be at most 500 characters"))]
     pub description: Option<String>,
     #[serde(default)]
-    #[validate(url(message = "Invalid icon URL"))]
     pub icon: Option<String>,
     #[serde(default)]
     pub is_public: bool,
@@ -54,13 +55,21 @@ pub struct UpdateProjectRequest {
     ))]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[validate(length(
+        min = 1,
+        max = 63,
+        message = "Project slug must be between 1 and 63 characters"
+    ))]
+    pub slug: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[validate(length(max = 500, message = "Description must be at most 500 characters"))]
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[validate(url(message = "Invalid icon URL"))]
     pub icon: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_public: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub config: Option<serde_json::Value>,
 }
 
 /// Project count response
@@ -90,6 +99,8 @@ pub struct ProjectResponse {
     pub icon: Option<String>,
     #[serde(alias = "is_public")]
     pub is_public: bool,
+    #[serde(default)]
+    pub config: Option<serde_json::Value>,
     #[serde(alias = "created_at")]
     pub created_at: DateTime<Utc>,
     #[serde(alias = "updated_at")]
@@ -108,6 +119,7 @@ impl From<Project> for ProjectResponse {
             description: project.description,
             icon: project.icon,
             is_public: project.is_public,
+            config: project.config,
             created_at: project.created_at,
             updated_at: project.updated_at,
             _count: Some(ProjectCountResponse {
